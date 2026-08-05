@@ -1,0 +1,27 @@
+{
+  "schema": "quiet_la_web_deployment_contract_v1",
+  "product": "quiet_la_noise_master",
+  "staticExport": true,
+  "scientificDataAssetsSameOriginOnly": true,
+  "remoteBasemapAllowedOrigins": ["https://tile.openstreetmap.org"],
+  "noindex": true,
+  "robots": "noindex,nofollow,noarchive",
+  "passwordAuthConfigured": false,
+  "externalDeploymentAuthorized": false,
+  "publicReleaseAuthorized": false,
+  "mapPromotionAuthorized": false,
+  "localOnlyDataRequiredForUsefulPreview": true,
+  "compatibleAcousticCombinationAdmitted": false,
+  "basemap": {
+    "provider": "OpenStreetMap",
+    "tileUrl": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "attribution": "© OpenStreetMap contributors",
+    "licenseUrl": "https://www.openstreetmap.org/copyright",
+    "tilePolicyUrl": "https://operations.osmfoundation.org/policies/tiles/",
+    "bundledTiles": false,
+    "visibleAttributionRequired": true,
+    "fallback": "paper_background"
+  },
+  "providerValidation": "UNMET_EXTERNAL_PLATFORM_CHECK",
+  "nextSafeAction": "Configure password protection on the chosen private preview platform and record a two-key promotion decision only after platform validation."
+}

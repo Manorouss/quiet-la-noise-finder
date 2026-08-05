@@ -1,0 +1,17 @@
+{
+  "schema": "quiet_la_web_local_source_manifest_v1",
+  "candidate": "unified_visual_preview_local_v3",
+  "sourceRoot": "implementation/outputs/corrected-per-region-release-candidate/unified-visual-preview-local-v3",
+  "rows": [
+    { "source": "assets/four-region-relative.json.gz", "target": "v3/four-region-relative.json.gz", "sha256": "8885c4fb6a57348692d2fa88e2d66a92976fa5584ec9e14f937f535882d9b45b", "bytes": 315537, "localOnly": true },
+    { "source": "assets/tarzana-scenario.json", "target": "v3/tarzana-scenario.json", "sha256": "60d0e3a032e2ef631c296d92c064c2e0b98fa7fb654d137b37367c5b9b6d9714", "bytes": 1434069, "localOnly": true },
+    { "source": "assets/context/airport-contours.json.gz", "target": "v3/context/airport-contours.json.gz", "sha256": "a324f82f89fe24fb3f6ba5216604d39d392e0b95ffef807501ed9c0ef855f54d", "bytes": 210918, "localOnly": true },
+    { "source": "assets/context/rail.json", "target": "v3/context/rail.json", "sha256": "ef79452209fb87cfae57430418c9196f65dce005eac5e0ff8f03a8fe2801b89e", "bytes": 7768, "localOnly": true },
+    { "source": "assets/context/source341-mask.json", "target": "v3/context/source341-mask.json", "sha256": "03a8afdca95acdc5266829a2f4c5e553269b7c288bc8a36d902a50f5a1ae94a7", "bytes": 22093, "localOnly": true },
+    { "source": "assets/layer-taxonomy.json", "target": "v3/layer-taxonomy.json", "sha256": "b2487a0f270a017a26480debd5b4d16a6ae5f6de2cf1f5c32942373bd67e7b4b", "bytes": 3547, "localOnly": true },
+    { "source": "assets/unified-layer-manifest.json", "target": "v3/unified-layer-manifest.json", "sha256": "4411feb1f1c38d97d4bdf75dc96ac5475ac161c2cd3b854b45121cd1fec0209d", "bytes": 6963, "localOnly": true },
+    { "source": "assets/render-manifest.json", "target": "v3/render-manifest.json", "sha256": "a50ce6ac3ea508fc7bdc0fdf5b0dc74b4040f03d8d5b09806994b8a9b3b979b2", "bytes": 2456, "localOnly": true },
+    { "source": "assets/source-bindings.json", "target": "v3/source-bindings.json", "sha256": "c7a85e804b9701049bb59f67119bdc950382f9b9457986e42eeecc318776e573", "bytes": 3688, "localOnly": true },
+    { "source": "PREVIEW_ACCESS_CONTRACT.json", "target": "v3/PREVIEW_ACCESS_CONTRACT.json", "sha256": "b89e6a7c9ca017f1a5f6004b4c49df5d1def654eefa38e74eb202de81a4e2aa9", "bytes": 501, "localOnly": true }
+  ]
+}

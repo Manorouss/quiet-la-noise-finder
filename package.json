@@ -1,0 +1,36 @@
+{
+  "name": "quiet-la-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "npm run verify:external && next build",
+    "build:local": "node scripts/stage-local-data.mjs && next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "stage:local": "node scripts/stage-local-data.mjs",
+    "verify:external": "node scripts/verify-external-tree.mjs",
+    "manifest:clean": "node scripts/build-clean-manifest.mjs",
+    "test:contracts": "node --test tests/*.test.mjs",
+    "test:browser": "node scripts/browser-check.mjs"
+  },
+  "dependencies": {
+    "maplibre-gl": "^4.7.1",
+    "next": "15.5.9",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.19.1",
+    "@typescript-eslint/parser": "^8.19.1",
+    "eslint": "^9.32.0",
+    "eslint-config-next": "^15.5.9",
+    "typescript": "^5.7.2"
+  }
+}
