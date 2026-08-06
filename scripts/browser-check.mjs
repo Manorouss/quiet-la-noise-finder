@@ -5,7 +5,16 @@ import { chromium } from '@playwright/test';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const port = 3197;
-const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-H', '127.0.0.1', '-p', String(port)], { cwd: appRoot, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-H', '127.0.0.1', '-p', String(port)], {
+  cwd: appRoot,
+  env: {
+    ...process.env,
+    NEXT_PUBLIC_QUIET_LA_DATA_PROFILE: 'local_v3',
+    NEXT_PUBLIC_QUIET_LA_DATA_ROOT: '/_local-data/v3',
+    NEXT_PUBLIC_QUIET_LA_LOCAL_RECOVERY_COMMAND: 'npm run stage:local',
+  },
+  stdio: ['ignore', 'pipe', 'pipe'],
+});
 let output = '';
 server.stdout.on('data', (chunk) => { output += chunk.toString(); });
 server.stderr.on('data', (chunk) => { output += chunk.toString(); });

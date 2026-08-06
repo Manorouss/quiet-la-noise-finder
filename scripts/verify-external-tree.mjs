@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const scanRoot = process.env.QUIET_LA_EXTERNAL_ROOT ? path.resolve(process.env.QUIET_LA_EXTERNAL_ROOT) : appRoot;
-const forbiddenRoots = [path.join(scanRoot, 'public/_local-data'), path.join(scanRoot, '_local-data')];
+const forbiddenRoots = [path.join(scanRoot, 'public/_local-data'), path.join(scanRoot, '_local-data'), path.join(scanRoot, 'public/_preview-data'), path.join(scanRoot, '_preview-data')];
 const forbiddenNames = ['.geojson', '.geojson.gz', '.laz', '.las', '.tif', '.asc', '.mv.db', '.trace.db', '.zip'];
 const secretPatterns = [
   /BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY/,

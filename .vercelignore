@@ -1,0 +1,3 @@
+# Direct Vercel CLI source uploads are intentionally empty.
+# The only admitted useful payload path is the protected private-preview Git branch.
+/*

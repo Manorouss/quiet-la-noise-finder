@@ -9,7 +9,7 @@ export interface MapPayload {
   tarzana: { records: Array<{ receiver_id: number; lat: number; lng: number; d: number; e: number; n: number }> };
   airports: { features: Array<{ id: number; geometry: Geometry; properties: Record<string, string> }> };
   rail: { metro_routes: Array<Record<string, unknown>>; overall_status: string };
-  mask: { mask_geometry_wgs84: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown }; affected_receiver_count: number; status_class: string };
+  mask: { mask_geometry_wgs84: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown }; affected_receiver_count: number; status_class: string } | null;
 }
 
 export interface InspectionRecord {
@@ -38,6 +38,7 @@ interface Props {
   regionRequest: string;
   onInspect: (records: InspectionRecord[]) => void;
   onFitComplete: () => void;
+  runtimeMode: 'local' | 'private_preview' | 'external_payload_free';
 }
 
 const LA_BOUNDS: Record<string, [[number, number], [number, number]]> = {
@@ -81,7 +82,7 @@ function fitVisibleBounds(map: import('maplibre-gl').Map, data: MapPayload | nul
   if (modeled && toggles.four_region_freeway_relative) coordinates.push(...data.four.records.map((record) => [record.lng, record.lat] as [number, number]));
   if (modeled && toggles.tarzana_mixed_road_scenario) coordinates.push(...data.tarzana.records.map((record) => [record.lng, record.lat] as [number, number]));
   if (context && toggles.airport_planning_contours) for (const feature of data.airports.features) geometryCoordinates(feature.geometry, coordinates);
-  if (context && toggles.source_341_incomplete_mask) geometryCoordinates(safeMaskGeometry(data.mask), coordinates);
+  if (context && toggles.source_341_incomplete_mask && data.mask) geometryCoordinates(safeMaskGeometry(data.mask), coordinates);
   if (!coordinates.length) { map.fitBounds(LA_BOUNDS.la as import('maplibre-gl').LngLatBoundsLike, { padding: 120, duration: 500 }); return; }
   const lngs = coordinates.map(([lng]) => lng); const lats = coordinates.map(([, lat]) => lat);
   map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]] as import('maplibre-gl').LngLatBoundsLike, { padding: { top: 150, right: 110, bottom: 190, left: 300 }, duration: 500, maxZoom: 15 });
@@ -93,7 +94,7 @@ function featureCollection(features: Feature<Geometry, Record<string, unknown>>[
 
 function visibility(enabled: boolean): 'visible' | 'none' { return enabled ? 'visible' : 'none'; }
 
-function safeMaskGeometry(mask: MapPayload['mask']): Geometry {
+function safeMaskGeometry(mask: NonNullable<MapPayload['mask']>): Geometry {
   return { type: mask.mask_geometry_wgs84.type, coordinates: mask.mask_geometry_wgs84.coordinates } as Polygon | MultiPolygon;
 }
 
@@ -109,7 +110,7 @@ function buildReceiverFeatures(data: MapPayload, period: Period): Feature<Point,
   return [...fourFeatures, ...tarzanaFeatures];
 }
 
-export default function MapCanvas({ payload, loadState, view, period, layerStyle, layerToggles, fitRequest, fitVisibleRequest, regionRequest, onInspect, onFitComplete }: Props) {
+export default function MapCanvas({ payload, loadState, view, period, layerStyle, layerToggles, fitRequest, fitVisibleRequest, regionRequest, onInspect, onFitComplete, runtimeMode }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import('maplibre-gl').Map | null>(null);
   const maplibreRef = useRef<typeof import('maplibre-gl') | null>(null);
@@ -118,6 +119,7 @@ export default function MapCanvas({ payload, loadState, view, period, layerStyle
   const onInspectRef = useRef(onInspect);
   onInspectRef.current = onInspect;
   dataRef.current = payload;
+  const hasScientificRecords = Boolean(payload && (payload.four.records.length > 0 || payload.tarzana.records.length > 0));
 
   useEffect(() => {
     let cancelled = false;
@@ -172,18 +174,18 @@ export default function MapCanvas({ payload, loadState, view, period, layerStyle
 
   function installData(map: import('maplibre-gl').Map, data: MapPayload) {
     const airportFeatures: Feature<Geometry, Record<string, unknown>>[] = data.airports.features.map((feature) => ({ type: 'Feature', id: `airport-${feature.id}`, geometry: feature.geometry, properties: { ...feature.properties, id: `airport-${feature.id}`, family: 'Airport planning contours', region: 'Los Angeles County', label: `${feature.properties.airport ?? 'Airport'} contour`, statusChip: 'Official record (context only)', evidenceClass: 'official_record_context_only', currentness: 'dated_official_context', calibration: 'not_applicable', claimBoundary: 'Official planning record shown for context only; never converted into operations, emissions, propagation, or an acoustic sum.' } }));
-    const maskFeature: Feature<Geometry, Record<string, unknown>> = { type: 'Feature', id: 'source-341-mask', geometry: safeMaskGeometry(data.mask), properties: { id: 'source-341-mask', family: 'Source-341 incomplete mask', region: 'Source-341 reach', label: 'Source-341 1,500 m mask', statusChip: 'Incomplete — not computable', evidenceClass: 'incomplete_not_computable', currentness: 'held_pending_correction', calibration: 'not_applicable', claimBoundary: 'This reach is incomplete — not computable for the freeway contribution; the mask is not evidence of quiet or low exposure.' } };
+    const maskFeatures: Feature<Geometry, Record<string, unknown>>[] = data.mask ? [{ type: 'Feature', id: 'source-341-mask', geometry: safeMaskGeometry(data.mask), properties: { id: 'source-341-mask', family: 'Source-341 incomplete mask', region: 'Source-341 reach', label: 'Source-341 1,500 m mask', statusChip: 'Incomplete — not computable', evidenceClass: 'incomplete_not_computable', currentness: 'held_pending_correction', calibration: 'not_applicable', claimBoundary: 'This reach is incomplete — not computable for the freeway contribution; the mask is not evidence of quiet or low exposure.' } }] : [];
     const allPoints = featureCollection(buildReceiverFeatures(data, 'D'));
     if (!map.getSource('quiet-receivers')) map.addSource('quiet-receivers', { type: 'geojson', data: allPoints });
     else (map.getSource('quiet-receivers') as import('maplibre-gl').GeoJSONSource).setData(allPoints);
     if (!map.getSource('quiet-airports')) map.addSource('quiet-airports', { type: 'geojson', data: featureCollection(airportFeatures) });
-    if (!map.getSource('quiet-mask')) map.addSource('quiet-mask', { type: 'geojson', data: featureCollection([maskFeature]) });
+    if (maskFeatures.length && !map.getSource('quiet-mask')) map.addSource('quiet-mask', { type: 'geojson', data: featureCollection(maskFeatures) });
     if (!map.getLayer('quiet-four-points')) map.addLayer({ id: 'quiet-four-points', type: 'circle', source: 'quiet-receivers', filter: ['==', ['get', 'family'], 'Four-region freeway model'], paint: { 'circle-color': ['interpolate', ['linear'], ['get', 'value'], 45, '#4f9f8d', 60, '#a8d89b', 75, '#f3e983', 90, '#f4ae54', 105, '#e46d3f', 120, '#9c2853'], 'circle-radius': 4.5, 'circle-opacity': 0.68, 'circle-stroke-color': 'rgba(255,255,255,.65)', 'circle-stroke-width': 0.5 } });
     if (!map.getLayer('quiet-tarzana-points')) map.addLayer({ id: 'quiet-tarzana-points', type: 'circle', source: 'quiet-receivers', filter: ['==', ['get', 'family'], 'Tarzana mixed-road scenario'], paint: { 'circle-color': ['interpolate', ['linear'], ['get', 'value'], 45, '#4f9f8d', 60, '#a8d89b', 75, '#f3e983', 90, '#f4ae54', 105, '#e46d3f', 120, '#9c2853'], 'circle-radius': 4, 'circle-opacity': 0.74, 'circle-stroke-color': 'rgba(255,255,255,.66)', 'circle-stroke-width': 0.5 } });
     if (!map.getLayer('quiet-airport-fill')) map.addLayer({ id: 'quiet-airport-fill', type: 'fill', source: 'quiet-airports', paint: { 'fill-color': '#75839b', 'fill-opacity': 0.11 } });
     if (!map.getLayer('quiet-airport-line')) map.addLayer({ id: 'quiet-airport-line', type: 'line', source: 'quiet-airports', paint: { 'line-color': '#65738b', 'line-width': 1.3, 'line-opacity': 0.66, 'line-dasharray': [2, 2] } });
-    if (!map.getLayer('quiet-mask-fill')) map.addLayer({ id: 'quiet-mask-fill', type: 'fill', source: 'quiet-mask', paint: { 'fill-color': '#9c2833', 'fill-opacity': 0.18 } });
-    if (!map.getLayer('quiet-mask-line')) map.addLayer({ id: 'quiet-mask-line', type: 'line', source: 'quiet-mask', paint: { 'line-color': '#9c2833', 'line-width': 2, 'line-dasharray': [1.5, 1.5], 'line-opacity': 0.9 } });
+    if (maskFeatures.length && !map.getLayer('quiet-mask-fill')) map.addLayer({ id: 'quiet-mask-fill', type: 'fill', source: 'quiet-mask', paint: { 'fill-color': '#9c2833', 'fill-opacity': 0.18 } });
+    if (maskFeatures.length && !map.getLayer('quiet-mask-line')) map.addLayer({ id: 'quiet-mask-line', type: 'line', source: 'quiet-mask', paint: { 'line-color': '#9c2833', 'line-width': 2, 'line-dasharray': [1.5, 1.5], 'line-opacity': 0.9 } });
   }
 
   useEffect(() => {
@@ -217,5 +219,12 @@ export default function MapCanvas({ payload, loadState, view, period, layerStyle
     if (fitVisibleRequest && mapRef.current) fitVisibleBounds(mapRef.current, payload, view, layerToggles);
   }, [fitVisibleRequest, payload, view, layerToggles]);
 
-  return <><div ref={hostRef} className="map" aria-label="Interactive Quiet LA MapLibre map" /><div className="map-zoom glass" aria-label="Map zoom controls"><button type="button" onClick={() => mapRef.current?.zoomIn()} aria-label="Zoom in">+</button><button type="button" onClick={() => mapRef.current?.zoomOut()} aria-label="Zoom out">−</button><button type="button" onClick={() => { if (mapRef.current) fitVisibleBounds(mapRef.current, dataRef.current, view, layerToggles); }} aria-label="Fit currently visible layers"><span aria-hidden="true">⤢</span></button></div><div className="map-status" aria-live="polite">{basemapUnavailable ? 'OpenStreetMap unavailable · paper field remains active' : loadState === 'ready' ? 'Interactive modeled field · OpenStreetMap basemap' : 'Map awaiting local v3 data'}</div></>;
+  const readyStatus = runtimeMode === 'external_payload_free'
+    ? 'Scientific private preview is not published on this URL'
+    : runtimeMode === 'private_preview'
+      ? 'Scientific private preview is not yet admitted'
+      : hasScientificRecords
+        ? 'Interactive modeled field · OpenStreetMap basemap'
+        : 'Local scientific display data is unavailable';
+  return <><div ref={hostRef} className="map" aria-label="Interactive Quiet LA MapLibre map" /><div className="map-zoom glass" aria-label="Map zoom controls"><button type="button" onClick={() => mapRef.current?.zoomIn()} aria-label="Zoom in">+</button><button type="button" onClick={() => mapRef.current?.zoomOut()} aria-label="Zoom out">−</button><button type="button" onClick={() => { if (mapRef.current) fitVisibleBounds(mapRef.current, dataRef.current, view, layerToggles); }} aria-label="Fit currently visible layers"><span aria-hidden="true">⤢</span></button></div><div className="map-status" aria-live="polite">{basemapUnavailable ? 'OpenStreetMap unavailable · paper field remains active' : loadState === 'ready' ? readyStatus : runtimeMode === 'local' ? 'Map awaiting accepted local display data' : 'Loading policy-aware map shell'}</div></>;
 }

@@ -1,0 +1,78 @@
+{
+  "schema": "quiet_la_private_preview_payload_contract_v1",
+  "candidate": "private_preview_shell_v1",
+  "profile": "private_preview_v1",
+  "status": "LOCAL_SHELL_VALIDATED_SCIENTIFIC_PAYLOAD_RIGHTS_BLOCKED",
+  "sourceManifest": "src/data/local-source-manifest.json",
+  "stageRoot": "public/_preview-data",
+  "webRoot": "/_preview-data/v3",
+  "maximumPayloadBytes": 0,
+  "deploymentAdmission": {
+    "vercelProjectId": "prj_XTkmGuFf6novot3axeqvnZAo0Ajx",
+    "vercelEnvironment": "preview",
+    "gitBranch": "private-preview",
+    "mainBranchPayloadBuildAllowed": false,
+    "productionPayloadBuildAllowed": false
+  },
+  "rightsAdmission": {
+    "externalSciencePayloadsAuthorized": false,
+    "eligibleHashAllowlist": [],
+    "activeReadinessRegistry": "implementation/work/release_packaging/active_private_preview_readiness_registry.json",
+    "blockingManifest": "implementation/work/release_packaging/v3_external_admission_manifest_2026-08-05.json",
+    "reason": "existing_external_records_authorize_zero_scientific_payloads_and_source_output_rights_are_unresolved"
+  },
+  "rows": [],
+  "excludedTargets": [
+    {
+      "target": "v3/four-region-relative.json.gz",
+      "reason": "source_and_output_rights_not_admitted_for_external_preview"
+    },
+    {
+      "target": "v3/tarzana-scenario.json",
+      "reason": "source_and_output_rights_not_admitted_for_external_preview"
+    },
+    {
+      "target": "v3/context/airport-contours.json.gz",
+      "reason": "official_record_redistribution_terms_unresolved"
+    },
+    {
+      "target": "v3/context/rail.json",
+      "reason": "metro_provider_terms_unresolved"
+    },
+    {
+      "target": "v3/context/source341-mask.json",
+      "reason": "private_source341_review_evidence_excluded"
+    },
+    {
+      "target": "v3/layer-taxonomy.json",
+      "reason": "runtime_does_not_consume_duplicate_contract_copy"
+    },
+    {
+      "target": "v3/unified-layer-manifest.json",
+      "reason": "contains_local_evidence_paths_and_is_not_runtime_required"
+    },
+    {
+      "target": "v3/render-manifest.json",
+      "reason": "contains_non_admitted_context_asset_bindings"
+    },
+    {
+      "target": "v3/source-bindings.json",
+      "reason": "contains_local_evidence_paths_and_private_lineage"
+    },
+    {
+      "target": "v3/PREVIEW_ACCESS_CONTRACT.json",
+      "reason": "superseded_by_machine_tested_application_deployment_contract"
+    }
+  ],
+  "admission": {
+    "privatePreviewOnly": true,
+    "publicReleaseAuthorized": false,
+    "acousticCombinationAdmitted": false,
+    "source341CorrectionAdmitted": false,
+    "source341EvidenceIncluded": false,
+    "unresolvedLicensedPayloadsIncluded": false,
+    "rawEvidenceIncluded": false,
+    "runtimeDatabasesIncluded": false,
+    "credentialsIncluded": false
+  }
+}

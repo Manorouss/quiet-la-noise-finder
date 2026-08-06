@@ -5,7 +5,7 @@ import path from 'node:path';
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const output = path.join(appRoot, 'release/CLEAN_REPO_MANIFEST.json');
 const includedRoots = ['src', 'scripts', 'tests'];
-const includedFiles = ['package.json', 'package-lock.json', 'next.config.mjs', 'tsconfig.json', 'next-env.d.ts', 'eslint.config.mjs', 'DESIGN_PARITY.md', 'README.md', '.gitignore', 'public/robots.txt'];
+const includedFiles = ['package.json', 'package-lock.json', 'next.config.mjs', 'tsconfig.json', 'next-env.d.ts', 'eslint.config.mjs', 'DESIGN_PARITY.md', 'PRIVATE_PREVIEW_DEPLOYMENT.md', 'README.md', '.gitignore', '.vercelignore', 'vercel.json', 'public/robots.txt'];
 const banned = /(_local-data|\.geojson|\.laz|\.las|\.tif|\.asc|\.mv\.db|\.trace\.db|\.env|secret|token)/i;
 
 async function walk(dir) {

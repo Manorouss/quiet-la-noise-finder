@@ -1,16 +1,83 @@
 {
-  "schema": "quiet_la_web_deployment_contract_v1",
+  "schema": "quiet_la_web_deployment_contract_v2",
   "product": "quiet_la_noise_master",
   "staticExport": true,
   "scientificDataAssetsSameOriginOnly": true,
   "remoteBasemapAllowedOrigins": ["https://tile.openstreetmap.org"],
   "noindex": true,
   "robots": "noindex,nofollow,noarchive",
-  "passwordAuthConfigured": false,
+  "runtimeProfiles": {
+    "local_v3": {
+      "scientificDataRoot": "/_local-data/v3",
+      "developerRecoveryAllowed": true,
+      "externalDeploymentAllowed": false
+    },
+    "private_preview_v1": {
+      "scientificDataRoot": "/_preview-data/v3",
+      "developerRecoveryAllowed": false,
+      "externalDeploymentAllowed": false,
+      "requiresExactPayloadAdmission": true
+    },
+    "external_payload_free_v1": {
+      "scientificDataRoot": null,
+      "developerRecoveryAllowed": false,
+      "scientificPayloadRequestsAllowed": false,
+      "productionShellCandidate": true
+    }
+  },
+  "productionRuntimeProfile": "external_payload_free_v1",
+  "previewProtection": {
+    "provider": "vercel",
+    "method": "vercel_authentication",
+    "scope": "standard_protection",
+    "availableOnHobby": true,
+    "configured": false,
+    "externallyVerified": false,
+    "futurePreviewScopeVerified": false,
+    "existingUniqueDeploymentAuthBehaviorVerified": true,
+    "evidenceBoundary": "The retained unauthenticated 302/noindex receipt proves only the existing payload-free unique production deployment behavior; it does not prove protection of a future private-preview deployment.",
+    "requiredBeforeUpload": true,
+    "passwordProtection": "not_selected_paid_feature"
+  },
+  "githubBinding": {
+    "expectedRepository": "Manorouss/quiet-la-noise-finder",
+    "privateRequired": true,
+    "externallyVerified": true
+  },
+  "vercelBinding": {
+    "expectedProjectId": "prj_XTkmGuFf6novot3axeqvnZAo0Ajx",
+    "expectedTeamId": "team_TNeSdFukSIvhwO0UOGDgjreq",
+    "expectedProjectName": "quiet-la-noise-finder",
+    "expectedFramework": "nextjs",
+    "expectedPreviewBranch": "private-preview",
+    "externallyVerified": true
+  },
   "externalDeploymentAuthorized": false,
   "publicReleaseAuthorized": false,
   "mapPromotionAuthorized": false,
-  "localOnlyDataRequiredForUsefulPreview": true,
+  "privatePreviewPayloadContract": "src/data/private-preview-payload-contract.json",
+  "privatePreviewPayloadBytes": 0,
+  "privatePreviewUploadAdmission": {
+    "requestedByUser": true,
+    "localBuildAuthorized": true,
+    "authorized": false,
+    "authorizationBasis": "user_directive_2026-08-05_get_the_whole_work_done",
+    "blockedReason": "external_rights_records_authorize_zero_scientific_payloads_and_future_preview_protection_is_unverified",
+    "candidate": "private_preview_shell_v1",
+    "payloadContractSha256": "1ed88072d9d413d883da2b406a25292f0d855205743238106424c68f3fd2062e",
+    "payloadRows": 0,
+    "payloadBytes": 0,
+    "teamId": "team_TNeSdFukSIvhwO0UOGDgjreq",
+    "projectId": "prj_XTkmGuFf6novot3axeqvnZAo0Ajx",
+    "gitBranch": "private-preview",
+    "target": "preview",
+    "protectionMethod": "vercel_authentication_standard_protection",
+    "productionAuthorized": false,
+    "publicReleaseAuthorized": false,
+    "mapPromotionAuthorized": false,
+    "acousticCombinationAuthorized": false
+  },
+  "localOnlyDataRequiredForUsefulPreview": false,
   "compatibleAcousticCombinationAdmitted": false,
   "basemap": {
     "provider": "OpenStreetMap",
@@ -22,6 +89,24 @@
     "visibleAttributionRequired": true,
     "fallback": "paper_background"
   },
-  "providerValidation": "UNMET_EXTERNAL_PLATFORM_CHECK",
-  "nextSafeAction": "Configure password protection on the chosen private preview platform and record a two-key promotion decision only after platform validation."
+  "providerValidation": "PROJECT_IDENTITY_AND_EXISTING_UNIQUE_DEPLOYMENT_AUTH_BEHAVIOR_VERIFIED_FUTURE_PREVIEW_PROTECTION_UNVERIFIED_SCIENTIFIC_RIGHTS_BLOCKED",
+  "productionBoundary": {
+    "mainBranch": "main",
+    "currentPayloadFreeCommit": "c773066",
+    "productionPayloadBuildAllowed": false,
+    "mainBranchPayloadBuildAllowed": false,
+    "publicCustomDomainMayContainPayload": false,
+    "uniquePreviewDeploymentMustRequireVercelAuthentication": true
+  },
+  "requiredExternalPredicates": {
+    "vercelProjectCreated": true,
+    "vercelAuthenticationStandardProtectionVerified": false,
+    "existingUniqueDeploymentAuthBehaviorVerified": true,
+    "githubPrivateBindingVerified": true,
+    "previewDeploymentCreated": false,
+    "unauthenticatedAccessRejected": false,
+    "privateSoakStarted": false,
+    "twoKeyMapPromotionApproved": false
+  },
+  "nextSafeAction": "Complete an evidence-backed source/output-rights review for each proposed display derivative. Do not push or deploy the empty shell. After at least one exact hash is admitted, rebuild the payload contract and repeat the independent audit."
 }
