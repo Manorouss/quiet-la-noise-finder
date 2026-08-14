@@ -1,0 +1,69 @@
+{
+  "schema": "quiet_la_replacement_layer_adapter_contract_v1",
+  "candidate": "future_rights_clear_replacement",
+  "allowedProfiles": ["local_v3", "private_preview_v1"],
+  "allowedStatuses": [
+    "NOT_ADMITTED_PENDING_RIGHTS_CLEAR_REPLACEMENT",
+    "ADMITTED_RIGHTS_CLEAR_REPLACEMENT"
+  ],
+  "allowedEvidenceClasses": [
+    "modeled_relative_uncalibrated",
+    "scenario_assumed_inputs",
+    "official_record_context_only",
+    "incomplete_not_computable"
+  ],
+  "requiredRowFields": [
+    "id",
+    "sourceFamily",
+    "region",
+    "periods",
+    "metricKind",
+    "evidenceClass",
+    "calibration",
+    "currentness",
+    "acousticCombinationEligible",
+    "assetPath",
+    "bytes",
+    "sha256",
+    "sourceHash",
+    "sourceBytes",
+    "attribution",
+    "termsUrl",
+    "termsSha256",
+    "rightsStatus",
+    "claimBoundary"
+  ],
+  "assetPolicy": {
+    "root": "v3/admitted",
+    "controlFiles": ["preview-payload-manifest.json"],
+    "relativePosixOnly": true,
+    "rejectSymlinks": true,
+    "maximumFileBytes": 52428800,
+    "scientificDataSameOriginOnly": true
+  },
+  "claimPolicy": {
+    "forbiddenPositiveFragments": [
+      "quietest",
+      "quietness",
+      "measured dBA",
+      "measured CNEL",
+      "current traffic",
+      "live traffic",
+      "observed traffic",
+      "address prediction",
+      "health claim",
+      "regulatory compliance"
+    ],
+    "sentenceLocalNegationOnly": true
+  },
+  "admissionPolicy": {
+    "privatePreviewAuthorized": false,
+    "externalPreviewAuthorized": false,
+    "publicReleaseAuthorized": false,
+    "acousticCombinationAdmitted": false,
+    "source341CorrectionAdmitted": false,
+    "rawEvidenceIncluded": false,
+    "runtimeDatabasesIncluded": false,
+    "credentialsIncluded": false
+  }
+}

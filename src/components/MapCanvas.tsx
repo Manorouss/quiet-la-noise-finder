@@ -115,6 +115,7 @@ export default function MapCanvas({ payload, loadState, view, period, layerStyle
   const mapRef = useRef<import('maplibre-gl').Map | null>(null);
   const maplibreRef = useRef<typeof import('maplibre-gl') | null>(null);
   const dataRef = useRef<MapPayload | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const [basemapUnavailable, setBasemapUnavailable] = useState(false);
   const onInspectRef = useRef(onInspect);
   onInspectRef.current = onInspect;
@@ -135,7 +136,10 @@ export default function MapCanvas({ payload, loadState, view, period, layerStyle
         const message = event.error?.message ?? '';
         if (/tile|raster|openstreet/i.test(message)) setBasemapUnavailable(true);
       });
-      map.on('load', () => { if (dataRef.current) installData(map, dataRef.current); });
+      map.on('load', () => {
+        if (dataRef.current) installData(map, dataRef.current);
+        setMapReady(true);
+      });
       map.on('click', (event) => {
         const layers = ['quiet-four-points', 'quiet-tarzana-points', 'quiet-airport-fill', 'quiet-mask-fill'];
         const features = map.queryRenderedFeatures(event.point, { layers: layers.filter((id) => Boolean(map.getLayer(id))) });
@@ -169,7 +173,7 @@ export default function MapCanvas({ payload, loadState, view, period, layerStyle
         map.getCanvas().style.cursor = features.length ? 'pointer' : '';
       });
     }).catch(() => undefined);
-    return () => { cancelled = true; mapRef.current?.remove(); mapRef.current = null; delete (window as unknown as { __quietMap?: unknown }).__quietMap; };
+    return () => { cancelled = true; mapRef.current?.remove(); mapRef.current = null; setMapReady(false); delete (window as unknown as { __quietMap?: unknown }).__quietMap; };
   }, []);
 
   function installData(map: import('maplibre-gl').Map, data: MapPayload) {
@@ -190,7 +194,7 @@ export default function MapCanvas({ payload, loadState, view, period, layerStyle
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !payload || !map.isStyleLoaded()) return;
+    if (!map || !mapReady || !payload) return;
     if (!map.getSource('quiet-receivers')) installData(map, payload);
     const modeled = view !== 'context';
     const context = view !== 'modeled';
@@ -205,19 +209,19 @@ export default function MapCanvas({ payload, loadState, view, period, layerStyle
       const source = map.getSource('quiet-receivers') as import('maplibre-gl').GeoJSONSource;
       source.setData(featureCollection(buildReceiverFeatures(payload, period)));
     }
-  }, [payload, view, period, layerStyle, layerToggles]);
+  }, [mapReady, payload, view, period, layerStyle, layerToggles]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !fitRequest) return;
+    if (!map || !mapReady || !fitRequest) return;
     const bounds = LA_BOUNDS[regionRequest] ?? LA_BOUNDS.la;
     map.fitBounds(bounds as import('maplibre-gl').LngLatBoundsLike, { padding: { top: 150, right: 110, bottom: 190, left: 300 }, duration: 500, maxZoom: regionRequest === 'la' ? 10.2 : 13.2 });
     onFitComplete();
-  }, [fitRequest, regionRequest, onFitComplete]);
+  }, [fitRequest, regionRequest, mapReady, onFitComplete]);
 
   useEffect(() => {
-    if (fitVisibleRequest && mapRef.current) fitVisibleBounds(mapRef.current, payload, view, layerToggles);
-  }, [fitVisibleRequest, payload, view, layerToggles]);
+    if (fitVisibleRequest && mapReady && mapRef.current) fitVisibleBounds(mapRef.current, payload, view, layerToggles);
+  }, [fitVisibleRequest, payload, view, layerToggles, mapReady]);
 
   const readyStatus = runtimeMode === 'external_payload_free'
     ? 'Scientific private preview is not published on this URL'

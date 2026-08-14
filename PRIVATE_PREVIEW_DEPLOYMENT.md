@@ -2,6 +2,10 @@
 
 This runbook governs a future protected **Preview** deployment. Deployment is currently blocked. It never authorizes a production deployment, public domain, public release, map promotion, acoustic combination, or engine run.
 
+## Git deployment boundary
+
+All Git-triggered Vercel deployments are disabled with the literal `git.deploymentEnabled: false`. A branch push or pull request is code review only and must not deploy. The branch name `private-preview` is metadata for a future explicit artifact workflow; it does not enable Git deployment. `.vercelignore` intentionally contains `/*` and strips direct source uploads, so source upload is not a bypass. Any future useful preview must be an explicit, separately authorized, independently audited immutable artifact after exact rights, authentication, hash, and master execution admission.
+
 ## Current package: zero scientific payloads
 
 The exact Vercel-eligible display payload is defined by `src/data/private-preview-payload-contract.json`:
@@ -28,7 +32,7 @@ The build creates only an ignored, hash-bound metadata manifest in `public/_prev
 
 Vercel Authentication with **Standard Protection** is the selected gate. It is available on all Vercel plans and restricts preview/deployment URLs to users with access. Password Protection is not selected because Vercel documents it as an Enterprise feature or paid Pro add-on.
 
-Project `prj_XTkmGuFf6novot3axeqvnZAo0Ajx` on team `team_TNeSdFukSIvhwO0UOGDgjreq` has been created and Standard Protection has been externally verified. Unique deployment URLs redirect unauthenticated users to Vercel sign-in; the production custom domain remains public. This satisfies the platform-protection predicate only; it does not resolve scientific-payload rights. The current production remains the payload-free commit `c773066`.
+Project `prj_XTkmGuFf6novot3axeqvnZAo0Ajx` on team `team_TNeSdFukSIvhwO0UOGDgjreq` exists, but future-preview Standard Protection is not currently externally verified. The retained unique-deployment receipt redirects unauthenticated users to Vercel sign-in; the production custom domain remains public. That receipt proves only the existing deployment behavior, not protection of a future `private-preview` deployment, and it does not resolve scientific-payload rights. The current production remains the payload-free commit `c773066`.
 
 Before any preview-branch upload, export fresh machine evidence again:
 
@@ -44,7 +48,7 @@ The retained unauthenticated HTTP receipt proves only that the existing payload-
 
 Do not commit, push, or deploy the empty shell as a completed preview. Do not place either modeled derivative on GitHub or Vercel while its exact hash remains absent from the rights allowlist.
 
-After a separate evidence-backed rights review admits at least one exact hash, update the independent payload contract, its bound deployment hash/count/bytes, UI availability, and negative tests. Rebuild and re-audit locally. Only then may the orchestrator consider a `private-preview` branch. `vercel.json` disables main-branch Git deployment, and the build guard refuses all Vercel builds while the rights/upload gate is false as well as production, `main`, other branches, a wrong project, or a wrong team.
+After a separate evidence-backed rights review admits at least one exact hash, update the independent payload contract, its bound deployment hash/count/bytes, UI availability, and negative tests. Rebuild and re-audit locally. Only then may the orchestrator consider an explicit artifact deployment. `vercel.json` disables all Git-triggered deployments, and the build guard refuses all Vercel builds while the rights/upload gate is false as well as production, `main`, other branches, a wrong project, or a wrong team.
 
 If rights are admitted and a future protected deployment is authorized, immediately test its URL from an unauthenticated browser or session. A direct request must be rejected or redirected to Vercel login; an unauthenticated `200` is a deployment blocker. Then use an authorized Vercel account to verify the portal loads, every exact allowlisted payload request succeeds, `robots.txt` disallows all crawlers, the `X-Robots-Tag` response header remains `noindex, nofollow, noarchive`, and all non-admitted rows remain unavailable.
 

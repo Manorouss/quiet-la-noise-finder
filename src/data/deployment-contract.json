@@ -6,6 +6,7 @@
   "remoteBasemapAllowedOrigins": ["https://tile.openstreetmap.org"],
   "noindex": true,
   "robots": "noindex,nofollow,noarchive",
+  "gitAutoDeploymentsEnabled": false,
   "runtimeProfiles": {
     "local_v3": {
       "scientificDataRoot": "/_local-data/v3",

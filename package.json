@@ -18,11 +18,12 @@
     "verify:external": "node scripts/verify-external-payload-free-export.mjs",
     "verify:external-source": "node scripts/verify-external-tree.mjs",
     "verify:private-preview": "node scripts/verify-private-preview-bundle.mjs && node scripts/verify-private-preview-export.mjs",
+    "verify:replacement-adapter": "node scripts/verify-replacement-layer-adapter.mjs",
     "verify:private-preview-source": "node scripts/verify-private-preview-source-tree.mjs",
     "verify:vercel-project": "node scripts/verify-vercel-project-evidence.mjs",
     "manifest:clean": "node scripts/build-clean-manifest.mjs",
     "test:contracts": "node scripts/build-clean-manifest.mjs && node --test tests/*.test.mjs",
-    "test:browser": "node scripts/browser-check.mjs",
+    "test:browser": "node scripts/run-browser-engines.mjs",
     "test:browser:external": "node scripts/browser-check-external.mjs",
     "test:browser:private-preview": "node scripts/browser-check-private-preview.mjs"
     ,"test:profile-sequences": "node scripts/test-profile-build-sequences.mjs"

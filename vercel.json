@@ -5,10 +5,7 @@
   "outputDirectory": "out",
   "trailingSlash": true,
   "git": {
-    "deploymentEnabled": {
-      "main": false,
-      "private-preview": true
-    }
+    "deploymentEnabled": false
   },
   "headers": [
     {

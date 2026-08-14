@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { verifyStagedRoot } from './verify-staged-local-data.mjs';
+import { validateSourceManifest, verifyStagedRoot } from './verify-staged-local-data.mjs';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const projectRoot = path.resolve(appRoot, '../../..');
@@ -29,6 +29,7 @@ async function assertNoSymlinkComponents(targetPath) {
 
 async function copyFresh(src, dest) {
   await assertRegularNoSymlink(src, 'source');
+  await assertNoSymlinkComponents(path.dirname(dest));
   await fs.mkdir(path.dirname(dest), { recursive: true });
   await assertNoSymlinkComponents(dest);
   const bytes = await fs.readFile(src);
@@ -37,8 +38,7 @@ async function copyFresh(src, dest) {
 }
 
 async function main() {
-  const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
-  if (manifest.schema !== 'quiet_la_web_local_source_manifest_v1') throw new Error('unexpected source manifest schema');
+  const manifest = validateSourceManifest(JSON.parse(await fs.readFile(manifestPath, 'utf8')));
   const staging = `${outputRoot}.staging-${process.pid}-${Date.now()}`;
   await assertNoSymlinkComponents(outputRoot);
   if (await fs.lstat(outputRoot).then((s) => s.isSymbolicLink()).catch(() => false)) throw new Error('local data output is a symlink');
