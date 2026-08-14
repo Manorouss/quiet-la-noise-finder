@@ -4,7 +4,7 @@ import { gunzipSync } from 'node:zlib';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
-import { verifyStagedRoot } from '../scripts/verify-staged-local-data.mjs';
+import { validateSourceManifest, verifyStagedRoot } from '../scripts/verify-staged-local-data.mjs';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const sourceManifestPath = path.join(appRoot, 'src/data/local-source-manifest.json');
@@ -55,6 +55,19 @@ function collectContractStrings(value, key = '') {
 test('local stage is exact, regular, and hash-bound', async () => {
   const result = await verifyStagedRoot(stageRoot, sourceManifestPath);
   assert.deepEqual(result, { files: 10, bytes: 2007540 });
+});
+
+test('local source manifest rejects path widening and duplicate rows before staging', async () => {
+  const baseline = JSON.parse(await fs.readFile(sourceManifestPath, 'utf8'));
+  const traversal = structuredClone(baseline);
+  traversal.rows[0].source = '../private-evidence.json';
+  assert.throws(() => validateSourceManifest(traversal), /malformed|accepted v3 namespace/);
+  const duplicate = structuredClone(baseline);
+  duplicate.rows[1].target = duplicate.rows[0].target;
+  assert.throws(() => validateSourceManifest(duplicate), /unique/);
+  const widened = structuredClone(baseline);
+  widened.rows[0].localOnly = false;
+  assert.throws(() => validateSourceManifest(widened), /malformed|widened/);
 });
 
 test('staging rejects changed bytes even when the file remains regular', async () => {

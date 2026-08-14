@@ -98,7 +98,10 @@ export default function HomePage() {
   const railContextAvailable = showRailContext && localProfile;
   const modeledVisible = activeLayers.some((layer) => layer.family === 'freeway' || layer.family === 'tarzana_scenario');
   const contextVisible = activeLayers.some((layer) => layer.family === 'aviation_context' || layer.family === 'source_341');
-  const receiverCount = payload ? (layerToggles.four_region_freeway_relative ? 26746 : 0) + (layerToggles.tarzana_mixed_road_scenario ? 7875 : 0) : 0;
+  const receiverCount = payload
+    ? (layerToggles.four_region_freeway_relative ? payload.four.records.length : 0)
+      + (layerToggles.tarzana_mixed_road_scenario ? payload.tarzana.records.length : 0)
+    : 0;
   const detailCount = selected.length;
   const mappedFamilyCount = activeLayers.length;
 

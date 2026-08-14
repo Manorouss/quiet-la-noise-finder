@@ -4,6 +4,23 @@ import path from 'node:path';
 
 export function sha256(bytes) { return createHash('sha256').update(bytes).digest('hex'); }
 
+const HASH = /^[0-9a-f]{64}$/;
+
+export function validateSourceManifest(sourceManifest) {
+  if (!sourceManifest || sourceManifest.schema !== 'quiet_la_web_local_source_manifest_v1' || sourceManifest.candidate !== 'unified_visual_preview_local_v3') throw new Error('unexpected local source manifest schema/candidate');
+  if (typeof sourceManifest.sourceRoot !== 'string' || sourceManifest.sourceRoot.startsWith('/') || sourceManifest.sourceRoot.includes('..') || !sourceManifest.sourceRoot.endsWith('/unified-visual-preview-local-v3')) throw new Error('local source root is not the accepted v3 namespace');
+  if (!Array.isArray(sourceManifest.rows) || sourceManifest.rows.length !== 10) throw new Error('local source manifest must contain the exact ten v3 rows');
+  const sources = new Set();
+  const targets = new Set();
+  for (const row of sourceManifest.rows) {
+    if (!row || typeof row !== 'object' || typeof row.source !== 'string' || typeof row.target !== 'string' || row.source.startsWith('/') || row.target.startsWith('/') || row.source.includes('..') || row.target.includes('..') || row.localOnly !== true || !Number.isSafeInteger(row.bytes) || row.bytes <= 0 || typeof row.sha256 !== 'string' || !HASH.test(row.sha256)) throw new Error('local source manifest row is malformed or widened');
+    if (sources.has(row.source) || targets.has(row.target)) throw new Error('local source manifest rows must be unique');
+    sources.add(row.source);
+    targets.add(row.target);
+  }
+  return sourceManifest;
+}
+
 async function lstatOrNull(p) { return fs.lstat(p).catch(() => null); }
 async function assertNoSymlinkChain(p) {
   let cursor = path.parse(p).root;
@@ -19,7 +36,8 @@ async function walk(root, current = root) {
     const p = path.join(current, entry.name);
     if (entry.isSymbolicLink()) throw new Error(`symlink staged entry: ${p}`);
     if (entry.isDirectory()) files.push(...await walk(root, p));
-    else files.push(path.relative(root, p).split(path.sep).join('/'));
+    else if (entry.isFile()) files.push(path.relative(root, p).split(path.sep).join('/'));
+    else throw new Error(`non-regular staged entry: ${p}`);
   }
   return files;
 }
@@ -28,7 +46,7 @@ export async function verifyStagedRoot(root, sourceManifestPath) {
   await assertNoSymlinkChain(root);
   const rootStat = await lstatOrNull(root);
   if (!rootStat?.isDirectory() || rootStat.isSymbolicLink()) throw new Error('staged root is not a regular directory');
-  const sourceManifest = JSON.parse(await fs.readFile(sourceManifestPath, 'utf8'));
+  const sourceManifest = validateSourceManifest(JSON.parse(await fs.readFile(sourceManifestPath, 'utf8')));
   const stagedManifestPath = path.join(root, 'staged-manifest.json');
   const staged = JSON.parse(await fs.readFile(stagedManifestPath, 'utf8'));
   if (staged.schema !== 'quiet_la_web_local_staged_manifest_v1') throw new Error('unexpected staged manifest schema');

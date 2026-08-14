@@ -1,0 +1,24 @@
+{
+  "schema": "quiet_la_replacement_layer_manifest_v1",
+  "adapterContract": "src/data/replacement-layer-adapter-contract.json",
+  "candidate": "future_rights_clear_replacement_v1",
+  "profile": "private_preview_v1",
+  "status": "NOT_ADMITTED_PENDING_RIGHTS_CLEAR_REPLACEMENT",
+  "rightsAdmission": {
+    "sourceTermsRequired": true,
+    "derivativeRightsRequired": true,
+    "attributionRequired": true,
+    "externalPreviewAuthorized": false
+  },
+  "admission": {
+    "privatePreviewAuthorized": false,
+    "externalPreviewAuthorized": false,
+    "publicReleaseAuthorized": false,
+    "acousticCombinationAdmitted": false,
+    "source341CorrectionAdmitted": false,
+    "rawEvidenceIncluded": false,
+    "runtimeDatabasesIncluded": false,
+    "credentialsIncluded": false
+  },
+  "rows": []
+}

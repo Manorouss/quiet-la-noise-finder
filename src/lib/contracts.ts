@@ -1,5 +1,8 @@
 import rawContract from '@/data/layer-contract.json';
+import rawReplacementAdapterContract from '@/data/replacement-layer-adapter-contract.json';
+import rawReplacementManifest from '@/data/replacement-layer-admission-manifest.json';
 import { claimTextIsSafe as sharedClaimTextIsSafe } from './claim-policy.js';
+import { validateReplacementAdapter } from './replacement-layer-adapter.js';
 
 export type Period = 'D' | 'E' | 'N';
 export type NoiseView = 'all' | 'modeled' | 'context';
@@ -63,6 +66,8 @@ export interface LayerContractDocument {
 }
 
 export const contract = rawContract as LayerContractDocument;
+export const replacementAdapterContract = rawReplacementAdapterContract;
+export const replacementManifest = rawReplacementManifest;
 export const taxonomy = new Map(contract.taxonomy.map((entry) => [entry.id, entry]));
 export const layers = contract.layers;
 export const layerById = new Map(layers.map((layer) => [layer.id, layer]));
@@ -107,3 +112,4 @@ export function assertContract(doc: LayerContractDocument = contract): void {
 }
 
 assertContract();
+validateReplacementAdapter(replacementAdapterContract, replacementManifest);

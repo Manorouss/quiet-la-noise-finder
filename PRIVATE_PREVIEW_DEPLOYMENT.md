@@ -28,7 +28,7 @@ The build creates only an ignored, hash-bound metadata manifest in `public/_prev
 
 Vercel Authentication with **Standard Protection** is the selected gate. It is available on all Vercel plans and restricts preview/deployment URLs to users with access. Password Protection is not selected because Vercel documents it as an Enterprise feature or paid Pro add-on.
 
-Project `prj_XTkmGuFf6novot3axeqvnZAo0Ajx` on team `team_TNeSdFukSIvhwO0UOGDgjreq` has been created and Standard Protection has been externally verified. Unique deployment URLs redirect unauthenticated users to Vercel sign-in; the production custom domain remains public. This satisfies the platform-protection predicate only; it does not resolve scientific-payload rights. The current production remains the payload-free commit `c773066`.
+Project `prj_XTkmGuFf6novot3axeqvnZAo0Ajx` on team `team_TNeSdFukSIvhwO0UOGDgjreq` exists, but future-preview Standard Protection is not currently externally verified. The retained unique-deployment receipt redirects unauthenticated users to Vercel sign-in; the production custom domain remains public. That receipt proves only the existing deployment behavior, not protection of a future `private-preview` deployment, and it does not resolve scientific-payload rights. The current production remains the payload-free commit `c773066`.
 
 Before any preview-branch upload, export fresh machine evidence again:
 
