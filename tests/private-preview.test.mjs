@@ -133,6 +133,7 @@ test('deployment contract distinguishes existing deployment auth behavior from u
   });
   assert.equal(deployment.productionBoundary.productionPayloadBuildAllowed, false);
   assert.equal(deployment.productionBoundary.mainBranchPayloadBuildAllowed, false);
+  assert.equal(deployment.gitAutoDeploymentsEnabled, false);
 });
 
 test('external project verifier consumes retained hash-bound receipts and rejects drift', async () => {
@@ -178,7 +179,7 @@ test('external project verifier consumes retained hash-bound receipts and reject
   }
 });
 
-test('default build and direct CLI upload fail closed while only the preview branch is enabled', async () => {
+test('all Git auto-deployments are disabled and branch names cannot widen the gate', async () => {
   const refused = await runNode('scripts/refuse-unprofiled-build.mjs');
   assert.equal(refused.code, 1);
   assert.match(refused.stderr, /refused unprofiled external build/);
@@ -189,8 +190,20 @@ test('default build and direct CLI upload fail closed while only the preview bra
   assert.equal(config.buildCommand, 'npm run build:vercel-profile');
   assert.equal(config.outputDirectory, 'out');
   assert.equal(config.headers[0].headers.find((row) => row.key === 'X-Robots-Tag').value, 'noindex, nofollow, noarchive');
-  assert.equal(config.git.deploymentEnabled.main, false);
-  assert.equal(config.git.deploymentEnabled['private-preview'], true);
+  assert.equal(config.git.deploymentEnabled, false);
+  assert.equal(typeof config.git.deploymentEnabled, 'boolean');
+  const gitAutoDeployAllowed = (candidate) => candidate?.git?.deploymentEnabled === false;
+  assert.equal(gitAutoDeployAllowed(config), true);
+  for (const widened of [
+    true,
+    {},
+    { main: false, 'private-preview': true },
+    { '*': false, 'agent/*': true },
+    { 'private-preview': false },
+  ]) {
+    assert.equal(gitAutoDeployAllowed({ git: { deploymentEnabled: widened } }), false);
+  }
+  assert.equal(gitAutoDeployAllowed({ git: { deploymentEnabled: false }, branch: 'agent/unified-portal-local-foundation' }), true);
 });
 
 test('private payload build guard rejects closed/tampered admission, production, main, and wrong identities', async () => {

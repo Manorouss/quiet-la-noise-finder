@@ -15,7 +15,7 @@ The local stage copies only the accepted v3 display payloads into `public/_local
 
 The private-preview package currently contains **zero scientific payload bytes**. Existing external-readiness records do not admit source/output rights for the four-region or Tarzana derivatives, so every scientific/context row is unavailable. Airport and Metro payloads stay excluded pending terms. Private Source-341 review evidence also remains excluded and the UI retains the incomplete—not-computable warning. See [`PRIVATE_PREVIEW_DEPLOYMENT.md`](PRIVATE_PREVIEW_DEPLOYMENT.md) for the fail-closed Vercel Authentication and rights gate.
 
-No empty-shell deployment is recommended. Any future useful payload is branch-confined: only `private-preview` may build it after an exact-hash rights admission. `main` and production payload builds are machine-refused; production remains payload-free.
+All Git-triggered Vercel deployments are currently disabled with the literal `git.deploymentEnabled: false`; pushing a branch or opening a PR is code review only and must not deploy. `.vercelignore` intentionally strips direct source uploads, so it is not a path around the deployment gate. A future useful preview requires an explicit, separately authorized and independently audited immutable artifact after rights, authentication, hash, and master execution admission. Naming a branch `private-preview` does not enable deployment. `main` and production payload builds remain machine-refused; production remains payload-free.
 
 ## Validation
 
