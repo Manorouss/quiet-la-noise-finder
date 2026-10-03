@@ -9,7 +9,7 @@ const periods = ['D', 'E', 'N'];
 test('same-document view hashes restore period, selections, display mode, and exact camera', async () => {
   const view = parsePilotViewHash(`#model=${model}&period=N&building=71728&receiver=198418&mode=3d&lng=-118.566123&lat=34.170321&z=18.25`, model, periods);
   assert.deepEqual(view, {
-    period: 'N', buildingPk: 71728, receiverId: 198418, mode3d: true,
+    period: 'N', buildingPk: 71728, receiverId: 198418, buildingKey: null, receiverKey: null, tileId: null, mode3d: true,
     camera: { lng: -118.566123, lat: 34.170321, zoom: 18.25 }, modelMismatch: false,
   });
   const portal = await readFile(new URL('../src/components/PilotPortal.tsx', import.meta.url), 'utf8');
@@ -19,13 +19,19 @@ test('same-document view hashes restore period, selections, display mode, and ex
 
 test('a subsequent hash without selection or camera clears prior view state', () => {
   assert.deepEqual(parsePilotViewHash(`#model=${model}&period=E`, model, periods), {
-    period: 'E', buildingPk: null, receiverId: null, mode3d: false, camera: null, modelMismatch: false,
+    period: 'E', buildingPk: null, receiverId: null, buildingKey: null, receiverKey: null, tileId: null, mode3d: false, camera: null, modelMismatch: false,
   });
 });
 
 test('invalid period and partial or non-finite cameras normalize to the default view', () => {
   assert.deepEqual(parsePilotViewHash('#period=invalid&building=NaN&receiver=2&lng=-118&lat=34&z=Infinity', model, periods), {
-    period: 'D', buildingPk: null, receiverId: 2, mode3d: false, camera: null, modelMismatch: false,
+    period: 'D', buildingPk: null, receiverId: 2, buildingKey: null, receiverKey: null, tileId: null, mode3d: false, camera: null, modelMismatch: false,
+  });
+});
+
+test('stable tile/source keys and explicit lazy tile requests survive URL state', () => {
+  assert.deepEqual(parsePilotViewHash(`#model=${model}&period=N&tile=r02-c02&building_key=lariac:389949885603&receiver_key=r02-c02:expanded10m%3A354535.000%3A3781825.000`, model, periods), {
+    period: 'N', buildingPk: null, receiverId: null, buildingKey: 'lariac:389949885603', receiverKey: 'r02-c02:expanded10m:354535.000:3781825.000', tileId: 'r02-c02', mode3d: false, camera: null, modelMismatch: false,
   });
 });
 

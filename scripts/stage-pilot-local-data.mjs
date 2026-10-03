@@ -2,36 +2,61 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
-const sourceRoot = path.join(appRoot, 'src/data/pilot-release-v1');
-const rows = [
-  { source: 'benchmark.geojson', target: 'benchmark.geojson', sha256: '16df6aaf99abaf0a791e5de95a49a5eda5760851994fd4636465086cffd59c93', bytes: 2754559 },
-  { source: 'buildings.geojson', target: 'buildings.geojson', sha256: 'b1f25db888ebb749751fc9b4beb2a2ab93bb6be28e23e273243e03d1ef937bd5', bytes: 102267 },
-  { source: 'build-manifest.json', target: 'build-manifest.json', sha256: 'd733b7e11af379b2a31a1cda7559481ef5d7a175464c5d3b92c5c273c2c15769', bytes: 496 },
-];
-const sourceManifestSha256 = 'f2f47b8a1a6a2af1c7885c763b12e58b970bb563a70822f6e1cbe7cd2e2fac37';
-const hash = (b) => createHash('sha256').update(b).digest('hex');
-async function regular(p) { const s = await fs.lstat(p); if (!s.isFile() || s.isSymbolicLink()) throw new Error(`regular file required: ${p}`); }
-export async function stagePilotLocalData(appRoot = path.resolve(new URL('..', import.meta.url).pathname)) {
+const appRootDefault = path.resolve(new URL('..', import.meta.url).pathname);
+const contractPath = (appRoot) => path.join(appRoot, 'src/data/pilot-release-contract.json');
+const sourceRoot = (appRoot) => path.join(appRoot, 'src/data/pilot-release-v1');
+const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
+async function regular(file) { const stat = await fs.lstat(file); if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(`regular release asset required: ${file}`); }
+
+export async function stagePilotLocalData(appRoot = appRootDefault) {
+  const contract = JSON.parse(await fs.readFile(contractPath(appRoot), 'utf8'));
+  if (contract.schema !== 'quiet_la_combined_road_study_release_contract_v1' || !Array.isArray(contract.tiles)) throw new Error('pilot release contract schema drift');
+  const includedTiles = contract.tiles.filter((tile) => tile.status === 'accepted_legacy_default' || tile.status === 'accepted_expansion');
+  if (!includedTiles.some((tile) => tile.tile_id === contract.default_tile_id)) throw new Error('pilot release default tile is not admitted');
+
   const targetRoot = path.join(appRoot, 'public/_local-data/v3/pilot');
+  const prior = await fs.lstat(targetRoot).catch(() => null);
+  if (prior && (!prior.isDirectory() || prior.isSymbolicLink())) throw new Error('pilot stage path must be a regular directory');
+  await fs.rm(targetRoot, { recursive: true, force: true });
   await fs.mkdir(targetRoot, { recursive: true });
-  for (const row of rows) {
-    const source = path.join(sourceRoot, row.source); const target = path.join(targetRoot, row.target);
-    await regular(source); const bytes = await fs.readFile(source);
-    if (bytes.length !== row.bytes || hash(bytes) !== row.sha256) throw new Error(`pilot source drift: ${row.source}`);
-    const prior = await fs.readFile(target).catch(() => null);
-    if (row.target === 'build-manifest.json' && prior && hash(prior) === sourceManifestSha256) await fs.writeFile(target, bytes);
-    else if (prior && (prior.length !== row.bytes || hash(prior) !== row.sha256)) throw new Error(`pilot staged drift: ${row.target}`);
-    else if (!prior) await fs.writeFile(target, bytes, { flag: 'wx' });
+  const stagedTiles = [];
+  const rows = [];
+  for (const tile of includedTiles) {
+    const tileRows = [];
+    for (const asset of tile.assets) {
+      const source = path.join(sourceRoot(appRoot), asset.path);
+      const target = path.join(targetRoot, asset.path);
+      await regular(source);
+      const bytes = await fs.readFile(source);
+      if (bytes.length !== asset.bytes || hash(bytes) !== asset.sha256) throw new Error(`pilot asset hash/size drift (${tile.tile_id}/${asset.path})`);
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.writeFile(target, bytes, { flag: 'wx' });
+      const row = { path: asset.path, sha256: asset.sha256, bytes: asset.bytes, kind: asset.kind };
+      tileRows.push(row); rows.push(row);
+    }
+    const manifestAsset = tile.assets.find((asset) => asset.kind === 'manifest');
+    const publicManifest = JSON.parse(await fs.readFile(path.join(targetRoot, manifestAsset.path), 'utf8'));
+    for (const field of ['receiver_count', 'numeric_rows', 'building_count', 'facade_receiver_count']) {
+      if (publicManifest[field] !== tile[field]) throw new Error(`pilot release contract count drift for ${tile.tile_id}.${field}`);
+    }
+    if (JSON.stringify(publicManifest.masked_ids ?? []) !== JSON.stringify(tile.masked_ids)) throw new Error(`pilot mask contract drift for ${tile.tile_id}`);
+    stagedTiles.push({ tile_id: tile.tile_id, status: tile.status, bbox_wgs84: tile.bbox_wgs84, counts: { receiver_count: tile.receiver_count, numeric_rows: tile.numeric_rows, building_count: tile.building_count, facade_receiver_count: tile.facade_receiver_count }, rows: tileRows });
   }
-  const publicManifestPath = path.join(sourceRoot, 'build-manifest.json');
-  const publicManifestBytes = await fs.readFile(publicManifestPath);
-  const parsed = JSON.parse(publicManifestBytes.toString('utf8'));
-  const expectedCounts = { receiver_count: 6421, numeric_rows: 19257, building_count: 80, facade_receiver_count: 1573 };
-  if (Object.entries(expectedCounts).some(([key, value]) => parsed[key] !== value) || JSON.stringify(parsed.masked_ids) !== '[85715,88627]') throw new Error('pilot source manifest count/mask contract drift');
-  if (!parsed.source_sha256 || !parsed.source_buildings_sha256 || !parsed.source_receivers_sha256 || ['source_csv', 'source_receivers', 'source_buildings'].some((key) => Object.hasOwn(parsed, key))) throw new Error('pilot release manifest provenance/path contract drift');
-  const manifest = { schema: 'quiet_la_tarzana_pilot_local_stage_v1', model: 'tarzana-pilot-r02-c03-freeway-v1', source: 'canonical-pilot-release-v1', source_manifest_sha256: sourceManifestSha256, rows };
-  await fs.writeFile(path.join(targetRoot, 'staged-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-  return { status: 'PILOT_LOCAL_STAGE_VALID', target: targetRoot, rows: rows.length, hashes: Object.fromEntries(rows.map((r) => [r.target, r.sha256])), sourceManifestSha256, publicManifestSha256: hash(publicManifestBytes) };
+  const stagedManifest = {
+    schema: 'quiet_la_combined_road_pilot_stage_v2',
+    study_id: contract.study_id,
+    default_tile_id: contract.default_tile_id,
+    contract_path: 'src/data/pilot-release-contract.json',
+    contract_sha256: hash(await fs.readFile(contractPath(appRoot))),
+    tiles: stagedTiles,
+    rows,
+  };
+  const manifestBytes = Buffer.from(`${JSON.stringify(stagedManifest, null, 2)}\n`);
+  await fs.writeFile(path.join(targetRoot, 'staged-manifest.json'), manifestBytes, { flag: 'wx' });
+  return { status: 'PILOT_LOCAL_STAGE_VALID', target: targetRoot, studyId: contract.study_id, tiles: stagedTiles.map((tile) => tile.tile_id), rows: rows.length, hashes: Object.fromEntries(rows.map((row) => [row.path, row.sha256])), contractSha256: stagedManifest.contract_sha256, stagedManifestSha256: hash(manifestBytes) };
 }
-if (import.meta.url === `file://${process.argv[1]}`) stagePilotLocalData().then((result) => console.log(JSON.stringify(result, null, 2))).catch((e) => { console.error(`stage-pilot-local-data: ${e.message}`); process.exitCode = 1; });
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  if (process.argv.length > 2) throw new Error(`unsupported stage-pilot-local-data arguments: ${process.argv.slice(2).join(' ')}`);
+  stagePilotLocalData(appRootDefault).then((result) => console.log(JSON.stringify(result, null, 2))).catch((error) => { console.error(`stage-pilot-local-data: ${error.message}`); process.exitCode = 1; });
+}

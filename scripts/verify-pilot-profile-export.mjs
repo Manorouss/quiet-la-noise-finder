@@ -1,64 +1,74 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import {
-  assertFrameworkOrAllowedPath,
-  assertNoCredentialRows,
-  compactRows,
-  enumerateRegularTree,
-  sha256,
-} from './export-profile-policy.mjs';
+import { createHash } from 'node:crypto';
+import { assertFrameworkOrAllowedPath, assertNoCredentialRows, compactRows, enumerateRegularTree, sha256 } from './export-profile-policy.mjs';
 import { verifyMapRuntime } from './stage-map-runtime.mjs';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const defaultRoot = path.join(appRoot, 'out');
-const expectedPilotRows = Object.freeze([
-  { source: 'benchmark.geojson', target: 'benchmark.geojson', sha256: '16df6aaf99abaf0a791e5de95a49a5eda5760851994fd4636465086cffd59c93', bytes: 2754559 },
-  { source: 'buildings.geojson', target: 'buildings.geojson', sha256: 'b1f25db888ebb749751fc9b4beb2a2ab93bb6be28e23e273243e03d1ef937bd5', bytes: 102267 },
-  { source: 'build-manifest.json', target: 'build-manifest.json', sha256: 'd733b7e11af379b2a31a1cda7559481ef5d7a175464c5d3b92c5c273c2c15769', bytes: 496 },
-]);
+const contractPath = path.join(appRoot, 'src/data/pilot-release-contract.json');
+const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
-async function verifyPilotStage(root) {
+export async function verifyPilotProfileExport(root = defaultRoot) {
+  const contractBytes = await fs.readFile(contractPath);
+  const contract = JSON.parse(contractBytes.toString('utf8'));
+  if (contract.schema !== 'quiet_la_combined_road_study_release_contract_v1') throw new Error('pilot release contract schema drift');
   const pilotRoot = path.join(root, '_local-data/v3/pilot');
   const manifestPath = path.join(pilotRoot, 'staged-manifest.json');
   const manifest = JSON.parse(await fs.readFile(manifestPath).catch(() => { throw new Error('pilot stage is missing from the export'); }));
-  if (manifest.schema !== 'quiet_la_tarzana_pilot_local_stage_v1' || manifest.model !== 'tarzana-pilot-r02-c03-freeway-v1' || JSON.stringify(manifest.rows) !== JSON.stringify(expectedPilotRows)) throw new Error('pilot stage manifest is not the admitted exact package');
-  for (const row of expectedPilotRows) {
-    const bytes = await fs.readFile(path.join(pilotRoot, row.target)).catch(() => { throw new Error(`pilot asset missing: ${row.target}`); });
-    if (bytes.length !== row.bytes || sha256(bytes) !== row.sha256) throw new Error(`pilot asset hash/size drift: ${row.target}`);
-    if (row.target === 'build-manifest.json') {
-      const publicManifest = JSON.parse(bytes.toString('utf8'));
-      const forbiddenPathKeys = ['source_csv', 'source_receivers', 'source_buildings'];
-      if (forbiddenPathKeys.some((key) => Object.hasOwn(publicManifest, key)) || /\/(?:Users|private)\//.test(bytes.toString('utf8'))) throw new Error('private filesystem path leaked through pilot manifest');
-      if (publicManifest.receiver_count !== 6421 || publicManifest.numeric_rows !== 19257 || publicManifest.building_count !== 80 || publicManifest.facade_receiver_count !== 1573 || JSON.stringify(publicManifest.masked_ids) !== '[85715,88627]') throw new Error('public pilot manifest counts/masks drift');
+  if (manifest.schema !== 'quiet_la_combined_road_pilot_stage_v2' || manifest.study_id !== contract.study_id || manifest.default_tile_id !== contract.default_tile_id || manifest.contract_sha256 !== hash(contractBytes)) throw new Error('pilot stage manifest differs from the current study contract');
+  const expectedTiles = contract.tiles.filter((tile) => tile.status === 'accepted_legacy_default' || tile.status === 'accepted_expansion');
+  if (!Array.isArray(manifest.tiles) || JSON.stringify(manifest.tiles.map((tile) => tile.tile_id)) !== JSON.stringify(expectedTiles.filter((tile) => manifest.tiles.some((staged) => staged.tile_id === tile.tile_id)).map((tile) => tile.tile_id))) throw new Error('pilot stage contains an unknown or incorrectly ordered tile');
+  if (manifest.tiles.some((staged) => !expectedTiles.some((tile) => tile.tile_id === staged.tile_id))) throw new Error('pilot stage includes a tile without release admission');
+  if (!manifest.tiles.some((tile) => tile.tile_id === contract.default_tile_id)) throw new Error('default pilot tile missing from stage');
+
+  const allowedPaths = new Set(['_local-data/v3/pilot/staged-manifest.json', 'pilot/index.html', 'pilot/index.txt']);
+  let tileAssetBytes = 0;
+  for (const stagedTile of manifest.tiles) {
+    const tile = contract.tiles.find((candidate) => candidate.tile_id === stagedTile.tile_id);
+    if (!tile || stagedTile.status !== tile.status || JSON.stringify(stagedTile.bbox_wgs84) !== JSON.stringify(tile.bbox_wgs84)) throw new Error(`pilot tile contract drift: ${stagedTile.tile_id}`);
+    const expectedRows = tile.assets.map((asset) => ({ path: asset.path, sha256: asset.sha256, bytes: asset.bytes, kind: asset.kind }));
+    if (JSON.stringify(stagedTile.rows) !== JSON.stringify(expectedRows)) throw new Error(`pilot tile asset inventory drift: ${tile.tile_id}`);
+    for (const asset of tile.assets) {
+      const rel = `_local-data/v3/pilot/${asset.path}`;
+      allowedPaths.add(rel);
+      const bytes = await fs.readFile(path.join(pilotRoot, asset.path)).catch(() => { throw new Error(`pilot asset missing: ${tile.tile_id}/${asset.path}`); });
+      if (bytes.length !== asset.bytes || sha256(bytes) !== asset.sha256) throw new Error(`pilot asset hash/size drift: ${tile.tile_id}/${asset.path}`);
+      tileAssetBytes += bytes.length;
+      if (asset.kind === 'manifest') {
+        const publicManifest = JSON.parse(bytes.toString('utf8'));
+        if (/\/(?:Users|private)\//.test(bytes.toString('utf8'))) throw new Error(`private filesystem path leaked through ${tile.tile_id} manifest`);
+        for (const field of ['receiver_count', 'numeric_rows', 'building_count', 'facade_receiver_count']) if (publicManifest[field] !== tile[field]) throw new Error(`public pilot manifest count drift: ${tile.tile_id}.${field}`);
+        if (JSON.stringify(publicManifest.masked_ids ?? []) !== JSON.stringify(tile.masked_ids)) throw new Error(`public pilot manifest masks drift: ${tile.tile_id}`);
+      }
     }
   }
-  return { files: expectedPilotRows.length + 1, bytes: expectedPilotRows.reduce((sum, row) => sum + row.bytes, Buffer.byteLength(JSON.stringify(manifest, null, 2) + '\n')), rows: expectedPilotRows };
-}
-
-export async function verifyPilotProfileExport(root = defaultRoot) {
+  if (JSON.stringify(manifest.rows) !== JSON.stringify(manifest.tiles.flatMap((tile) => tile.rows))) throw new Error('pilot staged row index differs from tile records');
   const mapRuntime = await verifyMapRuntime(path.join(root, 'maplibre'));
-  const pilot = await verifyPilotStage(root);
-  const allowed = new Set([
-    '_local-data/v3/pilot/staged-manifest.json',
-    ...expectedPilotRows.map((row) => `_local-data/v3/pilot/${row.target}`),
-    'pilot/index.html',
-    'pilot/index.txt',
-  ]);
   const rows = await enumerateRegularTree(root);
   for (const row of rows) {
-    if (row.path.startsWith('_local-data/') && !row.path.startsWith('_local-data/v3/pilot/')) throw new Error(`non-pilot local payload leaked into pilot export: ${row.path}`);
+    if (row.path.startsWith('_local-data/') && !allowedPaths.has(row.path)) throw new Error(`unadmitted scientific data leaked into pilot export: ${row.path}`);
     if (row.path.startsWith('_preview-data/')) throw new Error(`preview payload leaked into pilot export: ${row.path}`);
-    assertFrameworkOrAllowedPath(row.path, allowed);
+    assertFrameworkOrAllowedPath(row.path, allowedPaths);
   }
   assertNoCredentialRows(rows);
   for (const route of ['index.html', 'pilot/index.html']) {
     const html = await fs.readFile(path.join(root, route), 'utf8');
-    if (!html.includes('Tarzana combined-road pilot') || !html.includes('80 modeled buildings')) throw new Error(`pilot identity/disclosure missing from ${route}`);
+    if (!html.includes('Quiet LA') || !html.includes('Tarzana')) throw new Error(`pilot identity/disclosure missing from ${route}`);
     if (!html.includes('noindex,nofollow,noarchive')) throw new Error(`pilot export lacks noindex meta in ${route}`);
   }
   const compact = compactRows(rows);
   const serialized = Buffer.from(`${JSON.stringify(compact)}\n`);
-  return { profile: 'pilot_v1', files: compact.length, bytes: compact.reduce((sum, row) => sum + row.bytes, 0), treeSha256: sha256(serialized), pilot, mapRuntime, rows: compact };
+  return {
+    profile: contract.study_id,
+    tiles: manifest.tiles.map((tile) => ({ tile_id: tile.tile_id, status: tile.status, counts: tile.counts })),
+    files: compact.length,
+    bytes: compact.reduce((sum, row) => sum + row.bytes, 0),
+    scientificAssetBytes: tileAssetBytes,
+    treeSha256: sha256(serialized),
+    mapRuntime,
+    rows: compact,
+  };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

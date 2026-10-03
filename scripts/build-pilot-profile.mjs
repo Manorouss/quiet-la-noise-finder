@@ -6,8 +6,9 @@ import { writeCompleteExportManifest } from './export-profile-policy.mjs';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const projectRoot = path.resolve(appRoot, '../../..');
-const hosted = process.argv[2] === '--hosted';
-if (process.argv.length > 2 && !hosted) throw new Error(`unsupported build-pilot-profile argument: ${process.argv[2]}`);
+const args = process.argv.slice(2);
+const hosted = args.includes('--hosted');
+if (args.some((arg) => arg !== '--hosted')) throw new Error(`unsupported build-pilot-profile arguments: ${args.join(' ')}`);
 const targetOutRoot = hosted
   ? path.join(appRoot, 'out')
   : path.join(projectRoot, 'implementation/work/delivery_2026_10_02/portal/pilot-export');
@@ -27,7 +28,7 @@ buildIsolatedProfile({
     await fs.mkdir(path.join(stageLocalRoot, 'v3'), { recursive: true });
     await fs.cp(path.join(appRoot, 'public/_local-data/v3/pilot'), path.join(stageLocalRoot, 'v3/pilot'), { recursive: true, errorOnExist: true, force: false });
   },
-  verify: verifyPilotProfileExport,
+  verify: (root) => verifyPilotProfileExport(root),
 }).then(async (result) => {
   const manifest = await writeCompleteExportManifest(appRoot, hosted ? 'HOSTED_PILOT_EXPORT_MANIFEST.json' : 'PILOT_PROFILE_EXPORT_MANIFEST.json', result);
   const summary = { ...result }; delete summary.rows;

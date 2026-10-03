@@ -7,11 +7,6 @@ const output = path.join(appRoot, 'release/CLEAN_REPO_MANIFEST.json');
 const includedRoots = ['src', 'scripts', 'tests'];
 const includedFiles = ['package.json', 'package-lock.json', 'next.config.mjs', 'tsconfig.json', 'next-env.d.ts', 'eslint.config.mjs', 'DESIGN_PARITY.md', 'PRIVATE_PREVIEW_DEPLOYMENT.md', 'README.md', '.gitignore', '.vercelignore', 'vercel.json', 'public/robots.txt'];
 const banned = /(_local-data|\.geojson|\.laz|\.las|\.tif|\.asc|\.mv\.db|\.trace\.db|\.env|secret|token)/i;
-const publicPilotAssets = {
-  'src/data/pilot-release-v1/benchmark.geojson': '16df6aaf99abaf0a791e5de95a49a5eda5760851994fd4636465086cffd59c93',
-  'src/data/pilot-release-v1/buildings.geojson': 'b1f25db888ebb749751fc9b4beb2a2ab93bb6be28e23e273243e03d1ef937bd5',
-  'src/data/pilot-release-v1/build-manifest.json': 'd733b7e11af379b2a31a1cda7559481ef5d7a175464c5d3b92c5c273c2c15769',
-};
 
 async function walk(dir) {
   const files = [];
@@ -26,6 +21,12 @@ async function walk(dir) {
 function hash(bytes) { return createHash('sha256').update(bytes).digest('hex'); }
 
 async function main() {
+  const releaseContract = JSON.parse(await fs.readFile(path.join(appRoot, 'src/data/pilot-release-contract.json'), 'utf8'));
+  const defaultTile = releaseContract.tiles.find((tile) => tile.tile_id === releaseContract.default_tile_id);
+  if (!defaultTile || defaultTile.status !== 'accepted_legacy_default') throw new Error('pilot release default tile is not admitted');
+  const publicPilotAssets = Object.fromEntries(releaseContract.tiles
+    .filter((tile) => tile.status === 'accepted_legacy_default' || tile.status === 'accepted_expansion')
+    .flatMap((tile) => tile.assets.map((asset) => [`src/data/pilot-release-v1/${asset.path}`, asset.sha256])));
   const files = [];
   for (const root of includedRoots) files.push(...await walk(path.join(appRoot, root)));
   for (const file of includedFiles) files.push(path.join(appRoot, file));

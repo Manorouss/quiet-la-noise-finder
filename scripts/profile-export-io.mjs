@@ -35,6 +35,7 @@ async function deterministicBuildId(token) {
     path.join(appRoot, 'src/data/layer-contract.json'),
     path.join(appRoot, 'src/data/deployment-contract.json'),
     path.join(appRoot, 'src/data/private-preview-payload-contract.json'),
+    path.join(appRoot, 'src/data/pilot-release-contract.json'),
     path.join(appRoot, 'package.json'),
     path.join(appRoot, 'package-lock.json'),
     path.join(appRoot, 'next.config.mjs'),

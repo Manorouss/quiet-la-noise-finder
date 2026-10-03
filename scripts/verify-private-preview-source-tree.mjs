@@ -10,11 +10,6 @@ import { verifyMapRuntime } from './stage-map-runtime.mjs';
 const defaultAppRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const cleanManifestPath = path.join(defaultAppRoot, 'release/CLEAN_REPO_MANIFEST.json');
 const payloadContractPath = path.join(defaultAppRoot, 'src/data/private-preview-payload-contract.json');
-const publicPilotAssetHashes = {
-  'src/data/pilot-release-v1/benchmark.geojson': '16df6aaf99abaf0a791e5de95a49a5eda5760851994fd4636465086cffd59c93',
-  'src/data/pilot-release-v1/buildings.geojson': 'b1f25db888ebb749751fc9b4beb2a2ab93bb6be28e23e273243e03d1ef937bd5',
-  'src/data/pilot-release-v1/build-manifest.json': 'd733b7e11af379b2a31a1cda7559481ef5d7a175464c5d3b92c5c273c2c15769',
-};
 
 function sha256(bytes) { return createHash('sha256').update(bytes).digest('hex'); }
 async function lstatOrNull(target) { return fs.lstat(target).catch(() => null); }
@@ -58,6 +53,12 @@ export async function verifyPrivatePreviewSourceTree(appRoot = defaultAppRoot, s
   if (new Set(authoritativePaths).size !== authoritativePaths.length || JSON.stringify(authoritativePaths) !== JSON.stringify([...authoritativePaths].sort())) throw new Error('independent source allowlist paths are duplicate or unsorted');
 
   const clean = JSON.parse(await fs.readFile(selectedCleanManifestPath, 'utf8'));
+  const releaseContract = JSON.parse(await fs.readFile(path.join(appRoot, 'src/data/pilot-release-contract.json'), 'utf8'));
+  const defaultTile = releaseContract.tiles.find((tile) => tile.tile_id === releaseContract.default_tile_id);
+  if (!defaultTile || defaultTile.status !== 'accepted_legacy_default') throw new Error('pilot release default tile is not admitted');
+  const publicPilotAssetHashes = Object.fromEntries(releaseContract.tiles
+    .filter((tile) => tile.status === 'accepted_legacy_default' || tile.status === 'accepted_expansion')
+    .flatMap((tile) => tile.assets.map((asset) => [`src/data/pilot-release-v1/${asset.path}`, asset.sha256])));
   if (clean.schema !== 'quiet_la_web_clean_repo_manifest_v1' || clean.status !== 'code_tests_schema_only' || !Array.isArray(clean.files) || !Array.isArray(clean.public_pilot_assets)) throw new Error('clean source manifest schema/status drift');
   const cleanPaths = clean.files.map((row) => row.path);
   if (new Set(cleanPaths).size !== cleanPaths.length || JSON.stringify(cleanPaths) !== JSON.stringify([...cleanPaths].sort())) throw new Error('clean source manifest paths are duplicate or unsorted');

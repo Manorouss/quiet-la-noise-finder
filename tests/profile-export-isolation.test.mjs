@@ -6,6 +6,7 @@ import test from 'node:test';
 import { verifyExternalPayloadFreeExport } from '../scripts/verify-external-payload-free-export.mjs';
 import { verifyLocalProfileExport } from '../scripts/verify-local-profile-export.mjs';
 import { publishVerifiedExport } from '../scripts/profile-export-io.mjs';
+import { stagePilotLocalData } from '../scripts/stage-pilot-local-data.mjs';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 
@@ -82,15 +83,29 @@ test('payload-free external export rejects both data roots, credentials, and sym
 
 test('local export accepts only the exact local stage and rejects preview contamination', async () => {
   const temp = await fs.mkdtemp(path.join(appRoot, '.tmp-local-export-'));
+  let isolatedApp;
   try {
     await makeFrameworkFixture(temp, '<meta name="robots" content="noindex,nofollow,noarchive"><div data-quiet-workspace="dense-tarzana-v21">Opening Quiet LA…</div>');
     await fs.cp(path.join(appRoot, 'public/_local-data'), path.join(temp, '_local-data'), { recursive: true, dereference: false });
+    isolatedApp = await fs.mkdtemp(path.join(appRoot, '.tmp-pilot-source-'));
+    await fs.mkdir(path.join(isolatedApp, 'src/data/pilot-release-v1'), { recursive: true });
+    await fs.copyFile(path.join(appRoot, 'src/data/pilot-release-contract.json'), path.join(isolatedApp, 'src/data/pilot-release-contract.json'));
+    for (const tile of JSON.parse(await fs.readFile(path.join(appRoot, 'src/data/pilot-release-contract.json'), 'utf8')).tiles.filter((item) => item.status === 'accepted_legacy_default' || item.status === 'accepted_expansion')) {
+      for (const asset of tile.assets) {
+      await fs.mkdir(path.dirname(path.join(isolatedApp, 'src/data/pilot-release-v1', asset.path)), { recursive: true });
+      await fs.copyFile(path.join(appRoot, 'src/data/pilot-release-v1', asset.path), path.join(isolatedApp, 'src/data/pilot-release-v1', asset.path));
+      }
+    }
+    await stagePilotLocalData(isolatedApp);
+    await fs.rm(path.join(temp, '_local-data/v3/pilot'), { recursive: true, force: true });
+    await fs.cp(path.join(isolatedApp, 'public/_local-data/v3/pilot'), path.join(temp, '_local-data/v3/pilot'), { recursive: true });
     await verifyLocalProfileExport(temp);
     await fs.mkdir(path.join(temp, '_preview-data'));
     await fs.writeFile(path.join(temp, '_preview-data/preview-payload-manifest.json'), '{}');
     await assert.rejects(() => verifyLocalProfileExport(temp), /preview payload leaked|unexpected profile export/);
   } finally {
     await fs.rm(temp, { recursive: true, force: true });
+    if (isolatedApp) await fs.rm(isolatedApp, { recursive: true, force: true });
   }
 });
 

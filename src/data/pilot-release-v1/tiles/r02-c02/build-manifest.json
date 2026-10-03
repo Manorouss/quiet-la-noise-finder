@@ -1,0 +1,28 @@
+{
+  "bbox_wgs84": [
+    -118.57845038808348,
+    34.16724199303553,
+    -118.56758243534561,
+    34.17352170005376
+  ],
+  "building_count": 206,
+  "combination_audit_sha256": "4696dc83f66282c2788510f21709ad17edf535ecf52c66c3eb5b6fe41835ab79",
+  "disclosure": "Assumed historical-context mixed-road exterior LAeq; uncalibrated and not measured/current traffic. See study assumptions.",
+  "facade_receiver_count": 3695,
+  "masked_ids": [],
+  "max_laeq": 109.041355999,
+  "min_laeq": 42.8760506419,
+  "model": "tarzana-combined-road-study-r02-v1",
+  "numeric_rows": 26427,
+  "receiver_count": 8809,
+  "receiver_height_counts_m": {
+    "1.5": 5114,
+    "4.0": 3695
+  },
+  "schema": "quiet_la_tarzana_combined_road_tile_v1",
+  "source_buildings_sha256": "c5b28e287932c26b4302d56daec1f2bddfcbfc515a0789570408a5622e152d1a",
+  "source_csv_sha256": "c9a0b54b50d6eec922e787729dff545d1baf7e64186fd1a5e02ef5efffb97a27",
+  "source_receivers_sha256": "7fcac86432bd5f13f65aa94a5fb8bc63ad932d72d00327014bf953472ee9913a",
+  "status": "candidate_internal_pending_root_review",
+  "tile_id": "r02-c02"
+}

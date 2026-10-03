@@ -1,0 +1,159 @@
+{
+  "schema": "quiet_la_combined_road_study_release_contract_v1",
+  "study_id": "tarzana-combined-road-study-r02-v1",
+  "title": "Tarzana combined-road exterior study",
+  "default_tile_id": "r02-c03",
+  "metric": {
+    "field": "LAEQ",
+    "label": "Modeled exterior LAeq",
+    "unit": "dB re 20 µPa",
+    "calibration_status": "uncalibrated model output",
+    "periods": [
+      "D",
+      "E",
+      "N"
+    ]
+  },
+  "shared_assumptions": {
+    "engine": "NoiseModelling 6.0.0",
+    "physics_contract_sha256": "6d3bcfa08c4a7eb1e96656fb94927fc08d6e2a0d515c40fec80e4c9f1f0d4206",
+    "source_contract_sha256": "2db4510db29ddc92d3ad3b2513dae2bcaadd97c63a8450cd561c07371d708bc1",
+    "traffic_scenario": "assumed historical-context activity; evening flow = 0.6 × day and night flow = 0.2 × day",
+    "reflection_order": 0,
+    "max_source_distance_m": 1500,
+    "statement": "Uncalibrated modeled exterior LAeq; not a measurement, current traffic observation, interior level, or quietness rating."
+  },
+  "identity": {
+    "receiver_key": "tile_id:source_RECEIVER_KEY; source numeric PK retained as provenance",
+    "building_key": "lariac:SOURCE_BLD_ID; physical building duplicates across tiles are merged by this key",
+    "legacy_url": "The existing model/building/receiver numeric hash parameters resolve to the r02-c03 tile. New links retain stable tile/source keys."
+  },
+  "loading": {
+    "strategy": "load default tile first; fetch additional tiles only when the current map viewport intersects their WGS84 bounding box or a stable selection explicitly requests that tile",
+    "tile_request_cache": "one in-flight and one completed fetch per tile for the page lifetime",
+    "partial_coverage_disclosure": "Counts describe loaded tiles and update as the viewer pans."
+  },
+  "tiles": [
+    {
+      "tile_id": "r02-c03",
+      "status": "accepted_legacy_default",
+      "source_attempt": "phase1-tarzana-full-mixed-r02-c03-freeway-v1",
+      "bbox_wgs84": [
+        -118.5676170373723,
+        34.16737962599366,
+        -118.55673652027743,
+        34.17364674452306
+      ],
+      "receiver_count": 6421,
+      "numeric_rows": 19257,
+      "building_count": 80,
+      "facade_receiver_count": 1573,
+      "receiver_height_counts_m": {
+        "1.5": 4848,
+        "4.0": 1573
+      },
+      "masked_ids": [
+        85715,
+        88627
+      ],
+      "source_csv_sha256": "2aa9c5b826bf772bd3d9c5d9545dd72fff9f54fc9410aa090165a692a5c5756e",
+      "provenance": {
+        "source_manifest_original_sha256": "f2f47b8a1a6a2af1c7885c763b12e58b970bb563a70822f6e1cbe7cd2e2fac37",
+        "receiver_input_sha256": "172fbbd2c88967e846f2d9aaedf8ac81205671acbb71f642096c11f48b410054",
+        "attempt_manifest_sha256": "68372093867ae82e955627c5a340b5ae2e785a7f077de625e9dcdc01c18f79b3",
+        "shared_buildings_input_sha256": "c5b28e287932c26b4302d56daec1f2bddfcbfc515a0789570408a5622e152d1a"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "benchmark.geojson",
+          "sha256": "16df6aaf99abaf0a791e5de95a49a5eda5760851994fd4636465086cffd59c93",
+          "bytes": 2754559
+        },
+        {
+          "kind": "buildings",
+          "path": "buildings.geojson",
+          "sha256": "b1f25db888ebb749751fc9b4beb2a2ab93bb6be28e23e273243e03d1ef937bd5",
+          "bytes": 102267
+        },
+        {
+          "kind": "manifest",
+          "path": "build-manifest.json",
+          "sha256": "d733b7e11af379b2a31a1cda7559481ef5d7a175464c5d3b92c5c273c2c15769",
+          "bytes": 496
+        }
+      ]
+    },
+    {
+      "tile_id": "r02-c02",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r02-c02-freeway-v3",
+      "bbox_wgs84": [
+        -118.57845038808348,
+        34.16724199303553,
+        -118.56758243534561,
+        34.17352170005376
+      ],
+      "receiver_count": 8809,
+      "numeric_rows": 26427,
+      "building_count": 206,
+      "facade_receiver_count": 3695,
+      "receiver_height_counts_m": {
+        "1.5": 5114,
+        "4.0": 3695
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "c9a0b54b50d6eec922e787729dff545d1baf7e64186fd1a5e02ef5efffb97a27",
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r02-c02/benchmark.geojson",
+          "sha256": "af4c2127108b79978aa3be4f78d707e3aee601065fff8c9fc64e71a284fbf5c7",
+          "bytes": 5352124
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r02-c02/buildings.geojson",
+          "sha256": "1440bc868c92d142050016c754cdcc6d1938f953bdd6c3b54dac0fa2baaab6d6",
+          "bytes": 411820
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r02-c02/build-manifest.json",
+          "sha256": "cc90f1e60d093f0f03cec7e714e914e05abc2a278c65c98a368bef1fa3d0aa4f",
+          "bytes": 1084
+        }
+      ],
+      "provenance": {
+        "combined_derivative_sha256": "c9a0b54b50d6eec922e787729dff545d1baf7e64186fd1a5e02ef5efffb97a27",
+        "receiver_input_sha256": "7fcac86432bd5f13f65aa94a5fb8bc63ad932d72d00327014bf953472ee9913a",
+        "shared_buildings_input_sha256": "c5b28e287932c26b4302d56daec1f2bddfcbfc515a0789570408a5622e152d1a",
+        "attempt_manifest_sha256": "ad4d12b5db7c7afec5c2476a402ab2a60d08ed95f0b1d225ddfd27e4a2f9a5bf",
+        "combination_manifest_sha256": "4e4800cdb92eaa99898795380adf44f4bff6432b6448480f5ddfd8dc0ffa3560",
+        "independent_acceptance_audit_sha256": "4696dc83f66282c2788510f21709ad17edf535ecf52c66c3eb5b6fe41835ab79",
+        "review_package_relocations": {
+          "combination_manifest": {
+            "sha256": "813be983e80f00e9bc45e6c035233a790bac2c7a8436932eccf6b5596704e313",
+            "change": "output.path only; derivative CSV bytes/hash and combination counts/formula are unchanged"
+          },
+          "independent_acceptance_audit": {
+            "sha256": "2f41d759c5e33206d6001c536d654781514f7bf117452817cccc640db03b4b89",
+            "change": "campaign evidence paths and the corresponding relocated combination-manifest byte/hash binding only; acceptance status, numeric audit results, gates, derivative hash and receiver-input hash are unchanged"
+          }
+        },
+        "cross_tile_duplicate_building_source_ids": [
+          "389949885603",
+          "390134885417"
+        ],
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      }
+    }
+  ],
+  "admission": {
+    "status": "accepted_for_public_release",
+    "date": "2026-10-03",
+    "review_record": "implementation/work/delivery_2026_10_02/portal/ROOT_C02_RELEASE_CANDIDATE_REVIEW_2026-10-03.json",
+    "review_record_sha256": "21b5b8a25906cbb89c3f6227e474f9dad97a681601e4d34a8210b5908e3ec696",
+    "decision": "Root approved exact three c02 public assets and combined-study behaviors after independent numeric, provenance, seam, saved-selection, height-disclosure, desktop, and mobile checks."
+  }
+}
