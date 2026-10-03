@@ -43,7 +43,7 @@ async function main() {
   await assertNoSymlinkComponents(outputRoot);
   if (await fs.lstat(outputRoot).then((s) => s.isSymbolicLink()).catch(() => false)) throw new Error('local data output is a symlink');
   if (await fs.stat(outputRoot).then(() => true).catch(() => false)) {
-    const existing = await verifyStagedRoot(outputRoot, manifestPath);
+    const existing = await verifyStagedRoot(outputRoot, manifestPath, { ignoreRootEntries: ['dense', 'context'] });
     console.log(JSON.stringify({ status: 'STAGED_LOCAL_ALREADY_VALID', output: outputRoot, ...existing }, null, 2));
     return;
   }

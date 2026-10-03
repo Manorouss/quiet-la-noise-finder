@@ -3,6 +3,10 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { assertNoSymlinkChain } from './export-profile-policy.mjs';
+import { stageDenseLocalData } from './stage-dense-local-data.mjs';
+import { stageContextLocalData } from './stage-context-local-data.mjs';
+import { stageMapRuntime } from './stage-map-runtime.mjs';
+import { stagePilotLocalData } from './stage-pilot-local-data.mjs';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const nextBin = path.join(appRoot, 'node_modules/next/dist/bin/next');
@@ -84,8 +88,8 @@ export async function publishVerifiedExport(stageRoot, verify, targetOutRoot = o
   }
 }
 
-export async function buildIsolatedProfile({ token, env, excludeFromExport = [], preBuild, verify }) {
-  if (!['local', 'external', 'private'].includes(token)) throw new Error(`unknown build profile token: ${token}`);
+export async function buildIsolatedProfile({ token, env, excludeFromExport = [], preBuild, postBuild, verify, targetOutRoot = outRoot }) {
+  if (!['local', 'pilot', 'external', 'private'].includes(token)) throw new Error(`unknown build profile token: ${token}`);
   const suffix = randomBytes(4).toString('hex');
   const stageName = `.quiet-la-export-${token}-${process.pid}-${suffix}`;
   const stageRoot = path.join(appRoot, stageName);
@@ -93,6 +97,10 @@ export async function buildIsolatedProfile({ token, env, excludeFromExport = [],
   if (!buildEnv.QUIET_LA_PREVIEW_BUILD_ID) buildEnv.QUIET_LA_PREVIEW_BUILD_ID = await deterministicBuildId(token);
   if (await lstatOrNull(stageRoot)) throw new Error(`fresh export stage already exists: ${stageRoot}`);
   try {
+    await stageMapRuntime(appRoot);
+    if (token === 'local') await stageDenseLocalData(appRoot);
+    if (token === 'local') await stageContextLocalData();
+    if (token === 'local' || token === 'pilot') await stagePilotLocalData(appRoot);
     if (preBuild) await preBuild();
     const code = await new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [nextBin, 'build'], {
@@ -105,6 +113,19 @@ export async function buildIsolatedProfile({ token, env, excludeFromExport = [],
     });
     if (code !== 0) throw new Error(`Next ${token} profile build exited ${code}`);
     await requireDirectSafeDirectory(stageRoot);
+    if (token === 'local' || token === 'pilot') {
+      const pilotSource = path.join(appRoot, 'public/_local-data/v3/pilot');
+      const pilotTarget = path.join(stageRoot, '_local-data/v3/pilot');
+      const pilotStat = await lstatOrNull(pilotSource);
+      if (!pilotStat?.isDirectory() || pilotStat.isSymbolicLink()) throw new Error('local pilot stage is missing or unsafe');
+      const existingPilot = await lstatOrNull(pilotTarget);
+      if (existingPilot && (!existingPilot.isDirectory() || existingPilot.isSymbolicLink())) throw new Error('local pilot export path is unsafe');
+      if (!existingPilot) {
+        await fs.mkdir(path.dirname(pilotTarget), { recursive: true });
+        await fs.cp(pilotSource, pilotTarget, { recursive: true, errorOnExist: true, force: false });
+      }
+    }
+    if (postBuild) await postBuild(stageRoot);
     for (const name of excludeFromExport) {
       if (!['_local-data', '_preview-data'].includes(name)) throw new Error(`unsupported export exclusion name: ${name}`);
       const target = path.join(stageRoot, name);
@@ -115,7 +136,7 @@ export async function buildIsolatedProfile({ token, env, excludeFromExport = [],
       await fs.rm(target, { recursive: true });
     }
     await verify(stageRoot);
-    return await publishVerifiedExport(stageRoot, verify);
+    return await publishVerifiedExport(stageRoot, verify, targetOutRoot);
   } finally {
     const remainingStage = await lstatOrNull(stageRoot);
     if (remainingStage) {

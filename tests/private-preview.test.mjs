@@ -243,18 +243,21 @@ test('private payload build guard rejects closed/tampered admission, production,
 
 test('private preview UI uses the dedicated root and disables unresolved context layers', async () => {
   const source = await fs.readFile(path.join(appRoot, 'src/app/page.tsx'), 'utf8');
+  const policy = await fs.readFile(path.join(appRoot, 'src/components/PolicyPortal.tsx'), 'utf8');
   const runtimeSource = await fs.readFile(path.join(appRoot, 'src/lib/runtime-profile.js'), 'utf8');
+  assert.match(source, /const profile = resolveRuntimeProfile\(process\.env\.NEXT_PUBLIC_QUIET_LA_DATA_PROFILE\);\s+const local = profile\.mode === 'local';/);
+  assert.match(source, /return pilotOnly \? <PilotPortal \/> : local \? <DenseWorkspace \/> : <PolicyPortal \/>/);
   assert.match(source, /NEXT_PUBLIC_QUIET_LA_DATA_PROFILE/);
   assert.match(runtimeSource, /private_preview_v1/);
   assert.match(runtimeSource, /\/_preview-data\/v3/);
   assert.match(runtimeSource, /\/_local-data\/v3/);
-  assert.match(source, /scientificAssetUrl/);
-  assert.match(source, /official-record redistribution terms unresolved/);
-  assert.match(source, /Metro provider terms unresolved/);
-  assert.match(source, /private review evidence excluded/);
-  assert.match(source, /const emptyPayload:[\s\S]*four: \{ records: \[\] \}[\s\S]*tarzana: \{ records: \[\] \}/);
-  assert.match(source, /async function loadPayloads[\s\S]*if \(!localProfile\) return emptyPayload/);
-  assert.match(source, /source\/output rights are not externally admitted/);
+  assert.match(policy, /scientificAssetUrl/);
+  assert.match(policy, /official-record redistribution terms unresolved/);
+  assert.match(policy, /Metro provider terms unresolved/);
+  assert.match(policy, /private review evidence excluded/);
+  assert.match(policy, /const emptyPayload:[\s\S]*four: \{ records: \[\] \}[\s\S]*tarzana: \{ records: \[\] \}/);
+  assert.match(policy, /async function loadPayloads[\s\S]*if \(!localProfile\) return emptyPayload/);
+  assert.match(policy, /source\/output rights are not externally admitted/);
 });
 
 test('independent source allowlist rejects benign extras and credential content', async () => {
@@ -268,9 +271,18 @@ test('independent source allowlist rejects benign extras and credential content'
     }
     await fs.mkdir(path.join(temp, 'public/_preview-data'), { recursive: true });
     await fs.copyFile(path.join(previewRoot, 'preview-payload-manifest.json'), path.join(temp, 'public/_preview-data/preview-payload-manifest.json'));
+    await fs.mkdir(path.join(temp, 'public/maplibre'), { recursive: true });
+    for (const name of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
+      await fs.copyFile(path.join(appRoot, 'node_modules/maplibre-gl/dist', name), path.join(temp, 'public/maplibre', name));
+    }
     await fs.mkdir(path.join(temp, 'release'), { recursive: true });
     const cleanPath = path.join(temp, 'release/CLEAN_REPO_MANIFEST.json');
     await fs.copyFile(path.join(appRoot, 'release/CLEAN_REPO_MANIFEST.json'), cleanPath);
+    for (const row of JSON.parse(await fs.readFile(cleanPath, 'utf8')).public_pilot_assets) {
+      const target = path.join(temp, row.path);
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.copyFile(path.join(appRoot, row.path), target);
+    }
     const payloadPath = path.join(temp, 'src/data/private-preview-payload-contract.json');
     await verifyPrivatePreviewSourceTree(temp, cleanPath, payloadPath);
 
@@ -298,7 +310,11 @@ test('public preview allowlist rejects unexpected data paths and credential-bear
   try {
     const baseline = path.join(temp, 'public');
     await fs.mkdir(path.join(baseline, '_preview-data'), { recursive: true });
+    await fs.mkdir(path.join(baseline, 'maplibre'), { recursive: true });
     await fs.copyFile(path.join(appRoot, 'public/robots.txt'), path.join(baseline, 'robots.txt'));
+    for (const name of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
+      await fs.copyFile(path.join(appRoot, 'node_modules/maplibre-gl/dist', name), path.join(baseline, 'maplibre', name));
+    }
     await fs.copyFile(path.join(previewRoot, 'preview-payload-manifest.json'), path.join(baseline, '_preview-data/preview-payload-manifest.json'));
     await verifyPreviewPublicTree(baseline);
     for (const relative of ['foo.json', 'rail.json', 'source341-mask.json']) {
@@ -330,10 +346,14 @@ test('post-build export verifier rejects injected files and credential content',
     const buildId = 'qlp-0123456789abcdef01234567';
     await fs.mkdir(path.join(copy, `_next/static/${buildId}`), { recursive: true });
     await fs.mkdir(path.join(copy, '_preview-data'), { recursive: true });
+    await fs.mkdir(path.join(copy, 'maplibre'), { recursive: true });
     await fs.writeFile(path.join(copy, 'index.html'), '<meta name="robots" content="noindex,nofollow,noarchive"><p>Protected preview workspace</p><p>Protected preview shell only. No scientific or context payload is admitted.</p>');
     await fs.writeFile(path.join(copy, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
     await fs.writeFile(path.join(copy, `_next/static/${buildId}/_buildManifest.js`), 'self.__BUILD_MANIFEST={}');
     await fs.writeFile(path.join(copy, `_next/static/${buildId}/_ssgManifest.js`), 'self.__SSG_MANIFEST=new Set');
+    for (const name of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
+      await fs.copyFile(path.join(appRoot, 'node_modules/maplibre-gl/dist', name), path.join(copy, 'maplibre', name));
+    }
     await fs.copyFile(path.join(previewRoot, 'preview-payload-manifest.json'), path.join(copy, '_preview-data/preview-payload-manifest.json'));
     await verifyPrivatePreviewExport(copy);
     for (const relative of ['foo.json', 'source341-mask.json']) {

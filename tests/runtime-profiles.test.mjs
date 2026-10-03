@@ -35,12 +35,15 @@ test('local and private-preview roots cannot cross or escape their profile', () 
 
 test('production UI source has no embedded local recovery command and Vercel routing is profile-explicit', async () => {
   const page = await fs.readFile(path.join(appRoot, 'src/app/page.tsx'), 'utf8');
+  const policy = await fs.readFile(path.join(appRoot, 'src/components/PolicyPortal.tsx'), 'utf8');
   assert.doesNotMatch(page, /npm run stage:local|Map awaiting local v3 data/);
-  assert.match(page, /Scientific private preview is not published on this URL/);
-  assert.match(page, /initialLayerToggles\(runtimeProfile/);
-  assert.match(page, /loadState === 'error' && localProfile/);
-  assert.match(page, /runtimeProfile\.developerRecoveryAllowed && localRecoveryCommand/);
-  assert.match(page, /NEXT_PUBLIC_QUIET_LA_LOCAL_RECOVERY_COMMAND/);
+  assert.match(page, /const profile = resolveRuntimeProfile\(process\.env\.NEXT_PUBLIC_QUIET_LA_DATA_PROFILE\);\s+const local = profile\.mode === 'local';/);
+  assert.match(page, /HomePage\(\) \{ return pilotOnly \? <PilotPortal \/> : local \? <DenseWorkspace \/> : <PolicyPortal \/>; \}/);
+  assert.match(policy, /Scientific private preview is not published on this URL/);
+  assert.match(policy, /initialLayerToggles\(runtimeProfile/);
+  assert.match(policy, /loadState === 'error' && localProfile/);
+  assert.match(policy, /runtimeProfile\.developerRecoveryAllowed && localRecoveryCommand/);
+  assert.match(policy, /NEXT_PUBLIC_QUIET_LA_LOCAL_RECOVERY_COMMAND/);
   const localRunner = await fs.readFile(path.join(appRoot, 'scripts/run-local-next.mjs'), 'utf8');
   assert.match(localRunner, /NEXT_PUBLIC_QUIET_LA_DATA_PROFILE: 'local_v3'/);
   assert.match(localRunner, /NEXT_PUBLIC_QUIET_LA_LOCAL_RECOVERY_COMMAND: 'npm run stage:local'/);
@@ -50,7 +53,7 @@ test('production UI source has no embedded local recovery command and Vercel rou
   const vercel = JSON.parse(await fs.readFile(path.join(appRoot, 'vercel.json'), 'utf8'));
   assert.equal(vercel.buildCommand, 'npm run build:vercel-profile');
   const router = await fs.readFile(path.join(appRoot, 'scripts/build-vercel-profile.mjs'), 'utf8');
-  assert.match(router, /environment === 'production'.*build:external/s);
+  assert.match(router, /environment === 'production'.*build:hosted-pilot/s);
   assert.match(router, /environment === 'preview'.*branch === 'private-preview'.*build:private-preview/s);
   const packageJson = JSON.parse(await fs.readFile(path.join(appRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.scripts['verify:external'], 'node scripts/verify-external-payload-free-export.mjs');
@@ -59,10 +62,10 @@ test('production UI source has no embedded local recovery command and Vercel rou
 });
 
 test('external profile policy copy is clean and does not claim active scientific state', async () => {
-  const page = await fs.readFile(path.join(appRoot, 'src/app/page.tsx'), 'utf8');
-  assert.match(page, /Payload-free external shell/);
-  assert.match(page, /No scientific or context layer is active/);
-  assert.match(page, /payloadUnavailable && unavailableLayers/);
+  const policy = await fs.readFile(path.join(appRoot, 'src/components/PolicyPortal.tsx'), 'utf8');
+  assert.match(policy, /Payload-free external shell/);
+  assert.match(policy, /No scientific or context layer is active/);
+  assert.match(policy, /payloadUnavailable && unavailableLayers/);
   const map = await fs.readFile(path.join(appRoot, 'src/components/MapCanvas.tsx'), 'utf8');
   assert.match(map, /runtimeMode === 'external_payload_free'/);
   assert.doesNotMatch(map, /Private preview shell · scientific payloads pending rights|Map awaiting accepted v3 data/);

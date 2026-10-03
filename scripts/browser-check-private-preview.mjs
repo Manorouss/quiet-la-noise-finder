@@ -6,7 +6,7 @@ import { chromium } from '@playwright/test';
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const root = path.join(appRoot, 'out');
 const port = 3198;
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.gz': 'application/gzip', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png' };
+const mime = { '.mjs': 'text/javascript; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.gz': 'application/gzip', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
 const server = createServer(async (request, response) => {
   try {
@@ -38,8 +38,9 @@ try {
     const pathname = new URL(request.url()).pathname;
     if (pathname.includes('/_preview-data/') || pathname.includes('/_local-data/')) dataRequests.push(pathname);
   });
-  await page.goto(`http://127.0.0.1:${port}`, { waitUntil: 'networkidle' });
+  await page.goto(`http://127.0.0.1:${port}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.maplibregl-canvas');
+  await page.waitForFunction(() => window.__quietMap?.isSourceLoaded('quiet-receivers'));
   await page.waitForFunction(() => document.body.textContent?.includes('Active private preview layers'));
   if ((await page.locator('body').innerText()).trim().length < 100) throw new Error('private preview rendered an empty shell');
   if (await page.locator('[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay').count()) throw new Error('framework error overlay is visible');

@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+import { stageDenseLocalData } from './stage-dense-local-data.mjs';
+import { stageMapRuntime } from './stage-map-runtime.mjs';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const nextBin = path.join(appRoot, 'node_modules/next/dist/bin/next');
@@ -10,6 +12,9 @@ if (command === 'build') {
   console.error('run-local-next: direct local build refused; use npm run build:local for isolated verified export publication');
   process.exit(1);
 }
+
+await stageMapRuntime(appRoot);
+await stageDenseLocalData(appRoot);
 
 const child = spawn(process.execPath, [nextBin, command, ...args], {
   cwd: appRoot,

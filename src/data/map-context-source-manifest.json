@@ -1,0 +1,11 @@
+{
+  "schema": "quiet_la_web_context_source_manifest_v1",
+  "purpose": "Location context only; these layers are not acoustic inputs and never change the numeric surface.",
+  "audit": "work/map_context_sources_audit.json",
+  "rows": [
+    { "source": "work/la_county_fire_stations.geojson", "target": "la_county_fire_stations.geojson", "sha256": "66d63b91da0df1400f5a94d0d0de35110bc67393569a6fc10f1fcf6b078691dc", "features": 185, "provenance": "LA County Fire Department station locations (DRP ESGV Safety Element)" },
+    { "source": "work/la_city_fire_stations.geojson", "target": "la_city_fire_stations.geojson", "sha256": "4fdbae2ecf9358eb257d5e6b04737d12f33edaec6bfd915336c57d6ada08af08", "features": 106, "provenance": "City of Los Angeles Open Data FireStations (rnb4-daiw)" },
+    { "source": "work/la_county_heliports.geojson", "target": "la_county_heliports.geojson", "sha256": "deb7272780bc0fcf103262a6080e70a443fd59615ea891bfb8096a8bad34c787", "features": 199, "provenance": "HSIP Freedom Airports_Heliports" },
+    { "source": "work/la_county_airport_noise_contours.geojson", "target": "la_county_airport_noise_contours.geojson", "sha256": "a15d4650f695300a550ae9b7f84d335784a204e1f0936de3379715bac45591d8", "features": 35, "provenance": "LA County airport noise contour inventory" }
+  ]
+}

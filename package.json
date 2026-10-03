@@ -6,16 +6,20 @@
   "scripts": {
     "dev": "node scripts/run-local-next.mjs dev",
     "build": "node scripts/refuse-unprofiled-build.mjs",
-    "build:local": "node scripts/stage-local-data.mjs && node scripts/build-local-profile.mjs",
+    "build:local": "node scripts/stage-local-data.mjs && node scripts/stage-pilot-local-data.mjs && node scripts/stage-dense-local-data.mjs && node scripts/stage-context-local-data.mjs && node scripts/build-local-profile.mjs",
+    "build:pilot": "node scripts/build-pilot-profile.mjs",
+    "build:hosted-pilot": "node scripts/build-pilot-profile.mjs --hosted",
+    "package:vercel-pilot": "node scripts/package-vercel-pilot.mjs",
     "build:external": "node scripts/build-external-payload-free.mjs",
     "build:vercel-profile": "node scripts/build-vercel-profile.mjs",
     "build:private-preview": "node scripts/assert-private-preview-build-context.mjs && node scripts/stage-private-preview.mjs && node scripts/verify-private-preview-bundle.mjs && node scripts/build-clean-manifest.mjs && node scripts/build-private-preview.mjs && node scripts/verify-private-preview-export.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "stage:local": "node scripts/stage-local-data.mjs",
+    "stage:local": "node scripts/stage-map-runtime.mjs && node scripts/stage-local-data.mjs && node scripts/stage-pilot-local-data.mjs && node scripts/stage-dense-local-data.mjs && node scripts/stage-context-local-data.mjs",
     "stage:private-preview": "node scripts/stage-private-preview.mjs",
     "verify:external": "node scripts/verify-external-payload-free-export.mjs",
+    "verify:pilot": "node scripts/verify-pilot-profile-export.mjs ../../work/delivery_2026_10_02/portal/pilot-export",
     "verify:external-source": "node scripts/verify-external-tree.mjs",
     "verify:private-preview": "node scripts/verify-private-preview-bundle.mjs && node scripts/verify-private-preview-export.mjs",
     "verify:replacement-adapter": "node scripts/verify-replacement-layer-adapter.mjs",
@@ -24,13 +28,15 @@
     "manifest:clean": "node scripts/build-clean-manifest.mjs",
     "test:contracts": "node scripts/build-clean-manifest.mjs && node --test tests/*.test.mjs",
     "test:browser": "node scripts/run-browser-engines.mjs",
+    "pretest:contracts": "node scripts/stage-map-runtime.mjs && node scripts/stage-pilot-local-data.mjs && node scripts/stage-dense-local-data.mjs && node scripts/stage-context-local-data.mjs",
+    "pretest:browser": "node scripts/stage-map-runtime.mjs && node scripts/stage-pilot-local-data.mjs && node scripts/stage-dense-local-data.mjs && node scripts/stage-context-local-data.mjs",
     "test:browser:external": "node scripts/browser-check-external.mjs",
-    "test:browser:private-preview": "node scripts/browser-check-private-preview.mjs"
-    ,"test:profile-sequences": "node scripts/test-profile-build-sequences.mjs"
+    "test:browser:private-preview": "node scripts/browser-check-private-preview.mjs",
+    "test:profile-sequences": "node scripts/test-profile-build-sequences.mjs"
   },
   "dependencies": {
-    "maplibre-gl": "^4.7.1",
-    "next": "15.5.9",
+    "maplibre-gl": "6.9.0",
+    "next": "15.5.24",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
@@ -42,7 +48,13 @@
     "@typescript-eslint/eslint-plugin": "^8.19.1",
     "@typescript-eslint/parser": "^8.19.1",
     "eslint": "^9.32.0",
-    "eslint-config-next": "^15.5.9",
+    "eslint-config-next": "15.5.24",
     "typescript": "^5.7.2"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.28",
+      "sharp": "0.35.4"
+    }
   }
 }

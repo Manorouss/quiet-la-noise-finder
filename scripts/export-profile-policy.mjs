@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { hasCredentialLikeContent } from './preview-security-policy.mjs';
 
 export const exactFrameworkPaths = new Set(['404.html', '404/index.html', 'index.html', 'index.txt', 'robots.txt']);
+export const exactMapRuntimePaths = new Set(['maplibre/maplibre-gl-worker.mjs', 'maplibre/maplibre-gl-shared.mjs']);
 export const frameworkPatterns = [
   /^_next\/static\/[A-Za-z0-9_-]+\/_buildManifest\.js$/,
   /^_next\/static\/[A-Za-z0-9_-]+\/_ssgManifest\.js$/,
@@ -48,7 +49,7 @@ export async function enumerateRegularTree(root, current = root) {
 
 export function assertFrameworkOrAllowedPath(relative, allowedDataPaths = new Set()) {
   if (relative.startsWith('/') || relative.includes('..') || relative.includes('\\')) throw new Error(`unsafe export path: ${relative}`);
-  if (exactFrameworkPaths.has(relative) || allowedDataPaths.has(relative) || frameworkPatterns.some((pattern) => pattern.test(relative))) return;
+  if (exactFrameworkPaths.has(relative) || exactMapRuntimePaths.has(relative) || allowedDataPaths.has(relative) || frameworkPatterns.some((pattern) => pattern.test(relative))) return;
   throw new Error(`unexpected profile export file: ${relative}`);
 }
 

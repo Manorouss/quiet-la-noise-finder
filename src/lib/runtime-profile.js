@@ -1,4 +1,5 @@
 /** Fail-closed runtime profiles for the Quiet LA static client. */
+import { layerDisplayAllowed } from './map-state.js';
 
 export const RUNTIME_PROFILES = Object.freeze({
   local_v3: Object.freeze({
@@ -9,6 +10,15 @@ export const RUNTIME_PROFILES = Object.freeze({
     developerRecoveryAllowed: true,
     badge: 'Private model workspace',
     status: 'Interactive modeled field · OpenStreetMap basemap',
+  }),
+  pilot_v1: Object.freeze({
+    id: 'pilot_v1',
+    mode: 'local',
+    dataRoot: '/_local-data/v3',
+    scientificPayloadsAvailable: true,
+    developerRecoveryAllowed: false,
+    badge: 'Tarzana pilot',
+    status: 'Tarzana combined-road pilot · OpenStreetMap basemap',
   }),
   private_preview_v1: Object.freeze({
     id: 'private_preview_v1',
@@ -48,5 +58,5 @@ export function scientificAssetUrl(profile, relativePath) {
 
 export function initialLayerToggles(profile, layerIds) {
   const enabled = profile?.mode === 'local' && profile.scientificPayloadsAvailable === true;
-  return Object.fromEntries(layerIds.map((id) => [id, enabled]));
+  return Object.fromEntries(layerIds.map((id) => [id, enabled && layerDisplayAllowed(id)]));
 }

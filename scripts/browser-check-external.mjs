@@ -39,8 +39,9 @@ try {
     if (pathname.includes('/_local-data/') || pathname.includes('/_preview-data/')) payloadRequests.push(pathname);
   });
   page.on('pageerror', (error) => pageErrors.push(error.message));
-  await page.goto(`http://127.0.0.1:${port}`, { waitUntil: 'networkidle' });
+  await page.goto(`http://127.0.0.1:${port}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.maplibregl-canvas');
+  await page.waitForFunction(() => window.__quietMap?.isSourceLoaded('quiet-receivers'));
   await page.getByText('Scientific private preview is not published on this URL', { exact: true }).first().waitFor({ state: 'visible' });
   const body = await page.locator('body').innerText();
   if (/stage:local|stage:private-preview|npm run|local filesystem|Map awaiting local v3 data/i.test(body)) throw new Error('developer recovery copy leaked into payload-free external UI');

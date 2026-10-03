@@ -6,8 +6,9 @@ const environment = process.env.VERCEL_ENV;
 const branch = process.env.VERCEL_GIT_COMMIT_REF;
 
 let script;
-if (environment === 'production') script = 'build:external';
+if (environment === 'production') script = 'build:hosted-pilot';
 else if (environment === 'preview' && branch === 'private-preview') script = 'build:private-preview';
+else if (environment === 'preview') script = 'build:hosted-pilot';
 else {
   console.error(`build-vercel-profile: unsupported Vercel target environment=${environment ?? 'unset'} branch=${branch ?? 'unset'}`);
   process.exit(1);

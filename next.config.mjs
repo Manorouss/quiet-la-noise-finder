@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const isolatedExportDir = process.env.QUIET_LA_EXPORT_DIR;
 
-if (isolatedExportDir && !/^\.quiet-la-export-(?:local|external|private)-\d+-[a-f0-9]{8}$/.test(isolatedExportDir)) {
+if (isolatedExportDir && !/^\.quiet-la-export-(?:local|pilot|external|private)-\d+-[a-f0-9]{8}$/.test(isolatedExportDir)) {
   throw new Error(`unsafe QUIET_LA_EXPORT_DIR: ${isolatedExportDir}`);
 }
 

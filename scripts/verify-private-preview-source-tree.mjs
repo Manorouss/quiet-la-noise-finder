@@ -4,10 +4,17 @@ import path from 'node:path';
 import { assertSafePreviewPath, hasCredentialLikeContent } from './preview-security-policy.mjs';
 import { verifyPrivatePreviewRoot } from './verify-private-preview-bundle.mjs';
 import { verifyStagedRoot } from './verify-staged-local-data.mjs';
+import { verifyDenseLocalData } from './stage-dense-local-data.mjs';
+import { verifyMapRuntime } from './stage-map-runtime.mjs';
 
 const defaultAppRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const cleanManifestPath = path.join(defaultAppRoot, 'release/CLEAN_REPO_MANIFEST.json');
 const payloadContractPath = path.join(defaultAppRoot, 'src/data/private-preview-payload-contract.json');
+const publicPilotAssetHashes = {
+  'src/data/pilot-release-v1/benchmark.geojson': '16df6aaf99abaf0a791e5de95a49a5eda5760851994fd4636465086cffd59c93',
+  'src/data/pilot-release-v1/buildings.geojson': 'b1f25db888ebb749751fc9b4beb2a2ab93bb6be28e23e273243e03d1ef937bd5',
+  'src/data/pilot-release-v1/build-manifest.json': 'd733b7e11af379b2a31a1cda7559481ef5d7a175464c5d3b92c5c273c2c15769',
+};
 
 function sha256(bytes) { return createHash('sha256').update(bytes).digest('hex'); }
 async function lstatOrNull(target) { return fs.lstat(target).catch(() => null); }
@@ -24,10 +31,13 @@ async function walk(root, current = root) {
 
 export async function verifyPreviewPublicTree(publicRoot, selectedPayloadContractPath = payloadContractPath) {
   const contract = JSON.parse(await fs.readFile(selectedPayloadContractPath, 'utf8'));
-  const allowed = ['robots.txt', '_preview-data/preview-payload-manifest.json', ...contract.rows.map((row) => `_preview-data/${row.target}`)].sort();
+  await verifyMapRuntime(path.join(publicRoot, 'maplibre'));
+  const allowed = ['robots.txt', 'maplibre/maplibre-gl-worker.mjs', 'maplibre/maplibre-gl-shared.mjs', '_preview-data/preview-payload-manifest.json', ...contract.rows.map((row) => `_preview-data/${row.target}`)].sort();
   const localRoot = path.join(publicRoot, '_local-data');
   if (await lstatOrNull(localRoot)) {
-    await verifyStagedRoot(localRoot, path.join(path.dirname(publicRoot), 'src/data/local-source-manifest.json'));
+    const legacyManifest = path.join(path.dirname(publicRoot), 'src/data/local-source-manifest.json');
+    if (await lstatOrNull(path.join(localRoot, 'staged-manifest.json'))) await verifyStagedRoot(localRoot, legacyManifest, { ignoreRootEntries: ['dense', 'context'] });
+    if (await lstatOrNull(path.join(localRoot, 'dense'))) await verifyDenseLocalData(path.join(localRoot, 'dense'));
   }
   const actual = (await walk(publicRoot)).filter((relative) => !relative.startsWith('_local-data/')).sort();
   if (JSON.stringify(actual) !== JSON.stringify(allowed)) throw new Error(`private-preview public file set differs from allowlist: ${actual.join(', ')}`);
@@ -48,13 +58,26 @@ export async function verifyPrivatePreviewSourceTree(appRoot = defaultAppRoot, s
   if (new Set(authoritativePaths).size !== authoritativePaths.length || JSON.stringify(authoritativePaths) !== JSON.stringify([...authoritativePaths].sort())) throw new Error('independent source allowlist paths are duplicate or unsorted');
 
   const clean = JSON.parse(await fs.readFile(selectedCleanManifestPath, 'utf8'));
-  if (clean.schema !== 'quiet_la_web_clean_repo_manifest_v1' || clean.status !== 'code_tests_schema_only' || !Array.isArray(clean.files)) throw new Error('clean source manifest schema/status drift');
+  if (clean.schema !== 'quiet_la_web_clean_repo_manifest_v1' || clean.status !== 'code_tests_schema_only' || !Array.isArray(clean.files) || !Array.isArray(clean.public_pilot_assets)) throw new Error('clean source manifest schema/status drift');
   const cleanPaths = clean.files.map((row) => row.path);
   if (new Set(cleanPaths).size !== cleanPaths.length || JSON.stringify(cleanPaths) !== JSON.stringify([...cleanPaths].sort())) throw new Error('clean source manifest paths are duplicate or unsorted');
   if (JSON.stringify(cleanPaths) !== JSON.stringify(authoritativePaths)) throw new Error('generated clean manifest membership differs from independent source allowlist');
+  const pilotAssets = [...clean.public_pilot_assets].sort((a, b) => a.path.localeCompare(b.path));
+  const expectedPilotAssets = Object.entries(publicPilotAssetHashes).map(([path, sha256]) => ({ path, sha256 })).sort((a, b) => a.path.localeCompare(b.path));
+  if (pilotAssets.length !== expectedPilotAssets.length || pilotAssets.some((row, index) => row.path !== expectedPilotAssets[index].path || row.sha256 !== expectedPilotAssets[index].sha256)) throw new Error('public pilot asset manifest differs from exact hash allowlist');
+  if (JSON.stringify(clean.public_pilot_assets) !== JSON.stringify(pilotAssets)) throw new Error('public pilot asset manifest rows are not sorted');
+  for (const row of pilotAssets) {
+    const bytes = await fs.readFile(path.join(appRoot, row.path));
+    if (bytes.length !== row.bytes || sha256(bytes) !== row.sha256 || hasCredentialLikeContent(bytes)) throw new Error(`public pilot asset hash/size/content drift: ${row.path}`);
+  }
 
   const actualSourcePaths = [];
   for (const root of ['src', 'scripts', 'tests']) actualSourcePaths.push(...(await walk(appRoot, path.join(appRoot, root))));
+  const pilotAssetPaths = new Set(Object.keys(publicPilotAssetHashes));
+  for (const relative of actualSourcePaths.filter((entry) => entry.startsWith('src/data/pilot-release-v1/'))) {
+    if (!pilotAssetPaths.has(relative)) throw new Error(`unallowlisted public pilot release asset: ${relative}`);
+  }
+  for (let index = actualSourcePaths.length - 1; index >= 0; index -= 1) if (pilotAssetPaths.has(actualSourcePaths[index])) actualSourcePaths.splice(index, 1);
   for (const relative of authoritativePaths.filter((entry) => !entry.startsWith('src/') && !entry.startsWith('scripts/') && !entry.startsWith('tests/'))) {
     const stat = await lstatOrNull(path.join(appRoot, relative));
     if (stat?.isFile() && !stat.isSymbolicLink()) actualSourcePaths.push(relative);

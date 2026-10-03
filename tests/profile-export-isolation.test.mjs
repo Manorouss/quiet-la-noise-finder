@@ -12,10 +12,14 @@ const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 async function makeFrameworkFixture(root, html) {
   const buildId = 'fixture-build-id';
   await fs.mkdir(path.join(root, `_next/static/${buildId}`), { recursive: true });
+  await fs.mkdir(path.join(root, 'maplibre'), { recursive: true });
   await fs.writeFile(path.join(root, 'index.html'), html);
   await fs.writeFile(path.join(root, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
   await fs.writeFile(path.join(root, `_next/static/${buildId}/_buildManifest.js`), 'self.__BUILD_MANIFEST={}');
   await fs.writeFile(path.join(root, `_next/static/${buildId}/_ssgManifest.js`), 'self.__SSG_MANIFEST=new Set');
+  for (const name of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
+    await fs.copyFile(path.join(appRoot, 'node_modules/maplibre-gl/dist', name), path.join(root, 'maplibre', name));
+  }
 }
 
 test('profile builders use a unique custom export directory and atomic out publication', async () => {
@@ -79,7 +83,7 @@ test('payload-free external export rejects both data roots, credentials, and sym
 test('local export accepts only the exact local stage and rejects preview contamination', async () => {
   const temp = await fs.mkdtemp(path.join(appRoot, '.tmp-local-export-'));
   try {
-    await makeFrameworkFixture(temp, '<meta name="robots" content="noindex,nofollow,noarchive"><p>Private model workspace</p><p>Active local layers</p>');
+    await makeFrameworkFixture(temp, '<meta name="robots" content="noindex,nofollow,noarchive"><div data-quiet-workspace="dense-tarzana-v21">Opening Quiet LA…</div>');
     await fs.cp(path.join(appRoot, 'public/_local-data'), path.join(temp, '_local-data'), { recursive: true, dereference: false });
     await verifyLocalProfileExport(temp);
     await fs.mkdir(path.join(temp, '_preview-data'));

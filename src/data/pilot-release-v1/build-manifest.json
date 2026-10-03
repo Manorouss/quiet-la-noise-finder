@@ -1,0 +1,14 @@
+{
+  "schema": "quiet_la_tarzana_road_pilot_visual_review_v2",
+  "receiver_count": 6421,
+  "numeric_rows": 19257,
+  "masked_ids": [
+    85715,
+    88627
+  ],
+  "building_count": 80,
+  "facade_receiver_count": 1573,
+  "source_sha256": "2aa9c5b826bf772bd3d9c5d9545dd72fff9f54fc9410aa090165a692a5c5756e",
+  "source_buildings_sha256": "c5b28e287932c26b4302d56daec1f2bddfcbfc515a0789570408a5622e152d1a",
+  "source_receivers_sha256": "172fbbd2c88967e846f2d9aaedf8ac81205671acbb71f642096c11f48b410054"
+}

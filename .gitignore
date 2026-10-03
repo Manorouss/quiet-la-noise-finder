@@ -5,6 +5,7 @@ public/_local-data/
 public/_preview-data/
 public/_preview-data.staging-*/
 public/_preview-data.superseded-*/
+public/maplibre/
 playwright-report/
 test-results/
 release/

@@ -3,12 +3,14 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { assertSafePreviewPath, hasCredentialLikeContent } from './preview-security-policy.mjs';
 import { verifyPrivatePreviewRoot } from './verify-private-preview-bundle.mjs';
+import { verifyMapRuntime } from './stage-map-runtime.mjs';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const defaultExportRoot = path.join(appRoot, 'out');
 const payloadContractPath = path.join(appRoot, 'src/data/private-preview-payload-contract.json');
 const manifestPath = path.join(appRoot, 'release/PRIVATE_PREVIEW_EXPORT_MANIFEST.json');
 const exactFrameworkPaths = new Set(['404.html', '404/index.html', 'index.html', 'index.txt', 'robots.txt']);
+const exactMapRuntimePaths = new Set(['maplibre/maplibre-gl-worker.mjs', 'maplibre/maplibre-gl-shared.mjs']);
 const frameworkPatterns = [
   /^_next\/static\/qlp-[a-f0-9]{24}\/_buildManifest\.js$/,
   /^_next\/static\/qlp-[a-f0-9]{24}\/_ssgManifest\.js$/,
@@ -18,7 +20,7 @@ const frameworkPatterns = [
 
 export function assertAllowedPrivatePreviewExportPath(relative, allowedPreviewPaths = new Set()) {
   assertSafePreviewPath(relative);
-  const allowed = exactFrameworkPaths.has(relative) || allowedPreviewPaths.has(relative) || frameworkPatterns.some((pattern) => pattern.test(relative));
+  const allowed = exactFrameworkPaths.has(relative) || exactMapRuntimePaths.has(relative) || allowedPreviewPaths.has(relative) || frameworkPatterns.some((pattern) => pattern.test(relative));
   if (!allowed) throw new Error(`unexpected private-preview exported file: ${relative}`);
 }
 
@@ -41,6 +43,7 @@ async function walk(root, current = root) {
 export async function verifyPrivatePreviewExport(exportRoot = defaultExportRoot, { writeManifest = false } = {}) {
   const stat = await lstatOrNull(exportRoot);
   if (!stat?.isDirectory() || stat.isSymbolicLink()) throw new Error('Next export root is missing or not a regular directory');
+  await verifyMapRuntime(path.join(exportRoot, 'maplibre'));
   const contract = JSON.parse(await fs.readFile(payloadContractPath, 'utf8'));
   await verifyPrivatePreviewRoot(path.join(exportRoot, '_preview-data'));
   if (await lstatOrNull(path.join(exportRoot, '_local-data'))) throw new Error('local-only data leaked into private preview export');

@@ -30,19 +30,25 @@ async function assertNoSymlinkChain(p) {
     if (stat?.isSymbolicLink()) throw new Error(`symlink path component: ${cursor}`);
   }
 }
-async function walk(root, current = root) {
+async function walk(root, current = root, ignoreRootEntries = []) {
   const files = [];
   for (const entry of await fs.readdir(current, { withFileTypes: true })) {
+    if (current === root && ignoreRootEntries.includes(entry.name)) continue;
     const p = path.join(current, entry.name);
+    const relative = path.relative(root, p).split(path.sep).join('/');
+    if (ignoreRootEntries.includes('pilot') && (relative === 'v3/pilot' || relative.startsWith('v3/pilot/'))) continue;
     if (entry.isSymbolicLink()) throw new Error(`symlink staged entry: ${p}`);
-    if (entry.isDirectory()) files.push(...await walk(root, p));
+    if (entry.isDirectory()) files.push(...await walk(root, p, ignoreRootEntries));
     else if (entry.isFile()) files.push(path.relative(root, p).split(path.sep).join('/'));
     else throw new Error(`non-regular staged entry: ${p}`);
   }
   return files;
 }
 
-export async function verifyStagedRoot(root, sourceManifestPath) {
+export async function verifyStagedRoot(root, sourceManifestPath, { ignoreRootEntries = [] } = {}) {
+  // The pilot is a separately hash-bound local-only package; it is verified by
+  // stage-pilot-local-data.mjs and intentionally outside the canonical v3 rows.
+  const ignoredRootEntries = [...new Set([...ignoreRootEntries, 'pilot'])];
   await assertNoSymlinkChain(root);
   const rootStat = await lstatOrNull(root);
   if (!rootStat?.isDirectory() || rootStat.isSymbolicLink()) throw new Error('staged root is not a regular directory');
@@ -51,7 +57,7 @@ export async function verifyStagedRoot(root, sourceManifestPath) {
   const staged = JSON.parse(await fs.readFile(stagedManifestPath, 'utf8'));
   if (staged.schema !== 'quiet_la_web_local_staged_manifest_v1') throw new Error('unexpected staged manifest schema');
   const expected = new Map(sourceManifest.rows.map((row) => [row.target, row]));
-  const actualFiles = await walk(root);
+  const actualFiles = await walk(root, root, ignoredRootEntries);
   const expectedFiles = [...expected.keys(), 'staged-manifest.json'].sort();
   if (JSON.stringify(actualFiles.sort()) !== JSON.stringify(expectedFiles)) throw new Error('staged file set differs from source manifest');
   if (!Array.isArray(staged.rows) || staged.rows.length !== expected.size) throw new Error('staged row count differs from source manifest');
@@ -71,5 +77,5 @@ export async function verifyStagedRoot(root, sourceManifestPath) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
   const root = process.argv[2] ? path.resolve(process.argv[2]) : path.join(appRoot, 'public/_local-data');
-  verifyStagedRoot(root, path.join(appRoot, 'src/data/local-source-manifest.json')).then((result) => console.log(JSON.stringify({ status: 'STAGED_LOCAL_VALID', ...result }, null, 2))).catch((error) => { console.error(`verify-staged-local-data: ${error.message}`); process.exitCode = 1; });
+  verifyStagedRoot(root, path.join(appRoot, 'src/data/local-source-manifest.json'), { ignoreRootEntries: ['dense', 'context'] }).then((result) => console.log(JSON.stringify({ status: 'STAGED_LOCAL_VALID', ...result }, null, 2))).catch((error) => { console.error(`verify-staged-local-data: ${error.message}`); process.exitCode = 1; });
 }

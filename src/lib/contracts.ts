@@ -3,6 +3,7 @@ import rawReplacementAdapterContract from '@/data/replacement-layer-adapter-cont
 import rawReplacementManifest from '@/data/replacement-layer-admission-manifest.json';
 import { claimTextIsSafe as sharedClaimTextIsSafe } from './claim-policy.js';
 import { validateReplacementAdapter } from './replacement-layer-adapter.js';
+import { layerDisplayAllowed } from './map-state.js';
 
 export type Period = 'D' | 'E' | 'N';
 export type NoiseView = 'all' | 'modeled' | 'context';
@@ -77,6 +78,7 @@ export function classLabel(value: EvidenceClass): string {
 }
 
 export function layerVisibleInView(layer: LayerContract, view: NoiseView): boolean {
+  if (!layerDisplayAllowed(layer.id)) return false;
   if (view === 'modeled') return layer.family === 'freeway' || layer.family === 'tarzana_scenario';
   if (view === 'context') return layer.family === 'aviation_context' || layer.family === 'rail_context' || layer.family === 'source_341';
   return true;

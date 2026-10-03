@@ -7,11 +7,13 @@ import {
   enumerateRegularTree,
   sha256,
 } from './export-profile-policy.mjs';
+import { verifyMapRuntime } from './stage-map-runtime.mjs';
 
 const appRoot = path.resolve(new URL('..', import.meta.url).pathname);
 const defaultRoot = path.join(appRoot, 'out');
 
 export async function verifyExternalPayloadFreeExport(root = defaultRoot) {
+  await verifyMapRuntime(path.join(root, 'maplibre'));
   const rows = await enumerateRegularTree(root);
   for (const row of rows) {
     if (row.path.startsWith('_local-data/') || row.path.startsWith('_preview-data/')) throw new Error(`scientific payload leaked into external export: ${row.path}`);

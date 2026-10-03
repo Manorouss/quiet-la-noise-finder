@@ -20,11 +20,14 @@ async function copyStage() {
   const temp = await fs.mkdtemp(path.join(appRoot, '.tmp-stage-'));
   const copy = path.join(temp, 'stage');
   await fs.cp(stageRoot, copy, { recursive: true, dereference: false });
+  // These contract fixtures exercise the legacy v3 tree in isolation. Dense
+  // recovery data is validated by its dedicated manifest/helper.
+  await fs.rm(path.join(copy, 'dense'), { recursive: true, force: true });
   return { temp, copy };
 }
 async function expectStageFailure(mutator, message) {
   const { temp, copy } = await copyStage();
-  try { await mutator(copy); await assert.rejects(() => verifyStagedRoot(copy, sourceManifestPath), message); }
+  try { await mutator(copy); await assert.rejects(() => verifyStagedRoot(copy, sourceManifestPath, { ignoreRootEntries: ['context'] }), message); }
   finally { await fs.rm(temp, { recursive: true, force: true }); }
 }
 async function runClaimScan(text) {
@@ -53,7 +56,7 @@ function collectContractStrings(value, key = '') {
 }
 
 test('local stage is exact, regular, and hash-bound', async () => {
-  const result = await verifyStagedRoot(stageRoot, sourceManifestPath);
+  const result = await verifyStagedRoot(stageRoot, sourceManifestPath, { ignoreRootEntries: ['dense', 'context'] });
   assert.deepEqual(result, { files: 10, bytes: 2007540 });
 });
 
@@ -147,7 +150,7 @@ test('claim policy rejects sentence-local adversarial positives and allows expli
 });
 
 test('UI binds status labels to the typed contract and keeps combination disabled', async () => {
-  const source = await fs.readFile(path.join(appRoot, 'src/app/page.tsx'), 'utf8');
+  const source = await fs.readFile(path.join(appRoot, 'src/components/PolicyPortal.tsx'), 'utf8');
   assert.match(source, /classLabel\(layer\.evidenceClass\)/);
   assert.match(source, /Compatible acoustic sum — not admitted/);
   assert.match(source, /visual-only|Visual co-display only/);
