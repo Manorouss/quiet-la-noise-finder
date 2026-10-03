@@ -1,0 +1,23 @@
+{
+  "schema": "quiet_la_source_bundle_hf_review_summary_v1",
+  "overlay_review_sha256": "0c6cb4d7dd7318349d48dd978742045d50a40cd1d90676c3f44f77bcde783ee1",
+  "one_receiver_review_sha256": "9bbbc84fe768e13a8829b9a8acadaf1470c01533e659083fb1dce98b1a097a9c",
+  "overlay_status": "PASS_COMPILED_HF_CANDIDATE_ONLY_NO_WPS",
+  "one_receiver_status": "PASS_SOURCE210_HF_ONE_RECEIVER_NUMERICAL_FIX",
+  "scope": "The exact-zero-distance H/F ground-term numerical change compiled and passed synthetic Java regressions; a single receiver diagnostic produced finite values with unchanged geometry. This is not full receiver/tile acceptance, complete source closure, or field validation.",
+  "source_tag": "NoiseModelling v6.0.0",
+  "upstream_source_sha256": "0be8c6f744ec50ed4c68cfc8c639a205d04bc88dd9aa23c840e1eb7bfdea2c8f",
+  "patch_sha256": "0adeb1ca9cb29b2fd77cd481007491c5e0c856b833ddcc8ffbaec2060c301d07",
+  "overlay_source_sha256": "8c180ea1b6347c4b78d180b37848b22d0b72ac30990f0db7452339965af5df2c",
+  "regression_summary": {
+    "F_rows": 1073,
+    "F_exact_zero_supported": 216,
+    "F_positive_unchanged": 768,
+    "F_both_zero_unchanged": 72,
+    "F_unsupported_unchanged": 17,
+    "H_rows_unchanged": 259,
+    "saved_ray_calls": 6292,
+    "saved_ray_changed_calls": 6
+  },
+  "installed_engine_jar_sha256": "7d05d3e5fa23ace1fdab96827c133d9b7c87233831cd24a4a593d06059a24560"
+}

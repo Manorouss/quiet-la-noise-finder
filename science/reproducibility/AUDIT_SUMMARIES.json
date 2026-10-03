@@ -1,0 +1,48 @@
+{
+  "schema": "quiet_la_science_source_audit_summary_v1",
+  "records": [
+    {
+      "audit": "ROOT_HF_OVERLAY_JAVA_REVIEW_2026-10-03.json",
+      "source_artifact_sha256": "0c6cb4d7dd7318349d48dd978742045d50a40cd1d90676c3f44f77bcde783ee1",
+      "status": "PASS_COMPILED_HF_CANDIDATE_ONLY_NO_WPS",
+      "scope": "Exact-zero H/F numerical patch compiled and passed synthetic Java regressions; a one-receiver diagnostic produced finite output with unchanged geometry. Not full receiver/tile acceptance, complete source closure, or field validation.",
+      "reviewed_patch_sha256": "0adeb1ca9cb29b2fd77cd481007491c5e0c856b833ddcc8ffbaec2060c301d07",
+      "upstream_binary_sha256": "7d05d3e5fa23ace1fdab96827c133d9b7c87233831cd24a4a593d06059a24560",
+      "one_receiver_review_sha256": "9bbbc84fe768e13a8829b9a8acadaf1470c01533e659083fb1dce98b1a097a9c",
+      "regressions": {
+        "F": {
+          "cases": 1073,
+          "supported_exact_zero_positive_height": 216,
+          "positive_distance_unchanged": 768,
+          "both_zero_unchanged": 72,
+          "unsupported_unchanged": 17
+        },
+        "H": {
+          "cases": 259,
+          "unchanged_from_previously_reviewed_h_candidate": true
+        },
+        "saved_ray_calls": 6292,
+        "changed_calls": 6
+      }
+    },
+    {
+      "audit": "ROOT_ADAPTIVE_ARTIFACT_AUDIT_2026-10-03.json",
+      "source_artifact_sha256": "a84fc21c108881ea2f7f249629e78dbe3affd599e89fe1a9c5aed8b245ac1189",
+      "status": "PASS_CORRECTED_ADAPTIVE_ARTIFACT_REPRODUCED",
+      "scope": "Analytic conditional moving-source artifact; no local source-power calibration or LA event-rate validation.",
+      "reviewed_kernel_sha256": "8657eec4f006d1b33cd677019e438d09b4293f4925919aa7178f1bba80323a64"
+    },
+    {
+      "audit": "ROOT_HPMS_TIGER_CANDIDATE_TABLE_AUDIT_2026-10-03.json",
+      "source_artifact_sha256": "b8995e3f8c73d5acd451c18b652bc5c458e587d07a3a3e31a04d4dd86010aa78",
+      "status": "PASS_CANDIDATE_INVENTORY_ONLY",
+      "scope": "82,975 complete unique HPMS IDs and source attributes checked against county road topology discovery. Geometry associations are candidates only; no traffic assignment or emissions accepted."
+    },
+    {
+      "audit": "aircraft generic event adapter source review",
+      "source_artifact_sha256": "315fa88ab58c58e5a55980347996277c35ca28899ddae231a69f80d21a9336fc",
+      "status": "EXPERIMENTAL_SOURCE_ONLY_NO_ROOT_MODEL_AUDIT",
+      "scope": "Frozen source and tests are included; no scenario output, activity rows, aircraft observations, or raw ANP data are included."
+    }
+  ]
+}

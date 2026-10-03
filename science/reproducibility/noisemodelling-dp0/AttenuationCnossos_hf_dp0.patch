@@ -1,0 +1,46 @@
+--- a/AttenuationCnossos.java
++++ b/AttenuationCnossos.java
+@@ -531,6 +531,20 @@
+         double aGroundHMin = -3*(1-gm);
+         double zs = path.zsH;
+         double zr = path.zrH;
++        double gw = forceGPath ? path.gPath : proPathParameters.isFavourable() ? path.gPath : path.gPathPrime;
++        if (dp == 0.0 && Double.isFinite(zs) && zs >= 0.0 &&
++                Double.isFinite(zr) && zr >= 0.0 &&
++                Double.isFinite(gm) && gm >= 0.0 && gm <= 1.0 &&
++                Double.isFinite(gw) && gw >= 0.0 && gw <= 1.0 &&
++                Double.isFinite(k) && k > 0.0 &&
++                Double.isFinite(w) && w >= 0.0) {
++            // At dp == 0 the unmodified IEEE expression can form Infinity * 0
++            // and propagate NaN. For finite nonnegative heights, physical
++            // ground factors, and valid finite w and k, its dp -> 0+ limit
++            // after the CNOSSOS lower bound is aGroundHMin. Preserve historical
++            // behavior for unsupported or invalid inputs.
++            return aGroundHMin;
++        }
+         double aGroundHComputed = -10 * log10(4 * (k*k) / (dp*dp) *
+                 (zs*zs - sqrt(2 * cf / k) * zs + cf / k) *
+                 (zr*zr - sqrt(2 * cf / k) * zr + cf / k));
+@@ -569,6 +583,22 @@
+             double dp = path.dp;
+             double zs = path.zsF;
+             double zr = path.zrF;
++            // Match computeCfKValues exactly: its F-branch gw selection does
++            // not use forceGPath. gm above is already selected by forceGPath.
++            double gw = proPathParameters.isFavourable() ? path.gPath : path.gPathPrime;
++            if (dp == 0.0 && Double.isFinite(zs) && zs >= 0.0 &&
++                    Double.isFinite(zr) && zr >= 0.0 && (zs > 0.0 || zr > 0.0) &&
++                    Double.isFinite(path.testFormH) && path.testFormH >= 0.0 &&
++                    Double.isFinite(gm) && gm >= 0.0 && gm <= 1.0 &&
++                    Double.isFinite(gw) && gw >= 0.0 && gw <= 1.0 &&
++                    Double.isFinite(k) && k > 0.0 &&
++                    Double.isFinite(w) && w >= 0.0) {
++                // For at least one positive transformed height, Cf/dp -> 1,
++                // the logarithm argument tends to +Infinity, and the result
++                // after the CNOSSOS clamp tends to aGroundFMin. Both-zero
++                // heights are excluded because their raw limit is 4.
++                return aGroundFMin;
++            }
+             double aGroundFComputed = -10 * log10(4 * (k*k) / (dp*dp) *
+                     (zs*zs - sqrt(2 * cf / k) * zs + cf / k) *
+                     (zr*zr - sqrt(2 * cf / k) * zr + cf / k));

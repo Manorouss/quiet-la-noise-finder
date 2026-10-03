@@ -1,0 +1,76 @@
+{
+  "schema": "quiet_la_science_input_provenance_v1",
+  "policy": "Hashes and official source locations identify inputs without copying source tables, workbooks, raw observations, or generated outputs into this source bundle.",
+  "inputs": [
+    {
+      "model": "NoiseModelling bounded patch",
+      "name": "AttenuationCnossos.java upstream baseline",
+      "publisher": "Universit\u00e9 Gustave Eiffel",
+      "version": "v6.0.0",
+      "url": "https://raw.githubusercontent.com/Universite-Gustave-Eiffel/NoiseModelling/v6.0.0/noisemodelling-propagation/src/main/java/org/noise_planet/noisemodelling/propagation/cnossos/AttenuationCnossos.java",
+      "sha256": "0be8c6f744ec50ed4c68cfc8c639a205d04bc88dd9aa23c840e1eb7bfdea2c8f",
+      "license": "GPL-3.0-or-later",
+      "bundled": false
+    },
+    {
+      "model": "Aircraft Doc 29 source package",
+      "name": "EASA ANP 2.3 archive",
+      "publisher": "European Union Aviation Safety Agency",
+      "url": "https://www.easa.europa.eu/en/downloads/138164/en",
+      "sha256": "6147f05ea50f57df816ad2bbf8a1e870bcc74f253fb32bfeea5f468ea85d852f",
+      "license_note": "Terms govern ANP-derived data; archive and tables are not redistributed here.",
+      "bundled": false
+    },
+    {
+      "model": "Aircraft Doc 29 reference implementation",
+      "name": "ECAC Doc 29 fifth-edition volumes 2 and 3 plus Part 1 and Part 2 workbooks",
+      "publisher": "European Civil Aviation Conference",
+      "source_urls": [
+        "https://ecac-ceac.org/images/documents/ECAC-CEAC-DOC_29_5th_Edition-REPORT_ON_STANDARD_METHOD_OF_COMPUTING_NOISE_CONTOURS_AROUND_CIVIL_AIRPORTS-Volume_2-TECHNICAL_GUIDE.pdf",
+        "https://ecac-ceac.org/images/documents/ECAC-CEAC-DOC_29_5th_Edition-REPORT_ON_STANDARD_METHOD_OF_COMPUTING_NOISE_CONTOURS_AROUND_CIVIL_AIRPORTS-Volume_3-REFERENCE_CASES_AND_VERIFICATION_FRAMEWORK.pdf",
+        "https://ecac-ceac.org/images/documents/Doc29-5th_Edition-Volume_3_Part_1-Workbook.xlsx",
+        "https://ecac-ceac.org/images/documents/Doc29-5th_Edition-Volume_3_Part_2-Workbook-readonly.xlsx"
+      ],
+      "sha256": [
+        "35117d393c52b4bd451d566c57d45038d00f047079e1d06fc376d27dd7a4ef01",
+        "d4a351d93df13c36f4ad6809fc1cc3d16182d44c3af48c6664db44f3d838f071",
+        "59cdb927840168ffab446e7d29c62973346abd87b2e881326d3f7ad058beddc3",
+        "ddad40f9db322e111ef792499d18589f8d74b2d7e1e545c3fd97e9824f11285f"
+      ],
+      "bundled": false
+    },
+    {
+      "model": "Conditional siren demonstration",
+      "name": "NBS Special Publication 480-28 and its Figure 23 digitization input",
+      "publisher": "National Bureau of Standards, U.S. Department of Commerce",
+      "report_url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nbsspecialpublication480-28.pdf",
+      "report_sha256": "35108985d0b5047eb7c9d7cd73ef8fedbf40200cd55472bb2ac7f93cd41c200d",
+      "digitization_sha256": "71979422e1746494ead68b97b4c66b7a2c0dc452cfb2724a570b325f5b7748c7",
+      "bundled": false,
+      "qualification": "External analogue and approximate received spectrum; not an LA siren specification or measurement."
+    },
+    {
+      "model": "Aircraft event adapter experimental source",
+      "name": "VNY event windows, flight/path fragments, monitor observations, and generated scenario outputs",
+      "bundled": false,
+      "reason": "Contains activity/observation data outside this source-only snapshot. The adapter's required controlled inputs are not vendored."
+    },
+    {
+      "model": "NoiseModelling bounded patch",
+      "name": "Reviewed H/F patch and regression harness source",
+      "source_tag": "NoiseModelling v6.0.0",
+      "source_sha256": "8c180ea1b6347c4b78d180b37848b22d0b72ac30990f0db7452339965af5df2c",
+      "patch_sha256": "0adeb1ca9cb29b2fd77cd481007491c5e0c856b833ddcc8ffbaec2060c301d07",
+      "license": "GPL-3.0-or-later",
+      "bundled": "Patch, replay harness, and synthetic regression vectors only; upstream Java source and binary not bundled."
+    },
+    {
+      "model": "NoiseModelling patch licensing",
+      "name": "GNU General Public License version 3",
+      "publisher": "Free Software Foundation",
+      "url": "https://www.gnu.org/licenses/gpl-3.0.txt",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "bundled": true
+    }
+  ]
+}

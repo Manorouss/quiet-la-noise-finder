@@ -1,0 +1,365 @@
+{
+  "schema": "quiet_la_science_source_bundle_manifest_v1",
+  "created_at": "2026-10-03",
+  "bundle_bytes": 478804,
+  "file_count": 49,
+  "files": [
+    {
+      "path": "AUDIT_SUMMARIES.json",
+      "source_path": "bundle-authored",
+      "source_sha256": "9f354914a18ec17c83adbb875d077612dfc460bb2399c1321fd99d0d6697a22b",
+      "bytes": 2587,
+      "sha256": "9f354914a18ec17c83adbb875d077612dfc460bb2399c1321fd99d0d6697a22b"
+    },
+    {
+      "path": "INPUT_PROVENANCE.json",
+      "source_path": "bundle-authored",
+      "source_sha256": "a69b3d43371207f9ea133dc40aa5445873930cc7ddc4bf75b2d851c9beb54deb",
+      "bytes": 4307,
+      "sha256": "a69b3d43371207f9ea133dc40aa5445873930cc7ddc4bf75b2d851c9beb54deb"
+    },
+    {
+      "path": "LICENSE-GPL-3.0.txt",
+      "source_path": "https://www.gnu.org/licenses/gpl-3.0.txt",
+      "source_sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "NOTICE.md",
+      "source_path": "bundle-authored",
+      "source_sha256": "b7d207f307b13c74f860bdf6b5e16d775f228c4339650a3cc97e7a4a3aef0cfc",
+      "bytes": 1331,
+      "sha256": "b7d207f307b13c74f860bdf6b5e16d775f228c4339650a3cc97e7a4a3aef0cfc"
+    },
+    {
+      "path": "README.md",
+      "source_path": "bundle-authored",
+      "source_sha256": "e33efbb6958f4ae04b67b939a2d4aaa689c912b77424e63ea080c9a2d86a6764",
+      "bytes": 2801,
+      "sha256": "e33efbb6958f4ae04b67b939a2d4aaa689c912b77424e63ea080c9a2d86a6764"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/__init__.py",
+      "source_path": "implementation/models/aircraft_doc29/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/anp_loader.py",
+      "source_path": "implementation/models/aircraft_doc29/anp_loader.py",
+      "source_sha256": "594c1734ad3d70ccb2a4910316b3d2fc92a826b2b047281d4c5fcbbe53f05ac2",
+      "bytes": 4089,
+      "sha256": "594c1734ad3d70ccb2a4910316b3d2fc92a826b2b047281d4c5fcbbe53f05ac2"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/doc29.py",
+      "source_path": "implementation/models/aircraft_doc29/doc29.py",
+      "source_sha256": "2e3ec2d598b4cd88ac7172e7cb1717afd8297677e2a28dd56714a1e7d2fe7b9b",
+      "bytes": 11347,
+      "sha256": "2e3ec2d598b4cd88ac7172e7cb1717afd8297677e2a28dd56714a1e7d2fe7b9b"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/extract_vny_event_windows.py",
+      "source_path": "implementation/models/aircraft_doc29/extract_vny_event_windows.py",
+      "source_sha256": "31cbdc3d29b9f71a62dc7373f35b8baf58c503baa584e5503a74d640c75a9d5a",
+      "bytes": 12279,
+      "sha256": "31cbdc3d29b9f71a62dc7373f35b8baf58c503baa584e5503a74d640c75a9d5a"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/geometry_assisted_case.py",
+      "source_path": "implementation/models/aircraft_doc29/geometry_assisted_case.py",
+      "source_sha256": "76cc5cf59197309c32cb07ef975c9a2da1e67b6df8465415b5dd08a186d0e2c4",
+      "bytes": 4780,
+      "sha256": "76cc5cf59197309c32cb07ef975c9a2da1e67b6df8465415b5dd08a186d0e2c4"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/independent_profile_acoustics.py",
+      "source_path": "implementation/models/aircraft_doc29/independent_profile_acoustics.py",
+      "source_sha256": "fccb25f97ff9d943829eb17789aee7cb266f6d5be40ebaaf9edbd8474c7d39ce",
+      "bytes": 15948,
+      "sha256": "fccb25f97ff9d943829eb17789aee7cb266f6d5be40ebaaf9edbd8474c7d39ce"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/infer_vny_runway_operations.py",
+      "source_path": "implementation/models/aircraft_doc29/infer_vny_runway_operations.py",
+      "source_sha256": "3c2d89a3e0e95b6a1314bd3ee7be577dae4eadebeb9fc0f63bf1a1f9c80b4ab4",
+      "bytes": 13504,
+      "sha256": "3c2d89a3e0e95b6a1314bd3ee7be577dae4eadebeb9fc0f63bf1a1f9c80b4ab4"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/ingest_adsblol_day.py",
+      "source_path": "implementation/models/aircraft_doc29/ingest_adsblol_day.py",
+      "source_sha256": "893b28ba3000020a4a90610797c14287a20618fb42f5103e8270b38df471e7e5",
+      "bytes": 28660,
+      "sha256": "893b28ba3000020a4a90610797c14287a20618fb42f5103e8270b38df471e7e5"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/ingest_ghcnh_kvny.py",
+      "source_path": "implementation/models/aircraft_doc29/ingest_ghcnh_kvny.py",
+      "source_sha256": "e824b25b47db0a247d034784d9217ddbc34a3e7a8ae4d4400601eb988e6605af",
+      "bytes": 7299,
+      "sha256": "e824b25b47db0a247d034784d9217ddbc34a3e7a8ae4d4400601eb988e6605af"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/prepare_generic_reference_case.py",
+      "source_path": "implementation/models/aircraft_doc29/prepare_generic_reference_case.py",
+      "source_sha256": "701628ac64c05accf2c61dc2927424244752f3b41ec7fb2b9cc3623e29cd6c42",
+      "bytes": 5795,
+      "sha256": "701628ac64c05accf2c61dc2927424244752f3b41ec7fb2b9cc3623e29cd6c42"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/prepare_reference_case.py",
+      "source_path": "implementation/models/aircraft_doc29/prepare_reference_case.py",
+      "source_sha256": "fd4fcfbaafc6466da43c3b048e0e4a04044e5ceea858a110b6552533de1d34dd",
+      "bytes": 5513,
+      "sha256": "fd4fcfbaafc6466da43c3b048e0e4a04044e5ceea858a110b6552533de1d34dd"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/prepare_vny_candidate_model_review.py",
+      "source_path": "implementation/models/aircraft_doc29/prepare_vny_candidate_model_review.py",
+      "source_sha256": "6039ea23e9511bde7bf29f67a51b70977a26307cfc74d4816988e03da20c460e",
+      "bytes": 5336,
+      "sha256": "6039ea23e9511bde7bf29f67a51b70977a26307cfc74d4816988e03da20c460e"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/profile_geometry.py",
+      "source_path": "implementation/models/aircraft_doc29/profile_geometry.py",
+      "source_sha256": "da993253da95b5e751059a619d98748771d7aaf85c548c49f63ef98075f2393f",
+      "bytes": 8908,
+      "sha256": "da993253da95b5e751059a619d98748771d7aaf85c548c49f63ef98075f2393f"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/profile_geometry_reference.py",
+      "source_path": "implementation/models/aircraft_doc29/profile_geometry_reference.py",
+      "source_sha256": "173c9ed96eee6d729bc2d02d50ca7ceefb5c24f1267a752131e7573a2e86f2d6",
+      "bytes": 3048,
+      "sha256": "173c9ed96eee6d729bc2d02d50ca7ceefb5c24f1267a752131e7573a2e86f2d6"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/qualify_activity_types.py",
+      "source_path": "implementation/models/aircraft_doc29/qualify_activity_types.py",
+      "source_sha256": "cc325960c885cb5155fa43503844937c70f3a9f7d87ba0f676432b5912178317",
+      "bytes": 8880,
+      "sha256": "cc325960c885cb5155fa43503844937c70f3a9f7d87ba0f676432b5912178317"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/qualify_vny_activity.py",
+      "source_path": "implementation/models/aircraft_doc29/qualify_vny_activity.py",
+      "source_sha256": "9864df14d62c7b27608b3a5c465d1f842e35356777a689c6c7ecab163d3a488f",
+      "bytes": 6102,
+      "sha256": "9864df14d62c7b27608b3a5c465d1f842e35356777a689c6c7ecab163d3a488f"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/reclip_paths.py",
+      "source_path": "implementation/models/aircraft_doc29/reclip_paths.py",
+      "source_sha256": "70d01be608d5763c1189332826b6fdafed0ee482b568d99ff29cdec165eb6091",
+      "bytes": 9630,
+      "sha256": "70d01be608d5763c1189332826b6fdafed0ee482b568d99ff29cdec165eb6091"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/reference_case.py",
+      "source_path": "implementation/models/aircraft_doc29/reference_case.py",
+      "source_sha256": "8a0e0fa57f25442b7f6a88c4bfb96c0f3ff95e8159622953b3d7b545bcf6a26e",
+      "bytes": 2373,
+      "sha256": "8a0e0fa57f25442b7f6a88c4bfb96c0f3ff95e8159622953b3d7b545bcf6a26e"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/resolve_anp_substitutions.py",
+      "source_path": "implementation/models/aircraft_doc29/resolve_anp_substitutions.py",
+      "source_sha256": "9f362e38b57c5f8203d9dc366ffe586f50156cf171125014e3ab47fdc744d230",
+      "bytes": 9468,
+      "sha256": "9f362e38b57c5f8203d9dc366ffe586f50156cf171125014e3ab47fdc744d230"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/segment_reference.py",
+      "source_path": "implementation/models/aircraft_doc29/segment_reference.py",
+      "source_sha256": "9831c6ef711bc60180a9f317b7fcc391d8eb4931f96388587a4d6f436b1250f4",
+      "bytes": 12097,
+      "sha256": "9831c6ef711bc60180a9f317b7fcc391d8eb4931f96388587a4d6f436b1250f4"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/tests/test_adsblol_ingest.py",
+      "source_path": "implementation/models/aircraft_doc29/tests/test_adsblol_ingest.py",
+      "source_sha256": "acd20ff801fa4e1edaef10ba2bab0308e67b5e0a8b52a2c782496561e5a824aa",
+      "bytes": 11748,
+      "sha256": "acd20ff801fa4e1edaef10ba2bab0308e67b5e0a8b52a2c782496561e5a824aa"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/tests/test_doc29.py",
+      "source_path": "implementation/models/aircraft_doc29/tests/test_doc29.py",
+      "source_sha256": "fc405ea764c465fc5c0bdd1e70f3353f07aa7ae5fc8fb49272cb8a7ce0e501fb",
+      "bytes": 24496,
+      "sha256": "fc405ea764c465fc5c0bdd1e70f3353f07aa7ae5fc8fb49272cb8a7ce0e501fb"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/tests/test_vny_event_windows.py",
+      "source_path": "implementation/models/aircraft_doc29/tests/test_vny_event_windows.py",
+      "source_sha256": "fa3d5f43cf230930c803c75f702413ef746716212f2245a138fbe3295990b0d9",
+      "bytes": 2631,
+      "sha256": "fa3d5f43cf230930c803c75f702413ef746716212f2245a138fbe3295990b0d9"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/tests/test_vny_operation_inference.py",
+      "source_path": "implementation/models/aircraft_doc29/tests/test_vny_operation_inference.py",
+      "source_sha256": "3125149469f1a4a7bcd5e8f93a8c9d97fd0ec4908fe183897d5e471e9ea5d3a6",
+      "bytes": 2118,
+      "sha256": "3125149469f1a4a7bcd5e8f93a8c9d97fd0ec4908fe183897d5e471e9ea5d3a6"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/vny_fixed_profile_event_adapter.py",
+      "source_path": "implementation/models/aircraft_doc29/vny_fixed_profile_event_adapter.py",
+      "source_sha256": "315fa88ab58c58e5a55980347996277c35ca28899ddae231a69f80d21a9336fc",
+      "bytes": 27757,
+      "sha256": "315fa88ab58c58e5a55980347996277c35ca28899ddae231a69f80d21a9336fc"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/vny_pa28_fixed_profile_scenario.py",
+      "source_path": "implementation/models/aircraft_doc29/vny_pa28_fixed_profile_scenario.py",
+      "source_sha256": "690ba7fae65f98a9ff977855ab285e15762e4a4db0404dc40184a5fd763a82a9",
+      "bytes": 19807,
+      "sha256": "690ba7fae65f98a9ff977855ab285e15762e4a4db0404dc40184a5fd763a82a9"
+    },
+    {
+      "path": "implementation/models/aircraft_doc29/vny_pa28_monitor_site_sensitivity.py",
+      "source_path": "implementation/models/aircraft_doc29/vny_pa28_monitor_site_sensitivity.py",
+      "source_sha256": "7a5cabb88ef92f92a5e99f1f2671bf6ed2e5fceb18d8d72697f6ee732d7bdba9",
+      "bytes": 18778,
+      "sha256": "7a5cabb88ef92f92a5e99f1f2671bf6ed2e5fceb18d8d72697f6ee732d7bdba9"
+    },
+    {
+      "path": "implementation/models/siren_events/event_exposure.py",
+      "source_path": "implementation/models/siren_events/event_exposure.py",
+      "source_sha256": "83a1923541c32cab474a318acea9f119cebee0aa0c41d9fd7f5d5f5b95e52ea9",
+      "bytes": 6670,
+      "sha256": "83a1923541c32cab474a318acea9f119cebee0aa0c41d9fd7f5d5f5b95e52ea9"
+    },
+    {
+      "path": "implementation/models/siren_events/moving_source.py",
+      "source_path": "implementation/models/siren_events/moving_source.py",
+      "source_sha256": "8657eec4f006d1b33cd677019e438d09b4293f4925919aa7178f1bba80323a64",
+      "bytes": 18572,
+      "sha256": "8657eec4f006d1b33cd677019e438d09b4293f4925919aa7178f1bba80323a64"
+    },
+    {
+      "path": "implementation/models/siren_events/run_nbs_conditional_pilot.py",
+      "source_path": "implementation/models/siren_events/run_nbs_conditional_pilot.py",
+      "source_sha256": "a15e81293f10b692915d1a70f4eb68923041a1beb40f283c614457d6656edbe8",
+      "bytes": 4591,
+      "sha256": "a15e81293f10b692915d1a70f4eb68923041a1beb40f283c614457d6656edbe8"
+    },
+    {
+      "path": "implementation/models/siren_events/tests/test_event_exposure.py",
+      "source_path": "implementation/work/autonomous_delivery_2026_10_02/siren_model/tests/test_event_exposure.py",
+      "source_sha256": "ecd95edc5dee370365b9df12e152b80a272918184f515a2767da9bc3f470665c",
+      "bytes": 4620,
+      "sha256": "ecd95edc5dee370365b9df12e152b80a272918184f515a2767da9bc3f470665c"
+    },
+    {
+      "path": "implementation/models/siren_events/tests/test_moving_source.py",
+      "source_path": "implementation/work/autonomous_delivery_2026_10_02/siren_model/tests/test_moving_source.py",
+      "source_sha256": "61b0f592583944586e9d2e9544618c6481b9f4d018bbc1bbcdafba9958510837",
+      "bytes": 7175,
+      "sha256": "61b0f592583944586e9d2e9544618c6481b9f4d018bbc1bbcdafba9958510837"
+    },
+    {
+      "path": "noisemodelling-dp0/AgroundHFReplay.java",
+      "source_path": "implementation/work/campaign/tarzana_full_mixed_road_v1/sentinel_forensics/r02_c04_source_diagnostic_v1/engine_overlay_hf_v1/AgroundHFReplay.java",
+      "source_sha256": "b427fc31c8721804aecf93359be477dc037baacf97325455cc4eb2a64156b2fd",
+      "bytes": 2444,
+      "sha256": "b427fc31c8721804aecf93359be477dc037baacf97325455cc4eb2a64156b2fd"
+    },
+    {
+      "path": "noisemodelling-dp0/AttenuationCnossos_hf_dp0.patch",
+      "source_path": "implementation/work/campaign/tarzana_full_mixed_road_v1/sentinel_forensics/r02_c04_source_diagnostic_v1/engine_overlay_hf_v1/AttenuationCnossos_hf_dp0.patch",
+      "source_sha256": "0adeb1ca9cb29b2fd77cd481007491c5e0c856b833ddcc8ffbaec2060c301d07",
+      "bytes": 2661,
+      "sha256": "0adeb1ca9cb29b2fd77cd481007491c5e0c856b833ddcc8ffbaec2060c301d07"
+    },
+    {
+      "path": "noisemodelling-dp0/BUILD_AND_REPLAY.md",
+      "source_path": "bundle-authored",
+      "source_sha256": "4b799f79dbc07dc64e58d2faa438bad745c0d3b0f838938af83117aa2a0974f2",
+      "bytes": 2418,
+      "sha256": "4b799f79dbc07dc64e58d2faa438bad745c0d3b0f838938af83117aa2a0974f2"
+    },
+    {
+      "path": "noisemodelling-dp0/f_regression_inputs.tsv",
+      "source_path": "implementation/work/campaign/tarzana_full_mixed_road_v1/sentinel_forensics/r02_c04_source_diagnostic_v1/engine_overlay_hf_v1/f_regression_inputs.tsv",
+      "source_sha256": "1901ecbdc2a2065cb8af424057e55bbf4433154c2773a03e4f7a498dff68d6a4",
+      "bytes": 75234,
+      "sha256": "1901ecbdc2a2065cb8af424057e55bbf4433154c2773a03e4f7a498dff68d6a4"
+    },
+    {
+      "path": "noisemodelling-dp0/h_regression_inputs.tsv",
+      "source_path": "implementation/work/campaign/tarzana_full_mixed_road_v1/sentinel_forensics/r02_c04_source_diagnostic_v1/engine_overlay_hf_v1/h_regression_inputs.tsv",
+      "source_sha256": "6e005af8546c0bd9d6a4c6e9f57a3601756bb5a718dd6907cd7a56656a49eccc",
+      "bytes": 16200,
+      "sha256": "6e005af8546c0bd9d6a4c6e9f57a3601756bb5a718dd6907cd7a56656a49eccc"
+    },
+    {
+      "path": "noisemodelling-dp0/review_summary.json",
+      "source_path": "bundle-authored",
+      "source_sha256": "3fb4707760e54d6028979248fee86a8148334d6d4941bf77baee8c4b287bcb06",
+      "bytes": 1374,
+      "sha256": "3fb4707760e54d6028979248fee86a8148334d6d4941bf77baee8c4b287bcb06"
+    },
+    {
+      "path": "noisemodelling-dp0/run_java_regressions.sh",
+      "source_path": "bundle-authored",
+      "source_sha256": "46629d9184e0736638c9a1c3094ebc3c1f2ab41adef3ef6c81d7d411b9d36913",
+      "bytes": 531,
+      "sha256": "46629d9184e0736638c9a1c3094ebc3c1f2ab41adef3ef6c81d7d411b9d36913"
+    },
+    {
+      "path": "noisemodelling-dp0/tests/test_agroundh_dp0_limit.py",
+      "source_path": "implementation/work/campaign/tarzana_full_mixed_road_v1/sentinel_forensics/r02_c04_source_diagnostic_v1/engine_overlay_v2/tests/test_agroundh_dp0_limit.py",
+      "source_sha256": "b2f99df53c2faae1e841b617437fcd53da59f1e11f14828f64f2004140c75e9d",
+      "bytes": 2504,
+      "sha256": "b2f99df53c2faae1e841b617437fcd53da59f1e11f14828f64f2004140c75e9d"
+    },
+    {
+      "path": "noisemodelling-dp0/tests/test_regression_vectors.py",
+      "source_path": "bundle-authored",
+      "source_sha256": "540e9b8784184dd2baacfa4e50f30f029355031ceb97021a5a14c4da6d27e1f8",
+      "bytes": 1696,
+      "sha256": "540e9b8784184dd2baacfa4e50f30f029355031ceb97021a5a14c4da6d27e1f8"
+    },
+    {
+      "path": "requirements-source-only.txt",
+      "source_path": "bundle-authored",
+      "source_sha256": "06d28d69e958deafb09f0a44fcae9b548f15e4debc14ebc39aad5f0934856fbf",
+      "bytes": 16,
+      "sha256": "06d28d69e958deafb09f0a44fcae9b548f15e4debc14ebc39aad5f0934856fbf"
+    },
+    {
+      "path": "run_source_only_checks.py",
+      "source_path": "bundle-authored",
+      "source_sha256": "c6e39c9ce32382cf1b0a02457083ec61f41831bcb2b630b785bc317fcfc8afdc",
+      "bytes": 2359,
+      "sha256": "c6e39c9ce32382cf1b0a02457083ec61f41831bcb2b630b785bc317fcfc8afdc"
+    },
+    {
+      "path": "verify_manifest.py",
+      "source_path": "bundle-authored",
+      "source_sha256": "1c063d0bbc62983418dfadad8731b419017ba7d48a0bf6c5e2e3db1646edda58",
+      "bytes": 1173,
+      "sha256": "1c063d0bbc62983418dfadad8731b419017ba7d48a0bf6c5e2e3db1646edda58"
+    }
+  ],
+  "omitted_categories": [
+    "raw ANP tables/archive",
+    "flight/path fragments and aircraft observations",
+    "monitor measurement rows",
+    "captured road geometry and HPMS/EDGES tables",
+    "generated aircraft scenario outputs",
+    "generated acoustic tiles/ray replays",
+    "NoiseModelling runtime JARs/classes and copied upstream Java class",
+    "Python/Java build caches and temporary files"
+  ],
+  "application_build_impact": {
+    "imported_by_app": false,
+    "reason": "Source files are nested under science/reproducibility and are not imported or referenced by Next.js app code or build configuration."
+  }
+}
