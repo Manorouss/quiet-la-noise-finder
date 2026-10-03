@@ -149,7 +149,7 @@ export default function PilotPortal() {
     if (!hostRef.current || mapRef.current) return;
     const maplibre = await import('maplibre-gl');
     maplibre.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
-    const map = new maplibre.Map({ container: hostRef.current, style: { version: 8, sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256 } }, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#dde2df' } }, { id: 'osm', type: 'raster', source: 'osm', paint: { 'raster-opacity': 0.82, 'raster-fade-duration': 0 } }] }, center: [-118.566, 34.170], zoom: 14.2, maxZoom: 19, minZoom: 11, attributionControl: false });
+    const map = new maplibre.Map({ container: hostRef.current, style: { version: 8, sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256 } }, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#dde2df' } }, { id: 'osm', type: 'raster', source: 'osm', paint: { 'raster-opacity': 0.82, 'raster-fade-duration': 0 } }] }, center: [-118.566, 34.170], zoom: 14.2, maxZoom: 19, minZoom: 11, attributionControl: false, trackResize: false });
     mapRef.current = map;
     const viewportPadding = () => {
       const host = hostRef.current?.getBoundingClientRect();
@@ -175,15 +175,13 @@ export default function PilotPortal() {
       if (!map.isStyleLoaded()) return;
       const padding = viewportPadding();
       const center = map.getCenter(); const zoom = map.getZoom();
-      map.setPadding(padding);
-      if (hashCameraActiveRef.current) map.jumpTo({ center, zoom, padding });
-      else if (selectedReceiverRef.current !== null || selectedBuildingRef.current !== null) keepSelectionVisible(0);
-      else map.jumpTo({ center, zoom, padding });
+      map.resize();
+      map.jumpTo({ center, zoom, padding });
+      if (selectedReceiverRef.current !== null || selectedBuildingRef.current !== null) keepSelectionVisible(0);
     });
     resizeObserverRef.current = resizeObserver;
     if (hostRef.current) resizeObserver.observe(hostRef.current);
     if (panelRef.current) resizeObserver.observe(panelRef.current);
-    map.on('resize', () => { if (map.isStyleLoaded()) { const padding = viewportPadding(); const center = map.getCenter(); const zoom = map.getZoom(); map.setPadding(padding); if (hashCameraActiveRef.current) map.jumpTo({ center, zoom, padding }); else if (selectedReceiverRef.current !== null || selectedBuildingRef.current !== null) keepSelectionVisible(0); else map.jumpTo({ center, zoom, padding }); } });
     const clearHashCamera = () => { hashCameraActiveRef.current = false; };
     map.getCanvas().addEventListener('pointerdown', clearHashCamera);
     map.getCanvas().addEventListener('wheel', clearHashCamera, { passive: true });
