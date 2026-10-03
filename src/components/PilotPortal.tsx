@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Feature, FeatureCollection, Point, Polygon, Geometry } from 'geojson';
 import { resolveRuntimeProfile, scientificAssetUrl } from '@/lib/runtime-profile.js';
 import { resolvePilotSelection } from '@/lib/pilot-selection.js';
+import { isPointInPaddedMapViewport, pilotMapPadding } from '@/lib/pilot-map-layout.js';
+import { parsePilotViewHash } from '@/lib/pilot-view-state.js';
 import type { Period } from '@/lib/contracts';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -62,13 +64,18 @@ export default function PilotPortal() {
   const [notice, setNotice] = useState('');
   const [camera, setCamera] = useState<{ lng: number; lat: number; zoom: number } | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const mapRef = useRef<import('maplibre-gl').Map | null>(null);
   const mode3dRef = useRef(false);
   const dataRef = useRef<PilotData | null>(null);
   const periodRef = useRef<Period>('D');
   const selectedBuildingRef = useRef<number | null>(null);
   const selectedReceiverRef = useRef<number | null>(null);
-  selectedBuildingRef.current = selectedBuildingPk; selectedReceiverRef.current = selectedReceiverId; dataRef.current = data; periodRef.current = period;
+  const cameraRef = useRef<{ lng: number; lat: number; zoom: number } | null>(null);
+  const hashCameraActiveRef = useRef(false);
+  const focusSelectionRef = useRef<(duration: number) => void>(() => {});
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  selectedBuildingRef.current = selectedBuildingPk; selectedReceiverRef.current = selectedReceiverId; cameraRef.current = camera; dataRef.current = data; periodRef.current = period;
   mode3dRef.current = mode3d;
 
   const receiverById = useMemo(() => new Map((data?.receivers ?? []).map((f) => [f.properties.id, f])), [data]);
@@ -102,16 +109,28 @@ export default function PilotPortal() {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
       if (Array.isArray(stored)) setSaved(stored.filter((x) => x?.model === MODEL && Number.isInteger(x.buildingPk)).slice(0, 3));
     } catch { setNotice('Saved buildings could not be restored on this device.'); }
-    const hash = new URLSearchParams(window.location.hash.slice(1));
-    if (hash.get('model') && hash.get('model') !== MODEL) setNotice('This view link belongs to a different pilot model. Choose a building to start here.');
-    if (PERIODS.includes(hash.get('period') as Period)) setPeriod(hash.get('period') as Period);
-    setMode3d(hash.get('mode') === '3d');
-    const parsedBuilding = hash.has('building') ? Number(hash.get('building')) : NaN; const parsedReceiver = hash.has('receiver') ? Number(hash.get('receiver')) : NaN;
-    if (Number.isInteger(parsedBuilding)) setSelectedBuildingPk(parsedBuilding);
-    if (Number.isInteger(parsedReceiver)) setSelectedReceiverId(parsedReceiver);
-    const lng = Number(hash.get('lng')); const lat = Number(hash.get('lat')); const zoom = Number(hash.get('z'));
-    if (['lng', 'lat', 'z'].every((key) => hash.has(key)) && [lng, lat, zoom].every(Number.isFinite)) setCamera({ lng, lat, zoom });
-    return () => { cancelled = true; };
+    const applyHash = () => {
+      const view = parsePilotViewHash(window.location.hash, MODEL, PERIODS);
+      setPeriod(view.period as Period);
+      setSelectedBuildingPk(view.buildingPk);
+      setSelectedReceiverId(view.receiverId);
+      setMode3d(view.mode3d);
+      setCamera(view.camera);
+      selectedBuildingRef.current = view.buildingPk;
+      selectedReceiverRef.current = view.receiverId;
+      mode3dRef.current = view.mode3d;
+      cameraRef.current = view.camera;
+      hashCameraActiveRef.current = Boolean(view.camera);
+      if (view.modelMismatch) setNotice('This view link belongs to a different pilot model. Choose a building to start here.');
+      const map = mapRef.current;
+      if (map && view.camera) {
+        const padding = pilotMapPadding(hostRef.current?.getBoundingClientRect(), panelRef.current?.getBoundingClientRect());
+        map.jumpTo({ center: [view.camera.lng, view.camera.lat], zoom: view.camera.zoom, pitch: view.mode3d ? 50 : 0, bearing: view.mode3d ? -20 : 0, padding });
+      }
+    };
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => { cancelled = true; window.removeEventListener('hashchange', applyHash); };
   }, []);
 
   useEffect(() => { if (saved.length) localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); else localStorage.removeItem(STORAGE_KEY); }, [saved]);
@@ -132,9 +151,48 @@ export default function PilotPortal() {
     maplibre.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
     const map = new maplibre.Map({ container: hostRef.current, style: { version: 8, sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256 } }, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#dde2df' } }, { id: 'osm', type: 'raster', source: 'osm', paint: { 'raster-opacity': 0.82, 'raster-fade-duration': 0 } }] }, center: [-118.566, 34.170], zoom: 14.2, maxZoom: 19, minZoom: 11, attributionControl: false });
     mapRef.current = map;
+    const viewportPadding = () => {
+      const host = hostRef.current?.getBoundingClientRect();
+      const panel = panelRef.current?.getBoundingClientRect();
+      return pilotMapPadding(host, panel);
+    };
+    const keepSelectionVisible = (duration: number) => {
+      if (!map.isStyleLoaded()) return;
+      const padding = viewportPadding();
+      const receiver = pilot.receivers.find((feature) => feature.properties.id === selectedReceiverRef.current);
+      const building = pilot.buildings.find((feature) => feature.properties.building_pk === selectedBuildingRef.current);
+      const bb = building && bounds([building]);
+      const target = receiver?.geometry.coordinates as [number, number] | undefined ?? (bb ? [(bb[0][0] + bb[1][0]) / 2, (bb[0][1] + bb[1][1]) / 2] : undefined);
+      if (!target) return;
+      const projected = map.project(target);
+      const containerBounds = map.getContainer().getBoundingClientRect();
+      if (!isPointInPaddedMapViewport(projected, { width: containerBounds.width, height: containerBounds.height }, padding)) {
+        map.easeTo({ center: target, zoom: map.getZoom(), padding, duration });
+      }
+    };
+    focusSelectionRef.current = keepSelectionVisible;
+    const resizeObserver = new ResizeObserver(() => {
+      if (!map.isStyleLoaded()) return;
+      const padding = viewportPadding();
+      const center = map.getCenter(); const zoom = map.getZoom();
+      map.setPadding(padding);
+      if (hashCameraActiveRef.current) map.jumpTo({ center, zoom, padding });
+      else if (selectedReceiverRef.current !== null || selectedBuildingRef.current !== null) keepSelectionVisible(0);
+      else map.jumpTo({ center, zoom, padding });
+    });
+    resizeObserverRef.current = resizeObserver;
+    if (hostRef.current) resizeObserver.observe(hostRef.current);
+    if (panelRef.current) resizeObserver.observe(panelRef.current);
+    map.on('resize', () => { if (map.isStyleLoaded()) { const padding = viewportPadding(); const center = map.getCenter(); const zoom = map.getZoom(); map.setPadding(padding); if (hashCameraActiveRef.current) map.jumpTo({ center, zoom, padding }); else if (selectedReceiverRef.current !== null || selectedBuildingRef.current !== null) keepSelectionVisible(0); else map.jumpTo({ center, zoom, padding }); } });
+    const clearHashCamera = () => { hashCameraActiveRef.current = false; };
+    map.getCanvas().addEventListener('pointerdown', clearHashCamera);
+    map.getCanvas().addEventListener('wheel', clearHashCamera, { passive: true });
+    map.getCanvas().addEventListener('touchstart', clearHashCamera, { passive: true });
+    map.on('dragstart', clearHashCamera);
     (window as unknown as { __quietPilotMap?: typeof map }).__quietPilotMap = map;
     map.on('error', (event) => { if (/tile|raster|openstreet/i.test(event.error?.message ?? '')) return; setError(event.error?.message ?? 'Map renderer failed.'); });
     map.on('load', () => {
+      map.setPadding(viewportPadding());
       const receiverFeatures = pilot.receivers.map((f) => ({ ...f, properties: { ...f.properties, value: validValue(f, periodRef.current), id: String(f.properties.id) } })) as Feature<Point, Record<string, unknown>>[];
       const buildings = pilot.buildings.map((f) => ({ ...f, properties: { ...f.properties, id: String(f.properties.building_pk) } })) as Feature<Polygon, Record<string, unknown>>[];
       map.addSource('pilot-receivers', { type: 'geojson', data: featureCollection(receiverFeatures) });
@@ -147,18 +205,20 @@ export default function PilotPortal() {
       map.addLayer({ id: 'pilot-receiver-selected', type: 'circle', source: 'pilot-receivers', filter: ['==', ['get', 'id'], ''], paint: { 'circle-color': 'rgba(255,255,255,0)', 'circle-stroke-color': '#171b22', 'circle-stroke-width': 2.2, 'circle-radius': 8 } });
       map.setFilter('pilot-building-selected', ['==', ['get', 'id'], selectedBuildingRef.current === null ? '' : String(selectedBuildingRef.current)]);
       map.setFilter('pilot-receiver-selected', ['==', ['get', 'id'], selectedReceiverRef.current === null ? '' : String(selectedReceiverRef.current)]);
-      const allBounds = bounds([...pilot.buildings, ...pilot.receivers]); if (allBounds) map.fitBounds(allBounds, { padding: 80, duration: 0, maxZoom: 15.5 });
-      const hashCam = camera; if (hashCam) map.jumpTo({ center: [hashCam.lng, hashCam.lat], zoom: hashCam.zoom, pitch: mode3dRef.current ? 50 : 0, bearing: mode3dRef.current ? -20 : 0 });
+      const initialPadding = viewportPadding();
+      const allBounds = bounds([...pilot.buildings, ...pilot.receivers]); if (allBounds) map.fitBounds(allBounds, { padding: { top: initialPadding.top + 56, right: initialPadding.right + 56, bottom: initialPadding.bottom + 56, left: initialPadding.left + 56 }, duration: 0, maxZoom: 15.5 });
+      const hashCam = cameraRef.current; if (hashCam) map.jumpTo({ center: [hashCam.lng, hashCam.lat], zoom: hashCam.zoom, pitch: mode3dRef.current ? 50 : 0, bearing: mode3dRef.current ? -20 : 0, padding: initialPadding });
       else if (mode3dRef.current) map.jumpTo({ pitch: 50, bearing: -20 });
+      else if (selectedReceiverRef.current !== null || selectedBuildingRef.current !== null) keepSelectionVisible(0);
     });
     map.on('click', (event) => {
       const hit = map.queryRenderedFeatures(event.point, { layers: ['pilot-receiver-selected', 'pilot-receivers', 'pilot-buildings-3d', 'pilot-buildings-fill'] });
       const receiver = hit.find((f) => f.layer.id.includes('receiver'));
-      if (receiver) { const id = Number(receiver.properties?.id); if (Number.isInteger(id)) { const r = dataRef.current?.receivers.find((x) => x.properties.id === id); setSelectedReceiverId(id); const linkedBuilding = r?.properties.building_pk ?? null; setSelectedBuildingPk(linkedBuilding); return; } }
-      const building = hit.find((f) => f.layer.id === 'pilot-buildings-fill' || f.layer.id === 'pilot-buildings-3d'); const id = Number(building?.properties?.building_pk ?? building?.properties?.id); if (Number.isInteger(id)) { setSelectedBuildingPk(id); setSelectedReceiverId(null); }
+      if (receiver) { const id = Number(receiver.properties?.id); if (Number.isInteger(id)) { hashCameraActiveRef.current = false; const r = dataRef.current?.receivers.find((x) => x.properties.id === id); setSelectedReceiverId(id); const linkedBuilding = r?.properties.building_pk ?? null; setSelectedBuildingPk(linkedBuilding); return; } }
+      const building = hit.find((f) => f.layer.id === 'pilot-buildings-fill' || f.layer.id === 'pilot-buildings-3d'); const id = Number(building?.properties?.building_pk ?? building?.properties?.id); if (Number.isInteger(id)) { hashCameraActiveRef.current = false; setSelectedBuildingPk(id); setSelectedReceiverId(null); }
     });
     map.on('moveend', () => { const c = map.getCenter(); setCamera({ lng: c.lng, lat: c.lat, zoom: map.getZoom() }); });
-  }, [camera]);
+  }, []);
 
   useEffect(() => { if (data) void installMap(data); }, [data, installMap]);
   useEffect(() => {
@@ -169,14 +229,17 @@ export default function PilotPortal() {
     if (map.getLayer('pilot-receiver-selected')) map.setFilter('pilot-receiver-selected', ['==', ['get', 'id'], selectedReceiverId === null ? '' : String(selectedReceiverId)]);
   }, [data, period, selectedBuildingPk, selectedReceiverId]);
   useEffect(() => {
+    if (mapRef.current && !hashCameraActiveRef.current && (selectedBuildingPk !== null || selectedReceiverId !== null)) focusSelectionRef.current(250);
+  }, [selectedBuildingPk, selectedReceiverId]);
+  useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     if (map.getLayer('pilot-buildings-3d')) map.setLayoutProperty('pilot-buildings-3d', 'visibility', mode3d ? 'visible' : 'none');
     map.easeTo({ pitch: mode3d ? 50 : 0, bearing: mode3d ? -20 : 0, duration: 350 });
   }, [mode3d]);
-  useEffect(() => () => { mapRef.current?.remove(); mapRef.current = null; delete (window as unknown as { __quietPilotMap?: unknown }).__quietPilotMap; }, []);
+  useEffect(() => () => { resizeObserverRef.current?.disconnect(); resizeObserverRef.current = null; mapRef.current?.remove(); mapRef.current = null; delete (window as unknown as { __quietPilotMap?: unknown }).__quietPilotMap; }, []);
 
-  const selectBuilding = (id: number) => { setSelectedBuildingPk(id); setSelectedReceiverId(null); const b = buildingById.get(id); const bb = b && bounds([b]); if (bb && mapRef.current) { mapRef.current.stop(); mapRef.current.fitBounds(bb, { padding: 120, maxZoom: 17, duration: 450 }); } };
+  const selectBuilding = (id: number) => { hashCameraActiveRef.current = false; setSelectedBuildingPk(id); setSelectedReceiverId(null); const b = buildingById.get(id); const bb = b && bounds([b]); if (bb && mapRef.current) { mapRef.current.stop(); const base = pilotMapPadding(hostRef.current?.getBoundingClientRect(), panelRef.current?.getBoundingClientRect()); const padding = { top: base.top + 32, right: base.right + 32, bottom: base.bottom + 32, left: base.left + 32 }; mapRef.current.fitBounds(bb, { padding, maxZoom: 17, duration: 450 }); } };
   const toggleSave = () => {
     if (!selectedBuilding) return;
     if (saved.some((x) => x.buildingPk === selectedBuilding.properties.building_pk)) setSaved((items) => items.filter((x) => x.buildingPk !== selectedBuilding.properties.building_pk));
@@ -191,13 +254,13 @@ export default function PilotPortal() {
   return <main className="pilot-shell" aria-labelledby="pilot-title">
     <div ref={hostRef} className="pilot-map" aria-label="Combined-road pilot map. Building footprints and sampled exterior receivers." />
     <header className="pilot-brand glass"><div className="brand-lockup"><span className="brand-mark" aria-hidden="true">QL</span><div><h1 id="pilot-title">Quiet LA</h1><p>Building preview</p></div></div><span className="internal-badge">{profile.badge}</span></header>
-    <aside className="pilot-panel glass" aria-label="Combined-road pilot controls">
+    <aside ref={panelRef} className="pilot-panel glass" aria-label="Combined-road pilot controls">
       <div className="pilot-heading"><div><span className="eyebrow">Tarzana · combined roads</span><h2>Exterior road noise</h2></div><span className="pilot-back">80 buildings</span></div>
       <p className="pilot-intro">Modeled exterior exposure for 80 buildings, sampled at 4 m height. Freeway and local roads under an assumed traffic scenario.</p>
       <div className="pilot-periods" role="radiogroup" aria-label="Scenario period">{PERIODS.map((p) => <button key={p} type="button" role="radio" aria-checked={period === p} className={period === p ? 'is-active' : ''} onClick={() => setPeriod(p)}><b>{p}</b><small>{periodName[p]}</small></button>)}</div>
       <div className="pilot-actions"><button type="button" aria-pressed={mode3d} onClick={() => setMode3d((enabled) => !enabled)}>{mode3d ? '3D view on' : '3D view'}</button><button type="button" onClick={copyView}>Copy view link</button>{selectedBuilding && <button type="button" onClick={toggleSave}>{saved.some((x) => x.buildingPk === selectedBuildingPk) ? 'Saved building' : 'Save building'}</button>}</div>
       {notice && <p className="pilot-notice" role="status">{notice}</p>}
-      {selectedBuilding ? <section className="pilot-detail" aria-live="polite"><div className="pilot-detail-heading"><div><span className="eyebrow">Selected building</span><h3>{selectedBuilding.properties.building_pk}</h3><p>Source building ID {selectedBuilding.properties.source_bld_id}</p></div><button type="button" onClick={() => { setSelectedBuildingPk(null); setSelectedReceiverId(null); }} aria-label="Clear building selection">×</button></div><div className="pilot-range"><strong>{formatRange(selectedStats!)}</strong><span>{periodName[period]} exterior road LAEQ range</span></div><dl className="pilot-stats"><div><dt>Exterior samples</dt><dd>{selectedStats?.receiver_count ?? 0}</dd></div><div><dt>Unavailable</dt><dd>{selectedStats?.unavailable_count ?? 0}</dd></div><div><dt>Height</dt><dd>4 m AGL</dd></div></dl><p className="pilot-boundary">Sampled exterior range at 4 m; this is not a whole-property, interior, apartment, floor-specific, measurement, or guarantee value.</p>{selectedReceiver ? <div className="pilot-receiver-focus"><strong>Receiver {selectedReceiver.properties.id}</strong><span>{selectedReceiverValue === null ? 'Unavailable' : `${selectedReceiverValue.toFixed(1)} LAEQ`}</span><small>{periodName[period]} · {selectedReceiver.properties.height_agl_m} m AGL · {selectedReceiver.properties.masked ? 'masked' : 'sampled exterior'}</small></div> : <p className="pilot-receiver-hint">Select an exterior receiver point to inspect its individual value.</p>}<details open className="pilot-receiver-list"><summary>Exterior receivers ({buildingReceivers.length})</summary><div>{buildingReceivers.map((r) => <button key={r.properties.id} type="button" className={selectedReceiverId === r.properties.id ? 'is-selected' : ''} onClick={() => { setSelectedReceiverId(r.properties.id); setSelectedBuildingPk(r.properties.building_pk ?? null); }}><span>{r.properties.id}</span><strong>{validValue(r, period) === null ? 'Unavailable' : validValue(r, period)!.toFixed(1)}</strong></button>)}</div></details></section> : selectedReceiver ? <section className="pilot-detail pilot-receiver-only" aria-live="polite"><div className="pilot-detail-heading"><div><span className="eyebrow">Selected receiver</span><h3>{selectedReceiver.properties.id}</h3></div><button type="button" onClick={() => setSelectedReceiverId(null)} aria-label="Clear receiver selection">×</button></div><div className="pilot-receiver-focus"><strong>{selectedReceiverValue === null ? 'Unavailable' : `${selectedReceiverValue.toFixed(1)} LAEQ`}</strong><small>{periodName[period]} · {selectedReceiver.properties.height_agl_m} m AGL · {selectedReceiver.properties.masked ? 'masked' : 'sampled exterior'}</small></div><p className="pilot-boundary">Individual sampled exterior receiver; no building association is available for this point.</p></section> : <section className="pilot-building-list"><div className="pilot-list-heading"><strong>Select a building</strong><span>{saved.length} / 3 saved</span></div><p>Choose a footprint or use this keyboard-accessible list.</p><div className="pilot-list">{(data?.buildings ?? []).map((b) => <button key={b.properties.building_pk} type="button" onClick={() => selectBuilding(b.properties.building_pk)}><span>Building {b.properties.building_pk}</span><small>{b.properties.receiver_count} exterior samples</small></button>)}</div></section>}
+      {selectedBuilding ? <section className="pilot-detail" aria-live="polite"><div className="pilot-detail-heading"><div><span className="eyebrow">Selected building</span><h3>{selectedBuilding.properties.building_pk}</h3><p>Source building ID {selectedBuilding.properties.source_bld_id}</p></div><button type="button" onClick={() => { hashCameraActiveRef.current = false; setSelectedBuildingPk(null); setSelectedReceiverId(null); }} aria-label="Clear building selection">×</button></div><div className="pilot-range"><strong>{formatRange(selectedStats!)}</strong><span>{periodName[period]} exterior road LAEQ range</span></div><dl className="pilot-stats"><div><dt>Exterior samples</dt><dd>{selectedStats?.receiver_count ?? 0}</dd></div><div><dt>Unavailable</dt><dd>{selectedStats?.unavailable_count ?? 0}</dd></div><div><dt>Height</dt><dd>4 m AGL</dd></div></dl><p className="pilot-boundary">Sampled exterior range at 4 m; this is not a whole-property, interior, apartment, floor-specific, measurement, or guarantee value.</p>{selectedReceiver ? <div className="pilot-receiver-focus"><strong>Receiver {selectedReceiver.properties.id}</strong><span>{selectedReceiverValue === null ? 'Unavailable' : `${selectedReceiverValue.toFixed(1)} LAEQ`}</span><small>{periodName[period]} · {selectedReceiver.properties.height_agl_m} m AGL · {selectedReceiver.properties.masked ? 'masked' : 'sampled exterior'}</small></div> : <p className="pilot-receiver-hint">Select an exterior receiver point to inspect its individual value.</p>}<details open className="pilot-receiver-list"><summary>Exterior receivers ({buildingReceivers.length})</summary><div>{buildingReceivers.map((r) => <button key={r.properties.id} type="button" className={selectedReceiverId === r.properties.id ? 'is-selected' : ''} onClick={() => { hashCameraActiveRef.current = false; setSelectedReceiverId(r.properties.id); setSelectedBuildingPk(r.properties.building_pk ?? null); }}><span>{r.properties.id}</span><strong>{validValue(r, period) === null ? 'Unavailable' : validValue(r, period)!.toFixed(1)}</strong></button>)}</div></details></section> : selectedReceiver ? <section className="pilot-detail pilot-receiver-only" aria-live="polite"><div className="pilot-detail-heading"><div><span className="eyebrow">Selected receiver</span><h3>{selectedReceiver.properties.id}</h3></div><button type="button" onClick={() => { hashCameraActiveRef.current = false; setSelectedReceiverId(null); }} aria-label="Clear receiver selection">×</button></div><div className="pilot-receiver-focus"><strong>{selectedReceiverValue === null ? 'Unavailable' : `${selectedReceiverValue.toFixed(1)} LAEQ`}</strong><small>{periodName[period]} · {selectedReceiver.properties.height_agl_m} m AGL · {selectedReceiver.properties.masked ? 'masked' : 'sampled exterior'}</small></div><p className="pilot-boundary">Individual sampled exterior receiver; no building association is available for this point.</p></section> : <section className="pilot-building-list"><div className="pilot-list-heading"><strong>Select a building</strong><span>{saved.length} / 3 saved</span></div><p>Choose a footprint or use this keyboard-accessible list.</p><div className="pilot-list">{(data?.buildings ?? []).map((b) => <button key={b.properties.building_pk} type="button" onClick={() => selectBuilding(b.properties.building_pk)}><span>Building {b.properties.building_pk}</span><small>{b.properties.receiver_count} exterior samples</small></button>)}</div></section>}
       <details className="pilot-compare"><summary>Saved comparison <span>{saved.length} / 3</span></summary>{saved.length === 0 ? <p>Save up to three buildings to compare exterior ranges for the selected period.</p> : <div>{saved.map((item) => { const b = buildingById.get(item.buildingPk); const stats = b?.properties.periods[period]; return <div className="pilot-compare-row" key={item.buildingPk}><button type="button" onClick={() => selectBuilding(item.buildingPk)}>Building {item.buildingPk}<small>{formatRange(stats!)} · {periodName[period]}</small></button><button type="button" aria-label={`Remove building ${item.buildingPk}`} onClick={() => setSaved((items) => items.filter((x) => x.buildingPk !== item.buildingPk))}>×</button></div>; })}</div>}</details>
       <details className="pilot-disclosure"><summary>Coverage & limits</summary><p>Combined freeway and local-road exterior LAeq for day, evening, and night: 6,421 receivers, including 1,573 façade samples linked to 80 building footprints. Receivers 85715 and 88627 are unavailable in all three periods and remain masked.</p><p>This is an assumed traffic scenario informed by historical context. Its activity assumptions do not describe observed street conditions: evening flow is set to 0.6× day and night to 0.2× day; 113 official road segments have no assigned activity in this preview. Reflection order is zero. The modeled exterior LAeq values are uncalibrated and are not measurements, indoor or apartment levels, or an acoustic accuracy certification. The optional 3D view displays building geometry and is not an acoustic volume.</p><p>Building footprints and linked geometry © LARIAC, County of Los Angeles, Pictometry, EagleView. Local-road geometry: LA County DPW StreetMap Primary/Secondary. Freeway geometry and traffic context: California Department of Transportation (Caltrans). Basemap © OpenStreetMap contributors. LA County data is informational and carries no warranty or County endorsement. See <a href="https://egis-lacounty.hub.arcgis.com/pages/terms-of-use" target="_blank" rel="noreferrer">County terms</a> and <a href="https://dot.ca.gov/conditions-of-use" target="_blank" rel="noreferrer">Caltrans Conditions of Use</a>.</p></details>
     </aside>
