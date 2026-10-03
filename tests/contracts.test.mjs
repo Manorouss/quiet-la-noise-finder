@@ -178,6 +178,11 @@ test('basemap is an explicit OSM contract with visible attribution and paper fal
   assert.deepEqual([...new Set(runtimeOrigins)], deployment.remoteBasemapAllowedOrigins);
   const pageSource = await fs.readFile(path.join(appRoot, 'src/app/page.tsx'), 'utf8');
   assert.doesNotMatch(pageSource, /fetch\(\s*['"`]https?:\/\//);
+  const pilotSource = await fs.readFile(path.join(appRoot, 'src/components/PilotPortal.tsx'), 'utf8');
+  assert.match(pilotSource, /className="pilot-attribution" href="https:\/\/www\.openstreetmap\.org\/copyright"/);
+  const buildOutputPackager = await fs.readFile(path.join(appRoot, 'scripts/package-vercel-pilot.mjs'), 'utf8');
+  assert.match(buildOutputPackager, /'Referrer-Policy': 'strict-origin-when-cross-origin'/);
+  assert.doesNotMatch(buildOutputPackager, /'Referrer-Policy': 'no-referrer'/);
 });
 
 test('external verifier fails closed when local-only payloads are present', async () => {

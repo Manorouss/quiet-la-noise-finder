@@ -12,7 +12,7 @@ const config = {
   version: 3,
   routes: [
     { src: '/pilot', status: 308, headers: { Location: '/pilot/' } },
-    { src: '/(.*)', headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' }, continue: true },
+    { src: '/(.*)', headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin' }, continue: true },
   ],
 };
 
