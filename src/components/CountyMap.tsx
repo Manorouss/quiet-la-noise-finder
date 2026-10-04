@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { Map as MapLibreMap, MapGeoJSONFeature } from 'maplibre-gl';
 import { buildStyle, type ContextId, type Period, type StyleOptions } from '@/lib/county-map-style';
+import { createSplatLayer } from '@/lib/splat-layer';
 
 export type Values = Record<Period, number | null>;
 export type Selection =
@@ -13,7 +14,9 @@ export type Selection =
 export type Camera = { lng: number; lat: number; zoom: number; pitch: number; bearing: number };
 export type MapStatus = { loading: boolean; error: string | null; zoom: number };
 type Props = StyleOptions & {
-  target: { lng: number; lat: number; zoom?: number; nonce: number } | null;
+  target: { lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number } | null;
+  splatSceneUrl: string | null;
+  onSplatStatus?: (status: 'loading' | 'ready' | 'error' | 'off') => void;
   initialCamera: Camera | null;
   selectedKey: string | null;
   onSelect: (selection: Selection | null) => void;
@@ -36,7 +39,7 @@ export default function CountyMap(props: Props) {
   const mapRef = useRef<MapLibreMap | null>(null);
   const propsRef = useRef(props);
   propsRef.current = props;
-  const styleKey = JSON.stringify([props.layersUrl, props.period, props.noise, props.mode3d, props.roads, props.context, props.theme]);
+  const styleKey = JSON.stringify([props.layersUrl, props.period, props.noise, props.mode3d, props.roads, props.context, props.theme, props.photo3d]);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,8 +136,38 @@ export default function CountyMap(props: Props) {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (map && props.target) map.flyTo({ center: [props.target.lng, props.target.lat], zoom: props.target.zoom ?? Math.max(map.getZoom(), 15), duration: 1600, essential: true });
+    if (map && props.target) map.flyTo({ center: [props.target.lng, props.target.lat], zoom: props.target.zoom ?? Math.max(map.getZoom(), 15), pitch: props.target.pitch ?? map.getPitch(), bearing: props.target.bearing ?? map.getBearing(), duration: 1800, essential: true });
   }, [props.target]);
+
+  // Photo 3D showcase: a Gaussian-splat scene in a custom layer (re-added after style changes,
+  // which drop custom layers).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    let cancelled = false;
+    const want = Boolean(props.photo3d && props.splatSceneUrl);
+    const sync = async () => {
+      const has = Boolean(map.getLayer('splat-scene'));
+      if (!want) {
+        if (has) map.removeLayer('splat-scene');
+        propsRef.current.onSplatStatus?.('off');
+        return;
+      }
+      if (has) return;
+      propsRef.current.onSplatStatus?.('loading');
+      try {
+        const meta = await (await fetch(`${props.splatSceneUrl}.json`)).json();
+        const layer = await createSplatLayer(map, { url: `${props.splatSceneUrl}.spz`, origin: meta.origin_lonlat, originZ: meta.origin_z_m, label: 'showcase' }, () => propsRef.current.onSplatStatus?.('ready'));
+        if (cancelled || map.getLayer('splat-scene')) return;
+        const firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
+        map.addLayer(layer, firstLabel);
+      } catch {
+        propsRef.current.onSplatStatus?.('error');
+      }
+    };
+    if (map.isStyleLoaded()) void sync(); else map.once('idle', () => void sync());
+    return () => { cancelled = true; };
+  }, [props.photo3d, props.splatSceneUrl, styleKey]);
 
   return <div ref={hostRef} className="county-map map" aria-label="Map of modeled road noise" role="region" />;
 }

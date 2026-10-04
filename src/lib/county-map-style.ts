@@ -5,7 +5,7 @@ export type Period = 'D' | 'E' | 'N';
 export type NoiseStyle = 'field' | 'bands' | 'glow' | 'dots';
 export type BaseTheme = 'light' | 'dark' | 'grayscale' | 'satellite';
 export type ContextId = 'airport-contours' | 'heliports' | 'county-fire' | 'city-fire';
-export type StyleOptions = { layersUrl: string; period: Period; noise: NoiseStyle; mode3d: boolean; roads: boolean; context: Record<ContextId, boolean>; theme: BaseTheme };
+export type StyleOptions = { layersUrl: string; period: Period; noise: NoiseStyle; mode3d: boolean; roads: boolean; context: Record<ContextId, boolean>; theme: BaseTheme; photo3d?: boolean };
 
 // Absolute 5 dB bands, the same scale as the pilot page. The WHO road-traffic guideline
 // (53 dB Lden, 45 dB Lnight) falls in the yellow band.
@@ -89,7 +89,7 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
     { id: 'roads-modeled-casing', type: 'line', source: 'roads', 'source-layer': 'roads', layout: { ...visible(o.roads), 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#0d1017' : '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 1.5, 16, 7] } },
     { id: 'roads-modeled', type: 'line', source: 'roads', 'source-layer': 'roads', layout: { ...visible(o.roads), 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': ['step', ['get', 'a'], '#a6b8cc', 2000, '#7f97b5', 10000, '#5b6fa3', 30000, '#463f8e', 100000, '#2a1660'], 'line-width': ['interpolate', ['linear'], ['zoom'], 11, ['step', ['get', 'a'], 0.4, 10000, 0.9, 100000, 1.6], 16, ['step', ['get', 'a'], 2, 10000, 3.5, 100000, 5]], 'line-dasharray': ['case', ['==', ['get', 't'], 'default'], ['literal', [2, 1.2]], ['literal', [1, 0]]] } },
-    { id: 'buildings-3d', type: 'fill-extrusion', source: 'buildings', 'source-layer': 'buildings', minzoom: 13, layout: visible(o.mode3d),
+    { id: 'buildings-3d', type: 'fill-extrusion', source: 'buildings', 'source-layer': 'buildings', minzoom: 13, layout: visible(o.mode3d && !o.photo3d),
       paint: { 'fill-extrusion-color': ['case', ['has', key], bandStep(['get', key]), dark ? '#5a606b' : '#c9c4b8'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.94, 'fill-extrusion-vertical-gradient': true } },
     { id: 'receivers-dots', type: 'circle', source: 'receivers', 'source-layer': 'receivers', minzoom: 12, layout: visible(o.noise === 'dots'),
       paint: { 'circle-color': receiverColor(o.period), 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 1.2, 15, ['case', ['==', ['get', 'f'], 1], 2.8, 2.2], 18, ['case', ['==', ['get', 'f'], 1], 6, 4.5]], 'circle-opacity': 0.9,

@@ -5,6 +5,9 @@ import CountyMap, { type Camera, type MapStatus, type Selection, type Values } f
 import { BAND_COLORS, BAND_EDGES, type BaseTheme, type ContextId, type NoiseStyle, type Period } from '@/lib/county-map-style';
 
 const LAYERS_URL = process.env.NEXT_PUBLIC_QUIET_LA_LAYERS_URL || '/county-layers/';
+// Photo 3D showcase (lidar + aerial imagery as Gaussian splats): Studio City, Ventura Blvd and US-101.
+const SPLAT_SCENE = `${LAYERS_URL}splats/showcase_101_ventura`;
+const SPLAT_VIEW = { lng: -118.3721, lat: 34.1474, zoom: 17.3, pitch: 62, bearing: -35 };
 const PERIOD_NAME: Record<Period, string> = { D: 'Day', E: 'Evening', N: 'Night' };
 const CONTEXT_DEFAULTS: Record<ContextId, boolean> = { 'airport-contours': false, heliports: false, 'county-fire': false, 'city-fire': false };
 const CONTEXT_LABELS: Record<ContextId, string> = { 'airport-contours': 'Airport noise contours (official CNEL)', heliports: 'Heliports', 'county-fire': 'LA County fire stations', 'city-fire': 'City of LA fire stations' };
@@ -68,12 +71,14 @@ export default function CountyMapPage() {
   const [mode3d, setMode3d] = useState(false);
   const [theme, setTheme] = useState<BaseTheme>('light');
   const [roads, setRoads] = useState(false);
+  const [photo3d, setPhoto3d] = useState(false);
+  const [splatStatus, setSplatStatus] = useState<'loading' | 'ready' | 'error' | 'off'>('off');
   const [context, setContext] = useState(CONTEXT_DEFAULTS);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [status, setStatus] = useState<MapStatus>({ loading: true, error: null, zoom: 13 });
   const [layers, setLayers] = useState<Layers | null>(null);
   const [initialCamera, setInitialCamera] = useState<Camera | null>(null);
-  const [target, setTarget] = useState<{ lng: number; lat: number; zoom?: number; nonce: number } | null>(null);
+  const [target, setTarget] = useState<{ lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number } | null>(null);
   const [query, setQuery] = useState('');
   const [message, setMessage] = useState('');
   const [expanded, setExpanded] = useState(false);
@@ -128,7 +133,7 @@ export default function CountyMapPage() {
       <div className="workspace-scope">Los Angeles County <span>· road noise, county model v1 · preview</span></div>
       <Choice label="Map dimension" value={mode3d ? '3d' : '2d'} options={[['2d', '2D'], ['3d', '3D']]} onChange={(m) => setMode3d(m === '3d')} />
     </header>
-    <CountyMap layersUrl={LAYERS_URL} period={period} noise={noise} mode3d={mode3d} roads={roads} context={context} theme={theme} target={target} initialCamera={initialCamera} selectedKey={selectedKey} onSelect={setSelection} onStatus={setStatus} onCamera={onCamera} />
+    <CountyMap layersUrl={LAYERS_URL} period={period} noise={noise} mode3d={mode3d} roads={roads} context={context} theme={theme} photo3d={photo3d && mode3d} splatSceneUrl={SPLAT_SCENE} onSplatStatus={setSplatStatus} target={target} initialCamera={initialCamera} selectedKey={selectedKey} onSelect={setSelection} onStatus={setStatus} onCamera={onCamera} />
     <aside className="map-guide" aria-label="Map controls and inspection">
       <div className="guide-heading"><h1>How loud is it here?</h1><button type="button" className="sheet-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? 'Less' : 'Controls'}</button></div>
       <p className="guide-intro">Modeled road noise outside homes, from freeways down to residential streets. Aircraft, helicopters and sirens are not included yet.</p>
@@ -137,6 +142,10 @@ export default function CountyMapPage() {
         <form className="place-search" onSubmit={search}><label htmlFor="place-search">Go to a place</label><div><input id="place-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Reseda, Van Nuys, or lat, lng" autoComplete="off" /><button type="submit" aria-label="Find place">→</button></div><p role="status">{message}</p></form>
         <section className="guide-section"><h2>Noise display</h2><Choice label="Noise display style" value={noise} options={[['field', 'Field'], ['bands', 'Bands'], ['glow', 'Glow'], ['dots', 'Dots']]} onChange={setNoise} /><p className="control-help">{STYLE_HELP[noise]}{mode3d ? ' In 3D, buildings are colored by their loudest wall.' : ''}</p></section>
         <section className="guide-section"><h2>Base map</h2><Choice label="Base map" value={theme} options={[['light', 'Light'], ['grayscale', 'Gray'], ['dark', 'Dark'], ['satellite', 'Photo']]} onChange={setTheme} /></section>
+        <section className="guide-section"><h2>Photo 3D <span className="county-beta">beta</span></h2>
+          <label className="source-toggle"><input type="checkbox" checked={photo3d} onChange={(e) => { const on = e.target.checked; setPhoto3d(on); if (on) { setMode3d(true); setTarget({ ...SPLAT_VIEW, nonce: Date.now() }); } }} />Photo-real 3D showcase: Ventura Blvd and the 101</label>
+          <p className="control-help">{splatStatus === 'loading' ? 'Loading about 20 MB of 3D scan…' : splatStatus === 'error' ? 'The 3D scan could not load.' : 'Built from the 2023 USGS laser scan and 2022 aerial photos. Rooftops and trees are sharp; building sides are soft because aerial scans see little of walls.'}</p>
+        </section>
         <section className="guide-section"><h2>Layers</h2>
           <label className="source-toggle"><input type="checkbox" checked={roads} onChange={(e) => setRoads(e.target.checked)} />Roads in the model, by traffic</label>
           <div className="context-options">{(Object.keys(CONTEXT_LABELS) as ContextId[]).map((id) => <label key={id} className={`context-toggle context-${id}`}><input type="checkbox" checked={context[id]} onChange={(e) => setContext({ ...context, [id]: e.target.checked })} />{CONTEXT_LABELS[id]}</label>)}</div>
