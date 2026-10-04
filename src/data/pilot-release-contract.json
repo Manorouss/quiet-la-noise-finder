@@ -67,8 +67,8 @@
         {
           "kind": "receivers",
           "path": "benchmark.geojson",
-          "sha256": "16df6aaf99abaf0a791e5de95a49a5eda5760851994fd4636465086cffd59c93",
-          "bytes": 2754559
+          "sha256": "8e54f44fb5b847a8f6c4a000ef4a26e3bc7e32e2445a8eb42c24910d04146fd6",
+          "bytes": 2757292
         },
         {
           "kind": "buildings",
@@ -82,7 +82,14 @@
           "sha256": "d733b7e11af379b2a31a1cda7559481ef5d7a175464c5d3b92c5c273c2c15769",
           "bytes": 496
         }
-      ]
+      ],
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 169,
+        "method": "science/qa/physical_ceiling.py and apply_release_flags.py"
+      }
     },
     {
       "tile_id": "r02-c02",
@@ -95,21 +102,43 @@
         34.17352170005376
       ],
       "receiver_count": 8809,
-      "numeric_rows": 26427,
+      "numeric_rows": 26364,
       "building_count": 206,
       "facade_receiver_count": 3695,
       "receiver_height_counts_m": {
         "1.5": 5114,
         "4.0": 3695
       },
-      "masked_ids": [],
+      "masked_ids": [
+        63253,
+        63254,
+        63255,
+        63669,
+        63670,
+        64105,
+        64106,
+        64557,
+        64558,
+        69371,
+        69796,
+        70252,
+        73719,
+        74533,
+        74929,
+        74930,
+        74931,
+        75332,
+        75333,
+        75334,
+        75760
+      ],
       "source_csv_sha256": "c9a0b54b50d6eec922e787729dff545d1baf7e64186fd1a5e02ef5efffb97a27",
       "assets": [
         {
           "kind": "receivers",
           "path": "tiles/r02-c02/benchmark.geojson",
-          "sha256": "af4c2127108b79978aa3be4f78d707e3aee601065fff8c9fc64e71a284fbf5c7",
-          "bytes": 5352124
+          "sha256": "f13e5ba163af01c7fd2fb274d4dfa8b47eda6805a9d0ac2544d79e5f6141569a",
+          "bytes": 5353573
         },
         {
           "kind": "buildings",
@@ -120,8 +149,8 @@
         {
           "kind": "manifest",
           "path": "tiles/r02-c02/build-manifest.json",
-          "sha256": "cc90f1e60d093f0f03cec7e714e914e05abc2a278c65c98a368bef1fa3d0aa4f",
-          "bytes": 1084
+          "sha256": "8befaf990b7345363055d56ef5ece635682622fa899ca399d9f9f987a83bcf71",
+          "bytes": 1316
         }
       ],
       "provenance": {
@@ -146,6 +175,35 @@
           "390134885417"
         ],
         "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [
+          63253,
+          63254,
+          63255,
+          63669,
+          63670,
+          64105,
+          64106,
+          64557,
+          64558,
+          69371,
+          69796,
+          70252,
+          73719,
+          74533,
+          74929,
+          74930,
+          74931,
+          75332,
+          75333,
+          75334,
+          75760
+        ],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 297,
+        "method": "science/qa/physical_ceiling.py and apply_release_flags.py"
       }
     }
   ],
