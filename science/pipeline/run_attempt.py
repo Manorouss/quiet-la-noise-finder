@@ -11,6 +11,11 @@ diffraction flags and file paths are swapped:
               on the PC (identical jars, Temurin 21.0.7) behind an SSH port
               forward, and the export CSV is copied back.
 
+A rerun of the same source and label stages the next free -v<N>; existing
+attempts are never overwritten. While implementation/work/pipeline_control/
+pause-<host> exists the runner holds between WPS polls (see PausableClock),
+so compute_dashboard.py can freeze and later resume the engine.
+
 Usage:
   run_attempt.py --source-attempt <dir> --label t16 --host pc --threads 16 --port 9101
 """
@@ -19,14 +24,17 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[5]
 WORK = PROJECT / "implementation/work"
 CAMPAIGN = WORK / "campaign"
+CONTROL = WORK / "pipeline_control"
 RUNNER = CAMPAIGN / "run_phase1_regional_attempt.py"
 HELPER = CAMPAIGN / "noisemodelling_loopback_launcher/noisemodelling-loopback-launcher.jar"
 HF_OVERLAY = CAMPAIGN / "tarzana_full_mixed_road_v1/sentinel_forensics/r02_c04_source_diagnostic_v1/engine_overlay_hf_v1/runtime_overlay/classes"
@@ -57,10 +65,12 @@ def win(path: str) -> str:
 
 def stage(source: Path, label: str) -> Path:
     manifest = json.loads((source / "attempt_manifest.json").read_text())
-    attempt_id = f"{manifest['attempt_id'].rsplit('-v', 1)[0]}-{label}-v1"
+    base = f"{manifest['attempt_id'].rsplit('-v', 1)[0]}-{label}"
+    version = 1
+    while (source.parent / f"{base}-v{version}").exists():
+        version += 1
+    attempt_id = f"{base}-v{version}"
     target = source.parent / attempt_id
-    if target.exists():
-        raise FileExistsError(f"attempt already exists: {target}")
     (target / "input").mkdir(parents=True)
     for record in manifest["inputs"].values():
         shutil.copy2(source / record["path"], target / record["path"])
@@ -76,6 +86,41 @@ def stage(source: Path, label: str) -> Path:
     }
     (target / "phase1_authorization.json").write_text(json.dumps(auth, indent=1) + "\n")
     return target
+
+
+class PausableClock:
+    """Stands in for the runner's time module while a host can be paused.
+
+    sleep() is where the runner waits between WPS polls, so no request is in
+    flight there. While pause-<host> or frozen-<host>-<port> exists it writes
+    held-<host>-<port> (the dashboard freezes the engine only after seeing it)
+    and waits; monotonic() leaves the held time out so no runner timeout fires.
+    """
+
+    def __init__(self, host: str, port: int):
+        self.pause = CONTROL / f"pause-{host}"
+        self.frozen = CONTROL / f"frozen-{host}-{port}"
+        self.held = CONTROL / f"held-{host}-{port}"
+        self.held_seconds = 0.0
+
+    def __getattr__(self, name: str):
+        return getattr(time, name)
+
+    def monotonic(self) -> float:
+        return time.monotonic() - self.held_seconds
+
+    def sleep(self, seconds: float) -> None:
+        time.sleep(seconds)
+        if not (self.pause.exists() or self.frozen.exists()):
+            return
+        start = time.monotonic()
+        self.held.write_text(f"{os.getpid()}\n")
+        try:
+            while self.pause.exists() or self.frozen.exists():
+                time.sleep(1)
+        finally:
+            self.held.unlink(missing_ok=True)
+            self.held_seconds += time.monotonic() - start
 
 
 def main() -> int:
@@ -141,6 +186,8 @@ def main() -> int:
         return job
 
     runner.engine_command, runner.propagation, runner.execute_wps = engine_command, propagation, execute_wps
+    CONTROL.mkdir(parents=True, exist_ok=True)
+    runner.time = PausableClock(args.host, args.port)
     try:
         runner.main_run(argparse.Namespace(attempt_dir=attempt, port=args.port, startup_timeout=120.0))
     finally:

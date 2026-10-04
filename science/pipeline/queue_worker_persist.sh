@@ -1,38 +1,54 @@
 #!/bin/bash
-# Claim tiles from a shared queue directory and run them on one host.
+# Claim tiles from a shared queue directory and run them on one host, forever.
 #
-#   queue_worker.sh <queue dir> <mac|pc> <port> <threads> [wait-file]
+#   queue_worker_persist.sh <queue dir> <mac|pc> <port> <threads> [wait-file]
 #
-# Environment: LABEL_PREFIX (default hf583) names the new attempts;
-# RUN_ARGS adds run_attempt.py flags, e.g. RUN_ARGS=--no-vertical.
-#
-# The queue holds one file per tile in todo/, whose content is the staged
-# source attempt path. A worker claims a tile by an atomic mv into running/,
-# then moves it to done/ or failed/. An optional wait-file delays the start
-# until that file contains "BENCH DONE" (used to avoid competing for cores).
+# Same queue layout and environment as queue_worker.sh (LABEL_PREFIX, RUN_ARGS), plus:
+#  - <queue>/priority/ is claimed before todo/; its files sort in claim order and a
+#    leading "NN-" is dropped from the tile name;
+#  - no new tile starts while implementation/work/pipeline_control/pause-<host> exists
+#    (run_attempt.py holds a running tile at the same flag and compute_dashboard.py
+#    freezes its engine, so pausing loses no work);
+#  - a failed tile is retried once (run_attempt.py stages a new -v<N> attempt, so
+#    nothing is overwritten);
+#  - done/<tile> records the source attempt and the completed run attempt;
+#  - on the Mac the engine runs at nice 10 so interactive work stays responsive.
+# Sleeps while the queue is empty and exits only when <queue>/STOP exists.
 set -u
 QUEUE=$1; HOST=$2; PORT=$3; THREADS=$4; WAIT=${5:-}
 LABEL_PREFIX=${LABEL_PREFIX:-hf583}; RUN_ARGS=${RUN_ARGS:-}
 HERE=$(cd "$(dirname "$0")" && pwd)
-mkdir -p "$QUEUE"/{todo,running,done,failed,logs}
+CONTROL=$(cd "$HERE/../../../.." && pwd)/work/pipeline_control
+NICE=0; [ "$HOST" = mac ] && NICE=10
+mkdir -p "$QUEUE"/{todo,priority,running,done,failed,logs,retries} "$CONTROL"
 if [ -n "$WAIT" ]; then
   until grep -q "BENCH DONE" "$WAIT" 2>/dev/null; do sleep 30; done
 fi
 while true; do
-  next=$(ls "$QUEUE/todo" 2>/dev/null | sort | head -1)
+  if [ -f "$CONTROL/pause-$HOST" ]; then sleep 10; continue; fi
+  dir=priority; next=$(ls "$QUEUE/priority" 2>/dev/null | sort | head -1)
+  if [ -z "$next" ]; then dir=todo; next=$(ls "$QUEUE/todo" 2>/dev/null | sort | head -1); fi
   if [ -z "$next" ]; then [ -f "$QUEUE/STOP" ] && break; sleep 60; continue; fi
-  mv "$QUEUE/todo/$next" "$QUEUE/running/$next.$HOST" 2>/dev/null || continue
-  source_attempt=$(cat "$QUEUE/running/$next.$HOST")
-  log="$QUEUE/logs/$next.$HOST.log"
-  echo "$(date -u +%FT%TZ) start $next on $HOST" >> "$QUEUE/worker-$HOST.log"
+  tile=${next#[0-9][0-9]-}
+  mv "$QUEUE/$dir/$next" "$QUEUE/running/$tile.$HOST" 2>/dev/null || continue
+  source_attempt=$(head -1 "$QUEUE/running/$tile.$HOST")
+  log="$QUEUE/logs/$tile.$HOST.log"
+  tag=""; [ "$dir" = priority ] && tag=" (priority)"
+  echo "$(date -u +%FT%TZ) start $tile on $HOST$tag" >> "$QUEUE/worker-$HOST.log"
   start=$(date +%s)
-  if caffeinate -i python3 "$HERE/run_attempt.py" --source-attempt "$source_attempt" \
+  if caffeinate -i nice -n "$NICE" python3 "$HERE/run_attempt.py" --source-attempt "$source_attempt" \
       --label "$LABEL_PREFIX-$HOST$THREADS" --host "$HOST" --port "$PORT" --threads "$THREADS" $RUN_ARGS > "$log" 2>&1; then
-    mv "$QUEUE/running/$next.$HOST" "$QUEUE/done/$next"
-    echo "$(date -u +%FT%TZ) done $next on $HOST in $(( $(date +%s) - start ))s -> $(tail -1 "$log")" >> "$QUEUE/worker-$HOST.log"
+    printf '%s\n%s\n' "$source_attempt" "$(tail -1 "$log")" > "$QUEUE/done/$tile"
+    rm -f "$QUEUE/running/$tile.$HOST"
+    echo "$(date -u +%FT%TZ) done $tile on $HOST in $(( $(date +%s) - start ))s -> $(tail -1 "$log")" >> "$QUEUE/worker-$HOST.log"
+  elif [ "$(cat "$QUEUE/retries/$tile" 2>/dev/null || echo 0)" -lt 1 ]; then
+    echo 1 > "$QUEUE/retries/$tile"
+    cp "$log" "$log.try1"
+    mv "$QUEUE/running/$tile.$HOST" "$QUEUE/$dir/$next"
+    echo "$(date -u +%FT%TZ) RETRY $tile after failure on $HOST after $(( $(date +%s) - start ))s (see $log.try1)" >> "$QUEUE/worker-$HOST.log"
   else
-    mv "$QUEUE/running/$next.$HOST" "$QUEUE/failed/$next"
-    echo "$(date -u +%FT%TZ) FAILED $next on $HOST after $(( $(date +%s) - start ))s (see $log)" >> "$QUEUE/worker-$HOST.log"
+    mv "$QUEUE/running/$tile.$HOST" "$QUEUE/failed/$tile"
+    echo "$(date -u +%FT%TZ) FAILED $tile on $HOST after $(( $(date +%s) - start ))s (see $log)" >> "$QUEUE/worker-$HOST.log"
   fi
 done
 echo "$(date -u +%FT%TZ) worker $HOST idle: queue empty" >> "$QUEUE/worker-$HOST.log"

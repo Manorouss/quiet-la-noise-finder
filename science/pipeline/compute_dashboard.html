@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiet LA Compute</title>
+<style>
+:root { --bg: #f4f2ec; --card: #fffdf8; --ink: #1c2333; --sub: #5b6474; --line: #e2ddd2; --accent: #2a9d8f; --warn: #e9a23b; --bad: #c1272d; --queued: #9ec5e8; --rest: #dcd8cf; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14171d; --card: #1d2129; --ink: #eef0f4; --sub: #9aa3b2; --line: #2c313b; --rest: #2f343e; --queued: #3d6a91; } }
+:root[data-theme="dark"] { --bg: #14171d; --card: #1d2129; --ink: #eef0f4; --sub: #9aa3b2; --line: #2c313b; --rest: #2f343e; --queued: #3d6a91; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 40px; }
+header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h1 { margin: 0; font: 600 24px/1.1 "Iowan Old Style", Georgia, serif; }
+.muted { color: var(--sub); font-size: 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-top: 16px; }
+.big { font-size: 40px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.bar { height: 16px; background: var(--rest); border-radius: 9px; overflow: hidden; margin: 10px 0 8px; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 9px; min-width: 3px; transition: width .6s; }
+.bar.small { height: 8px; margin: 6px 0 2px; }
+.bar.small > i { background: var(--warn); }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 22px; color: var(--sub); }
+.facts b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.machines { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.machine h2 { margin: 0; font-size: 17px; }
+.machine-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; background: var(--rest); color: var(--sub); }
+.pill.running { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.pill.paused, .pill.stopped { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+.pill.pausing, .pill.resuming { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+button { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; min-width: 112px; }
+button.pause { background: var(--ink); color: var(--card); }
+button.resume { background: var(--accent); color: #fff; }
+button:disabled { opacity: .5; cursor: default; }
+.engine { padding: 10px 0; border-top: 1px solid var(--line); margin-top: 10px; }
+.engine-head { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.engine-head b { font-variant-numeric: tabular-nums; }
+canvas { width: 100%; display: block; margin-top: 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--sub); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+td, th { text-align: left; padding: 5px 4px; border-top: 1px solid var(--line); }
+th { color: var(--sub); font-weight: 600; border-top: 0; }
+.grid2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+.events { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--sub); white-space: pre-wrap; margin: 8px 0 0; }
+.topbar { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 760px) { .machines, .grid2 { grid-template-columns: 1fr; } .big { font-size: 32px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><h1>Quiet LA · county compute</h1><div class="muted" id="updated">Loading…</div></div>
+    <div class="topbar"><button class="pause" id="pause-all">Pause both</button><button class="resume" id="resume-all">Resume both</button></div>
+  </header>
+
+  <section class="card">
+    <div class="muted">Road-noise calculation for every built-up km² of LA County</div>
+    <div class="big" id="pct">–</div>
+    <div class="bar"><i id="bar" style="width:0"></i></div>
+    <div class="facts" id="facts"></div>
+  </section>
+
+  <section class="machines">
+    <div class="card machine" id="card-mac"></div>
+    <div class="card machine" id="card-pc"></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <div class="machine-head"><h2 style="margin:0;font-size:17px">County map</h2><span class="muted">each square is 1 km²</span></div>
+      <canvas id="map"></canvas>
+      <div class="legend"><span><i style="background:var(--accent)"></i>done</span><span><i style="background:var(--warn)"></i>computing now</span><span><i style="background:var(--queued)"></i>prepared</span><span><i style="background:var(--rest)"></i>to do</span></div>
+    </div>
+    <div class="card">
+      <h2 style="margin:0;font-size:17px">Recently finished</h2>
+      <table><thead><tr><th>Tile</th><th>Machine</th><th>Points</th><th>Took</th><th>At</th></tr></thead><tbody id="recent"></tbody></table>
+      <div class="events" id="events"></div>
+    </div>
+  </section>
+
+  <p class="muted">Pause freezes the running calculation within a few seconds and frees the CPU; Resume continues exactly where it stopped, so nothing is lost. This page runs on the Mac: open it from the PC or a phone on the same Wi‑Fi at <b id="lan"></b>. The Mac must stay awake and plugged in, because it coordinates both machines.</p>
+</main>
+<script>
+const NAMES = { mac: ['Mac', 'M1 Max'], pc: ['Windows PC', 'i9-12900F'] };
+const STATE_TEXT = { running: 'running', waiting: 'waiting for tiles', paused: 'paused', pausing: 'pausing…', resuming: 'resuming…', stopped: 'worker stopped' };
+const STAGES = { propagation: 'calculating', import_buildings: 'loading buildings', import_receivers: 'loading points', import_sources: 'loading roads', import_ground: 'loading ground', import_periods: 'loading traffic', import_terrain: 'loading terrain', road_emissions: 'road emissions' };
+document.getElementById('lan').textContent = location.host.startsWith('localhost') || location.host.startsWith('127.') ? '192.168.1.122:' + (location.port || 8765) : location.host;
+const fmt = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : Math.round(n).toLocaleString();
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function send(action, host) {
+  document.querySelectorAll('button').forEach((b) => (b.disabled = true));
+  try { await fetch('/api/' + action, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Quiet-LA': '1' }, body: JSON.stringify({ host }) }); }
+  finally { setTimeout(refresh, 400); }
+}
+document.getElementById('pause-all').onclick = () => send('pause', 'all');
+document.getElementById('resume-all').onclick = () => send('resume', 'all');
+
+function machine(host, info, rate) {
+  const [name, chip] = NAMES[host];
+  const action = info.paused ? 'resume' : 'pause';
+  const engines = info.engines.map((e) => {
+    const pct = e.percent == null ? null : e.percent;
+    const what = e.tile ? `${esc(e.tile)} · ${e.frozen ? 'frozen' : esc(STAGES[e.stage] || e.stage || 'starting')}` : (info.paused ? 'paused' : 'idle');
+    return `<div class="engine"><div class="engine-head"><span>Engine ${e.threads} threads · ${what}</span><b>${pct == null ? (e.minutes != null ? e.minutes + ' min' : '') : pct.toFixed(0) + '%'}</b></div>`
+      + (e.tile ? `<div class="bar small"><i style="width:${pct == null ? 2 : pct}%"></i></div><div class="muted">${e.minutes} min on this tile</div>` : '') + '</div>';
+  }).join('') || '<div class="engine muted">No worker running on this machine.</div>';
+  return `<div class="machine-head"><div><h2>${name}</h2><span class="muted">${chip} · ${rate ? Math.round(rate) + ' points/s lately' : 'no recent tiles'}</span></div>`
+    + `<div style="text-align:right"><span class="pill ${info.state}">${STATE_TEXT[info.state] || info.state}</span><br><br>`
+    + `<button class="${action}" onclick="send('${action}','${host}')">${info.paused ? 'Resume' : 'Pause'} ${name.split(' ').pop()}</button></div></div>${engines}`;
+}
+
+function drawMap(m) {
+  const canvas = document.getElementById('map');
+  const cols = m.x1 - m.x0 + 1, rows = m.y1 - m.y0 + 1;
+  const width = canvas.clientWidth, cell = Math.max(2, Math.floor(width / cols));
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = cols * cell * dpr; canvas.height = rows * cell * dpr;
+  canvas.style.height = rows * cell + 'px'; canvas.style.width = cols * cell + 'px';
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  const css = getComputedStyle(document.documentElement);
+  const colors = ['--rest', '--queued', '--warn', '--accent'].map((v) => css.getPropertyValue(v).trim());
+  for (const [x, y, s] of m.cells) {
+    ctx.fillStyle = colors[s];
+    ctx.fillRect((x - m.x0) * cell, (m.y1 - y) * cell, cell - (cell > 3 ? 1 : 0), cell - (cell > 3 ? 1 : 0));
+  }
+}
+
+async function refresh() {
+  let data;
+  try { data = await (await fetch('/api/status', { cache: 'no-store' })).json(); }
+  catch { document.getElementById('updated').textContent = 'Cannot reach the Mac — is it awake?'; return; }
+  const s = data.summary;
+  document.getElementById('pct').textContent = (s.fraction * 100).toFixed(s.fraction < 0.1 ? 2 : 1) + '% done';
+  document.getElementById('bar').style.width = Math.max(0.3, s.fraction * 100) + '%';
+  const eta = s.eta_days == null ? 'no recent speed yet' : s.eta_days < 1.5 ? Math.round(s.eta_days * 24) + ' hours left at the current speed' : s.eta_days.toFixed(1) + ' days left at the current speed';
+  document.getElementById('facts').innerHTML = `<span><b>${fmt(s.done_receivers)}</b> of ~${fmt(s.total_receivers)} points</span><span><b>${s.cells_done.toLocaleString()}</b> of ${s.cells_total.toLocaleString()} km²</span><span><b>${Math.round(s.rate.all || 0)}</b> points/s</span><span><b>${eta}</b></span><span>queue: ${data.queue.priority ? data.queue.priority + ' priority, ' : ''}${data.queue.todo} prepared${data.queue.failed ? ', ' + data.queue.failed + ' failed' : ''}${data.daemon ? '' : ' · tile builder stopped'}</span>`;
+  for (const host of ['mac', 'pc']) document.getElementById('card-' + host).innerHTML = machine(host, data.hosts[host], s.rate[host]);
+  document.getElementById('recent').innerHTML = s.recent.map((r) => `<tr><td>${esc(r.tile)}</td><td>${r.host === 'pc' ? 'PC' : 'Mac'}</td><td>${fmt(r.receivers)}</td><td>${r.minutes} min</td><td>${r.ended}</td></tr>`).join('');
+  document.getElementById('events').textContent = data.events.join('\n');
+  document.getElementById('updated').textContent = 'Updated ' + data.time + ' · refreshes every 5 s';
+  drawMap(s.map);
+  document.querySelectorAll('button').forEach((b) => (b.disabled = false));
+}
+refresh();
+setInterval(refresh, 5000);
+window.addEventListener('resize', refresh);
+</script>
+</body>
+</html>
