@@ -1,0 +1,5 @@
+#!/bin/bash
+# Python with the project's GIS libraries (shapely, pyproj, rasterio).
+PROJECT=$(cd "$(dirname "$0")/../../../../.." && pwd)
+export PYTHONPATH="$PROJECT/implementation/work/.geo_python${PYTHONPATH:+:$PYTHONPATH}"
+exec "$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3" "$@"
