@@ -116,8 +116,11 @@ def note(message: str) -> None:
 def reconcile_forever() -> None:
     while True:
         try:
-            for worker in workers():
-                host, port = worker["host"], worker["port"]
+            # Driven by the marker files, so a run is handled whichever process started it.
+            engines = {tuple(path.name.split("-")[1:]) for path in CONTROL.glob("held-*-*")}
+            engines |= {tuple(path.name.split("-")[1:]) for path in CONTROL.glob("frozen-*-*")}
+            for host, port_text in sorted(engines):
+                port = int(port_text)
                 paused = (CONTROL / f"pause-{host}").exists()
                 held = (CONTROL / f"held-{host}-{port}").exists()
                 frozen = CONTROL / f"frozen-{host}-{port}"
