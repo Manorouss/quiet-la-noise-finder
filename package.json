@@ -35,8 +35,10 @@
     "test:profile-sequences": "node scripts/test-profile-build-sequences.mjs"
   },
   "dependencies": {
+    "@protomaps/basemaps": "^5.7.2",
     "maplibre-gl": "6.9.0",
     "next": "15.5.24",
+    "pmtiles": "^4.5.0",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
