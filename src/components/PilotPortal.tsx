@@ -356,13 +356,18 @@ export default function PilotPortal() {
 
   useEffect(() => { if (data) void installMap(data); }, [data, installMap]);
   useEffect(() => {
-    const map = mapRef.current; if (!map || !map.isStyleLoaded()) return;
+    const map = mapRef.current; if (!map) return;
+    // Not gated on isStyleLoaded(): it is false while basemap tiles are still loading, and an update
+    // dropped then was never retried, leaving newly loaded tiles off the map.
+    const apply = () => {
     const receiverFeatures = data?.receivers.map((f) => ({ ...f, properties: { ...f.properties, value: validValue(f, period), id: f.properties.receiver_key } })) as Feature<Point, Record<string, unknown>>[] | undefined;
     const buildings = data?.buildings.map((f) => ({ ...f, properties: { ...f.properties, id: f.properties.building_key } })) as Feature<Polygon, Record<string, unknown>>[] | undefined;
     if (receiverFeatures && map.getSource('pilot-receivers')) (map.getSource('pilot-receivers') as import('maplibre-gl').GeoJSONSource).setData(featureCollection(receiverFeatures));
     if (buildings && map.getSource('pilot-buildings')) (map.getSource('pilot-buildings') as import('maplibre-gl').GeoJSONSource).setData(featureCollection(buildings));
     if (map.getLayer('pilot-building-selected')) map.setFilter('pilot-building-selected', ['==', ['get', 'id'], selectedBuilding?.properties.building_key ?? '']);
     if (map.getLayer('pilot-receiver-selected')) map.setFilter('pilot-receiver-selected', ['==', ['get', 'id'], selectedReceiver?.properties.receiver_key ?? '']);
+    };
+    if (map.getSource('pilot-receivers')) apply(); else map.once('load', apply);
   }, [data, period, selectedBuilding, selectedReceiver]);
   useEffect(() => {
     if (skipSelectionVisibilityRef.current) { skipSelectionVisibilityRef.current = false; return; }

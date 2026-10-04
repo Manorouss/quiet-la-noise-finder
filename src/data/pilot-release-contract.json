@@ -2400,6 +2400,1366 @@
           "bytes": 1530
         }
       ]
+    },
+    {
+      "tile_id": "cty-e357-n3784",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e357-n3784-g20a50f10-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.55199303384079,
+        34.18698479734199,
+        -118.54087466257883,
+        34.196308930355585
+      ],
+      "receiver_count": 9786,
+      "numeric_rows": 29358,
+      "building_count": 1140,
+      "facade_receiver_count": 6587,
+      "receiver_height_counts_m": {
+        "1.5": 3199,
+        "4.0": 6587
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "38e8b0a36998b7826bd76f93558ade95a343f4e512b2e2c256b1be1c681c91ba",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e357-n3784-g20a50f10-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5581394,
+            "sha256": "1224bc7979e953b36698b82f115d66d8a423763f6ece12186e26c95abf381cb8"
+          },
+          "buildings.geojson": {
+            "bytes": 1738703,
+            "sha256": "b5f167b76e9dab6a826c8667a39191c146fd4a689af78b6afa227467b96b0fdd"
+          },
+          "build-manifest.json": {
+            "bytes": 1530,
+            "sha256": "c65c267571bf96e6801648e5a376f82afabaa3d12c03537df5c31e65fd8d8113"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 549,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e357-n3784/benchmark.geojson",
+          "sha256": "1224bc7979e953b36698b82f115d66d8a423763f6ece12186e26c95abf381cb8",
+          "bytes": 5581394
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e357-n3784/buildings.geojson",
+          "sha256": "b5f167b76e9dab6a826c8667a39191c146fd4a689af78b6afa227467b96b0fdd",
+          "bytes": 1738703
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e357-n3784/build-manifest.json",
+          "sha256": "c65c267571bf96e6801648e5a376f82afabaa3d12c03537df5c31e65fd8d8113",
+          "bytes": 1530
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e357-n3785",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e357-n3785-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.5523073257942,
+        34.19617490979745,
+        -118.5410692177488,
+        34.20538529647803
+      ],
+      "receiver_count": 9915,
+      "numeric_rows": 29745,
+      "building_count": 1453,
+      "facade_receiver_count": 7198,
+      "receiver_height_counts_m": {
+        "1.5": 2717,
+        "4.0": 7198
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "480119670d12706a8708ce1ae2ddb109bf1f79d77b3d29b097a947b56605563d",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e357-n3785-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5664441,
+            "sha256": "e9cd0b125bee7f144474cd21819bcf4d943c9e67a475220491fbadcade19f920"
+          },
+          "buildings.geojson": {
+            "bytes": 1982931,
+            "sha256": "a8fdb257352f69b2ed36fc71572f1e950b9dfb01f1c85746c22815bfae61cb47"
+          },
+          "build-manifest.json": {
+            "bytes": 1529,
+            "sha256": "3cd7e3ae6efdad785c8e4de71fd309d0864740d7bd7ef2a7a50c2aefe87dafd7"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 476,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e357-n3785/benchmark.geojson",
+          "sha256": "e9cd0b125bee7f144474cd21819bcf4d943c9e67a475220491fbadcade19f920",
+          "bytes": 5664441
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e357-n3785/buildings.geojson",
+          "sha256": "a8fdb257352f69b2ed36fc71572f1e950b9dfb01f1c85746c22815bfae61cb47",
+          "bytes": 1982931
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e357-n3785/build-manifest.json",
+          "sha256": "3cd7e3ae6efdad785c8e4de71fd309d0864740d7bd7ef2a7a50c2aefe87dafd7",
+          "bytes": 1529
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e357-n3786",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e357-n3786-g20a50f10-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.55241998976788,
+        34.20514405625365,
+        -118.54124167713883,
+        34.21451646788224
+      ],
+      "receiver_count": 9533,
+      "numeric_rows": 28599,
+      "building_count": 1283,
+      "facade_receiver_count": 6667,
+      "receiver_height_counts_m": {
+        "1.5": 2866,
+        "4.0": 6667
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "4f4607e07b8efee2fa26c7dd2741c45c88bd9f15aeec7d182c7e1e472c607c7e",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e357-n3786-g20a50f10-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5438617,
+            "sha256": "c70b807d0e988a8560ff468404054ea49f9a350c7156b80f691e06689aa5a50d"
+          },
+          "buildings.geojson": {
+            "bytes": 1747500,
+            "sha256": "f16b356566807297f59bac2ee9236a55fc21bcc6f477c339df8ae6c7f44380f1"
+          },
+          "build-manifest.json": {
+            "bytes": 1530,
+            "sha256": "a5bd6f72d9aacb99bbe4edfb0e26ffd0be103ca407d2e4b273f8620404be6e64"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 291,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e357-n3786/benchmark.geojson",
+          "sha256": "c70b807d0e988a8560ff468404054ea49f9a350c7156b80f691e06689aa5a50d",
+          "bytes": 5438617
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e357-n3786/buildings.geojson",
+          "sha256": "f16b356566807297f59bac2ee9236a55fc21bcc6f477c339df8ae6c7f44380f1",
+          "bytes": 1747500
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e357-n3786/build-manifest.json",
+          "sha256": "a5bd6f72d9aacb99bbe4edfb0e26ffd0be103ca407d2e4b273f8620404be6e64",
+          "bytes": 1530
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e357-n3787",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e357-n3787-g20a50f10-nv-pc8-v1",
+      "bbox_wgs84": [
+        -118.5525572061123,
+        34.214248647100426,
+        -118.54140428175405,
+        34.22340070930365
+      ],
+      "receiver_count": 8468,
+      "numeric_rows": 25404,
+      "building_count": 1000,
+      "facade_receiver_count": 5637,
+      "receiver_height_counts_m": {
+        "1.5": 2831,
+        "4.0": 5637
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "c77b9abd46a9885d41dc6a8d8db1d6a2e7ae66d6acbc82067b74dbf82e4cc947",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e357-n3787-g20a50f10-nv-pc8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4827060,
+            "sha256": "42e826499a1f854e56665f6eec30ce2951e342b8cd18d6f35cb1208e3fa09eee"
+          },
+          "buildings.geojson": {
+            "bytes": 1399609,
+            "sha256": "8ca42c7a73284ae543b99c365b20c350ccd74b6c5d204222b1bf1453d7118542"
+          },
+          "build-manifest.json": {
+            "bytes": 1529,
+            "sha256": "ad72e3a83c730a0fde11d44725068084b1210f39c3cb5d20ac4a9ab3256f3cca"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 327,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e357-n3787/benchmark.geojson",
+          "sha256": "42e826499a1f854e56665f6eec30ce2951e342b8cd18d6f35cb1208e3fa09eee",
+          "bytes": 4827060
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e357-n3787/buildings.geojson",
+          "sha256": "8ca42c7a73284ae543b99c365b20c350ccd74b6c5d204222b1bf1453d7118542",
+          "bytes": 1399609
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e357-n3787/build-manifest.json",
+          "sha256": "ad72e3a83c730a0fde11d44725068084b1210f39c3cb5d20ac4a9ab3256f3cca",
+          "bytes": 1529
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e358-n3784",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e358-n3784-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.54117196167294,
+        34.187253607312506,
+        -118.52948613927693,
+        34.19685810574906
+      ],
+      "receiver_count": 9392,
+      "numeric_rows": 28176,
+      "building_count": 948,
+      "facade_receiver_count": 5726,
+      "receiver_height_counts_m": {
+        "1.5": 3666,
+        "4.0": 5726
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "58e60e9f63b6a321d21f0facbee66d3751575a400f994fbf0912d0ccf6c68b61",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e358-n3784-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5340451,
+            "sha256": "512d0b9143e0829f472437c14b6db51b30c3c3c996d5c246d3ad2f4f05168003"
+          },
+          "buildings.geojson": {
+            "bytes": 1363626,
+            "sha256": "461549e2eb7380001e523877fb26402141b74b86360b19073fcb02f2b6386761"
+          },
+          "build-manifest.json": {
+            "bytes": 1530,
+            "sha256": "c0c6be48af53feab63c802afcd648408d1c746df0084cd34c7a9be6a45563441"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 391,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e358-n3784/benchmark.geojson",
+          "sha256": "512d0b9143e0829f472437c14b6db51b30c3c3c996d5c246d3ad2f4f05168003",
+          "bytes": 5340451
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e358-n3784/buildings.geojson",
+          "sha256": "461549e2eb7380001e523877fb26402141b74b86360b19073fcb02f2b6386761",
+          "bytes": 1363626
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e358-n3784/build-manifest.json",
+          "sha256": "c0c6be48af53feab63c802afcd648408d1c746df0084cd34c7a9be6a45563441",
+          "bytes": 1530
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e358-n3785",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e358-n3785-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.54146022079729,
+        34.19609791867764,
+        -118.53020669812996,
+        34.20556144801568
+      ],
+      "receiver_count": 9347,
+      "numeric_rows": 28041,
+      "building_count": 1156,
+      "facade_receiver_count": 6401,
+      "receiver_height_counts_m": {
+        "1.5": 2946,
+        "4.0": 6401
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "55581c56b1c22c466328cbea3590cb734da77e8ebc4e4be531e04f57565141d8",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e358-n3785-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5332616,
+            "sha256": "901b1db3759b4a96c4a914dc670a624f2236bb6aa30e5a8628d0d32287d05eba"
+          },
+          "buildings.geojson": {
+            "bytes": 1606422,
+            "sha256": "d7f301d0b27befc78375231f8f6c338cfd608c649fe46309c7edf650f624224b"
+          },
+          "build-manifest.json": {
+            "bytes": 1531,
+            "sha256": "e94ca6e87acda5edc327b38e0da46c8f7a5ab9fee22ba29d9dbf886ebc52a268"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 486,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e358-n3785/benchmark.geojson",
+          "sha256": "901b1db3759b4a96c4a914dc670a624f2236bb6aa30e5a8628d0d32287d05eba",
+          "bytes": 5332616
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e358-n3785/buildings.geojson",
+          "sha256": "d7f301d0b27befc78375231f8f6c338cfd608c649fe46309c7edf650f624224b",
+          "bytes": 1606422
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e358-n3785/build-manifest.json",
+          "sha256": "e94ca6e87acda5edc327b38e0da46c8f7a5ab9fee22ba29d9dbf886ebc52a268",
+          "bytes": 1531
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e358-n3786",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e358-n3786-g20a50f10-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.54142767121449,
+        34.20528663862143,
+        -118.53043535515549,
+        34.214613033560994
+      ],
+      "receiver_count": 10394,
+      "numeric_rows": 31182,
+      "building_count": 1309,
+      "facade_receiver_count": 7026,
+      "receiver_height_counts_m": {
+        "1.5": 3368,
+        "4.0": 7026
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "f9b99cc3d0de46f7be3d9a38d0439de378d32e78fb75e68ca15fc5e89e74ffcf",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e358-n3786-g20a50f10-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5928690,
+            "sha256": "a9d9502ac168f0b07999957515184afa8c5e52765b394688566be643a708594e"
+          },
+          "buildings.geojson": {
+            "bytes": 1803709,
+            "sha256": "0af80656dbb48bcf814aa4001cb83f233942f651a5af540137c887ca6b2089d9"
+          },
+          "build-manifest.json": {
+            "bytes": 1531,
+            "sha256": "7d520f146b1381f62779405ab6726fc83ec527eceb4e465e55957a1dd0c46c28"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 555,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e358-n3786/benchmark.geojson",
+          "sha256": "a9d9502ac168f0b07999957515184afa8c5e52765b394688566be643a708594e",
+          "bytes": 5928690
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e358-n3786/buildings.geojson",
+          "sha256": "0af80656dbb48bcf814aa4001cb83f233942f651a5af540137c887ca6b2089d9",
+          "bytes": 1803709
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e358-n3786/build-manifest.json",
+          "sha256": "7d520f146b1381f62779405ab6726fc83ec527eceb4e465e55957a1dd0c46c28",
+          "bytes": 1531
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e358-n3787",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e358-n3787-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.5416473391669,
+        34.214282687497956,
+        -118.53065744817805,
+        34.22366429521967
+      ],
+      "receiver_count": 9444,
+      "numeric_rows": 28332,
+      "building_count": 978,
+      "facade_receiver_count": 6367,
+      "receiver_height_counts_m": {
+        "1.5": 3077,
+        "4.0": 6367
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "442fd43e30dbbbff73e509667e3e72170053487bfc775ebd947b4c6de43b7d74",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e358-n3787-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5385307,
+            "sha256": "cfb2b3ceeaed88b1135739043dbab4581875c933801fd2f3485432fcec48a64b"
+          },
+          "buildings.geojson": {
+            "bytes": 1466212,
+            "sha256": "b5879f37f5b47322b1c292f545afd596873fd83baacd3dde19f3c2de41881b12"
+          },
+          "build-manifest.json": {
+            "bytes": 1530,
+            "sha256": "5318175540732b93892c4a4d76f7a3843db72cb7fefeda6958c7fbc4abf90781"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 394,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e358-n3787/benchmark.geojson",
+          "sha256": "cfb2b3ceeaed88b1135739043dbab4581875c933801fd2f3485432fcec48a64b",
+          "bytes": 5385307
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e358-n3787/buildings.geojson",
+          "sha256": "b5879f37f5b47322b1c292f545afd596873fd83baacd3dde19f3c2de41881b12",
+          "bytes": 1466212
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e358-n3787/build-manifest.json",
+          "sha256": "5318175540732b93892c4a4d76f7a3843db72cb7fefeda6958c7fbc4abf90781",
+          "bytes": 1530
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e359-n3784",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e359-n3784-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.5304040863083,
+        34.187437196110025,
+        -118.5191441374381,
+        34.19663261698393
+      ],
+      "receiver_count": 11929,
+      "numeric_rows": 35787,
+      "building_count": 1890,
+      "facade_receiver_count": 8851,
+      "receiver_height_counts_m": {
+        "1.5": 3078,
+        "4.0": 8851
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "a367fd27b2dc1d4c476c6fe1d560a57c5609726b14cc901bf45a1c0607855917",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e359-n3784-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 6816689,
+            "sha256": "b0825effb53a906bbdd1e9dc3b43b31d748e721e7803008834a17ee5b58a356f"
+          },
+          "buildings.geojson": {
+            "bytes": 2516179,
+            "sha256": "a496ae78840d55119c820fec46c28fce45f0aacbf0e9c68c4fccf5dfbadc5a45"
+          },
+          "build-manifest.json": {
+            "bytes": 1531,
+            "sha256": "bc59b8a36a5459aafd236c108967e57cb0e0bad9050b224b64361c0e95b6a64b"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 449,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e359-n3784/benchmark.geojson",
+          "sha256": "b0825effb53a906bbdd1e9dc3b43b31d748e721e7803008834a17ee5b58a356f",
+          "bytes": 6816689
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e359-n3784/buildings.geojson",
+          "sha256": "a496ae78840d55119c820fec46c28fce45f0aacbf0e9c68c4fccf5dfbadc5a45",
+          "bytes": 2516179
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e359-n3784/build-manifest.json",
+          "sha256": "bc59b8a36a5459aafd236c108967e57cb0e0bad9050b224b64361c0e95b6a64b",
+          "bytes": 1531
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e359-n3785",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e359-n3785-g20a50f10-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.53051209757776,
+        34.19643547649258,
+        -118.5194746584114,
+        34.20569253012596
+      ],
+      "receiver_count": 9593,
+      "numeric_rows": 28779,
+      "building_count": 1344,
+      "facade_receiver_count": 6900,
+      "receiver_height_counts_m": {
+        "1.5": 2693,
+        "4.0": 6900
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "367cf13e752cad25f66fcad545ee80ad6dfc21af6a6b864995024fa857829f1f",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e359-n3785-g20a50f10-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5478206,
+            "sha256": "5776146106c25f0d7e3b6713ca0f773c2342316850014ed463d9212066e69672"
+          },
+          "buildings.geojson": {
+            "bytes": 1869835,
+            "sha256": "37cffb2a888cf86cf619b2c5e7516e60dcda7382152b0aab2b7526643ebdf45e"
+          },
+          "build-manifest.json": {
+            "bytes": 1528,
+            "sha256": "8eb6cc108fbe7d1ff851d584e3f4997300343068dd079e504621ffd22e0e5384"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 506,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e359-n3785/benchmark.geojson",
+          "sha256": "5776146106c25f0d7e3b6713ca0f773c2342316850014ed463d9212066e69672",
+          "bytes": 5478206
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e359-n3785/buildings.geojson",
+          "sha256": "37cffb2a888cf86cf619b2c5e7516e60dcda7382152b0aab2b7526643ebdf45e",
+          "bytes": 1869835
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e359-n3785/build-manifest.json",
+          "sha256": "8eb6cc108fbe7d1ff851d584e3f4997300343068dd079e504621ffd22e0e5384",
+          "bytes": 1528
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e359-n3786",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e359-n3786-g20a50f10-nv-pc8-v1",
+      "bbox_wgs84": [
+        -118.53065909686312,
+        34.20541221066723,
+        -118.51970362663485,
+        34.214675318367334
+      ],
+      "receiver_count": 10586,
+      "numeric_rows": 31758,
+      "building_count": 1573,
+      "facade_receiver_count": 7690,
+      "receiver_height_counts_m": {
+        "1.5": 2896,
+        "4.0": 7690
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "b1f77520d4d18e979ade59314844ba889e35e6a946ce053f8354e5b3bfea4cba",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e359-n3786-g20a50f10-nv-pc8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 6049616,
+            "sha256": "fdfda4fe5b8c853754b70be17f479d41e20a218c8ea98f86219478bc0c534be1"
+          },
+          "buildings.geojson": {
+            "bytes": 2111588,
+            "sha256": "5cb28157ec957b69fa039ebfaa5f935c1f0e75208e90e52cd35d2b4e5f85938c"
+          },
+          "build-manifest.json": {
+            "bytes": 1531,
+            "sha256": "be035289008f46cf0aaac22df9446a1ac91b6c0701b92519c923d641e802c680"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 441,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e359-n3786/benchmark.geojson",
+          "sha256": "fdfda4fe5b8c853754b70be17f479d41e20a218c8ea98f86219478bc0c534be1",
+          "bytes": 6049616
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e359-n3786/buildings.geojson",
+          "sha256": "5cb28157ec957b69fa039ebfaa5f935c1f0e75208e90e52cd35d2b4e5f85938c",
+          "bytes": 2111588
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e359-n3786/build-manifest.json",
+          "sha256": "be035289008f46cf0aaac22df9446a1ac91b6c0701b92519c923d641e802c680",
+          "bytes": 1531
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e359-n3787",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e359-n3787-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.53078697823858,
+        34.214511562487544,
+        -118.51977702376341,
+        34.223940230415764
+      ],
+      "receiver_count": 9909,
+      "numeric_rows": 29727,
+      "building_count": 1421,
+      "facade_receiver_count": 7495,
+      "receiver_height_counts_m": {
+        "1.5": 2414,
+        "4.0": 7495
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "62149b98a14c68d0d5fc5ffd8b4b4ff99fba9d5cd4eba14f593b5cafc0f12155",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e359-n3787-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5662111,
+            "sha256": "858bfd7dd30598f9c88c0128b01c586d02d3b34259b5d58a4b45d774ec24c234"
+          },
+          "buildings.geojson": {
+            "bytes": 1935727,
+            "sha256": "002df5955f48d0178a24b18f54a97e6c05d1b14dfbbb6f4768819b6c547752ec"
+          },
+          "build-manifest.json": {
+            "bytes": 1532,
+            "sha256": "881772cf9686558eca7f5c472fb5260f7096013eec5a9db5c0091ae62b368106"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 234,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e359-n3787/benchmark.geojson",
+          "sha256": "858bfd7dd30598f9c88c0128b01c586d02d3b34259b5d58a4b45d774ec24c234",
+          "bytes": 5662111
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e359-n3787/buildings.geojson",
+          "sha256": "002df5955f48d0178a24b18f54a97e6c05d1b14dfbbb6f4768819b6c547752ec",
+          "bytes": 1935727
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e359-n3787/build-manifest.json",
+          "sha256": "881772cf9686558eca7f5c472fb5260f7096013eec5a9db5c0091ae62b368106",
+          "bytes": 1532
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e360-n3784",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e360-n3784-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.51960859970394,
+        34.18759583321276,
+        -118.50842023742086,
+        34.19684766585088
+      ],
+      "receiver_count": 11633,
+      "numeric_rows": 34899,
+      "building_count": 1699,
+      "facade_receiver_count": 8114,
+      "receiver_height_counts_m": {
+        "1.5": 3519,
+        "4.0": 8114
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "338ca6b121a43641410917fe2176d0a338f4439d76e6d9d02d4b5318b8e9f872",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e360-n3784-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 6639274,
+            "sha256": "4e5fcc81a7441f7315ec76f8dae90e67d678e42130063c47fbf88639c99a225d"
+          },
+          "buildings.geojson": {
+            "bytes": 2268511,
+            "sha256": "4476fa2a800f3e7dcd54bdeef0bb4cd122ea76f7e6f8b40bb5f5c57b43d46884"
+          },
+          "build-manifest.json": {
+            "bytes": 1531,
+            "sha256": "c3f9872ef49656e35ddc6d438967e65fb8841d4eb3d92f9ba54889973bc0e009"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 559,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e360-n3784/benchmark.geojson",
+          "sha256": "4e5fcc81a7441f7315ec76f8dae90e67d678e42130063c47fbf88639c99a225d",
+          "bytes": 6639274
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e360-n3784/buildings.geojson",
+          "sha256": "4476fa2a800f3e7dcd54bdeef0bb4cd122ea76f7e6f8b40bb5f5c57b43d46884",
+          "bytes": 2268511
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e360-n3784/build-manifest.json",
+          "sha256": "c3f9872ef49656e35ddc6d438967e65fb8841d4eb3d92f9ba54889973bc0e009",
+          "bytes": 1531
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e360-n3785",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e360-n3785-g20a50f10-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.51959262651889,
+        34.196611420571976,
+        -118.50856243151294,
+        34.20579200703188
+      ],
+      "receiver_count": 11106,
+      "numeric_rows": 33318,
+      "building_count": 1617,
+      "facade_receiver_count": 7755,
+      "receiver_height_counts_m": {
+        "1.5": 3351,
+        "4.0": 7755
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "c9bfb8523883705a0c86166245af6cb996f9b8a122c6316a9f1df7b6be70d488",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e360-n3785-g20a50f10-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 6339150,
+            "sha256": "ef66f38342710f4d4df03f02ca7f67273054fdc92432048a32311cbdd318f2cf"
+          },
+          "buildings.geojson": {
+            "bytes": 2180946,
+            "sha256": "0dab88798ab037d57e9bfa8e41309d98cc84e85400aaed07cb78d90d1ed0fff9"
+          },
+          "build-manifest.json": {
+            "bytes": 1531,
+            "sha256": "cecc63a9856682db5e944521e2aca2f68dd01a72bfca49ef804e9ce98e710b15"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 531,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e360-n3785/benchmark.geojson",
+          "sha256": "ef66f38342710f4d4df03f02ca7f67273054fdc92432048a32311cbdd318f2cf",
+          "bytes": 6339150
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e360-n3785/buildings.geojson",
+          "sha256": "0dab88798ab037d57e9bfa8e41309d98cc84e85400aaed07cb78d90d1ed0fff9",
+          "bytes": 2180946
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e360-n3785/build-manifest.json",
+          "sha256": "cecc63a9856682db5e944521e2aca2f68dd01a72bfca49ef804e9ce98e710b15",
+          "bytes": 1531
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e360-n3786",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e360-n3786-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.51975654662765,
+        34.20561111498409,
+        -118.50829753520571,
+        34.214837489431595
+      ],
+      "receiver_count": 11060,
+      "numeric_rows": 33180,
+      "building_count": 1642,
+      "facade_receiver_count": 7854,
+      "receiver_height_counts_m": {
+        "1.5": 3206,
+        "4.0": 7854
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "f69b89883cb45dec223437d871b5ad6bc10c1fed2e911b3ff129c336da3ebb59",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e360-n3786-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 6316153,
+            "sha256": "55ad6e670f671a1a99b51fec33b357844b5a52b383c6ee61eddd3c73d3680c5c"
+          },
+          "buildings.geojson": {
+            "bytes": 2211841,
+            "sha256": "abe06c3c060a76afa40278241d4cefa36f062e015abd6199e55efc312144e4a3"
+          },
+          "build-manifest.json": {
+            "bytes": 1532,
+            "sha256": "6cdcd15698e31f542493e78f47410d5c73d06d7de0f0584bb18165db7db1642b"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 360,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e360-n3786/benchmark.geojson",
+          "sha256": "55ad6e670f671a1a99b51fec33b357844b5a52b383c6ee61eddd3c73d3680c5c",
+          "bytes": 6316153
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e360-n3786/buildings.geojson",
+          "sha256": "abe06c3c060a76afa40278241d4cefa36f062e015abd6199e55efc312144e4a3",
+          "bytes": 2211841
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e360-n3786/build-manifest.json",
+          "sha256": "6cdcd15698e31f542493e78f47410d5c73d06d7de0f0584bb18165db7db1642b",
+          "bytes": 1532
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e360-n3787",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e360-n3787-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.51999799524204,
+        34.214595674991635,
+        -118.50894745716147,
+        34.223828092261165
+      ],
+      "receiver_count": 10377,
+      "numeric_rows": 31131,
+      "building_count": 1437,
+      "facade_receiver_count": 7319,
+      "receiver_height_counts_m": {
+        "1.5": 3058,
+        "4.0": 7319
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "a9339e5829f21b536f8ad5fa6e6def7b7bd7378eb3c2b024560d4a89bc563d19",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e360-n3787-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5920809,
+            "sha256": "d7288b4e522c6549173e76246fb513f3ed935d02803c55e25d29027f7db0fefb"
+          },
+          "buildings.geojson": {
+            "bytes": 1933745,
+            "sha256": "80114e320382371c326bc2e6c91f9fd4bd3cd2eb12a50632ce23483eb6e54bec"
+          },
+          "build-manifest.json": {
+            "bytes": 1533,
+            "sha256": "0368f01f6cfbb93f274e5f3c6ae602660080c1f20ac5712ac26a4c7945183b8e"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 310,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e360-n3787/benchmark.geojson",
+          "sha256": "d7288b4e522c6549173e76246fb513f3ed935d02803c55e25d29027f7db0fefb",
+          "bytes": 5920809
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e360-n3787/buildings.geojson",
+          "sha256": "80114e320382371c326bc2e6c91f9fd4bd3cd2eb12a50632ce23483eb6e54bec",
+          "bytes": 1933745
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e360-n3787/build-manifest.json",
+          "sha256": "0368f01f6cfbb93f274e5f3c6ae602660080c1f20ac5712ac26a4c7945183b8e",
+          "bytes": 1533
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e361-n3784",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e361-n3784-g20a50f10-nv-pc8-v1",
+      "bbox_wgs84": [
+        -118.50855397720731,
+        34.18748208719407,
+        -118.49753692154675,
+        34.19692861042779
+      ],
+      "receiver_count": 8843,
+      "numeric_rows": 26529,
+      "building_count": 1050,
+      "facade_receiver_count": 6033,
+      "receiver_height_counts_m": {
+        "1.5": 2810,
+        "4.0": 6033
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "d22b207bf8725294d52777b466162ae778be4560d6ac572841e1d5b99f217c38",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e361-n3784-g20a50f10-nv-pc8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5040470,
+            "sha256": "7059fcd1aa810c1062e6b637ea105d992fa48b80b51cc3cd5398b79982d31a7c"
+          },
+          "buildings.geojson": {
+            "bytes": 1522508,
+            "sha256": "9de5b664b5fe9402b134acddd3c282e0a5111d4d932e724e91b40204290d882a"
+          },
+          "build-manifest.json": {
+            "bytes": 1528,
+            "sha256": "bdf019c780884ef71b1ce624ce793ba9c90709c92d504d482abc3be93fd49dab"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 368,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e361-n3784/benchmark.geojson",
+          "sha256": "7059fcd1aa810c1062e6b637ea105d992fa48b80b51cc3cd5398b79982d31a7c",
+          "bytes": 5040470
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e361-n3784/buildings.geojson",
+          "sha256": "9de5b664b5fe9402b134acddd3c282e0a5111d4d932e724e91b40204290d882a",
+          "bytes": 1522508
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e361-n3784/build-manifest.json",
+          "sha256": "bdf019c780884ef71b1ce624ce793ba9c90709c92d504d482abc3be93fd49dab",
+          "bytes": 1528
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e361-n3785",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e361-n3785-g20a50f10-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.50884545629245,
+        34.19674459855212,
+        -118.4978234195138,
+        34.205905684862444
+      ],
+      "receiver_count": 9739,
+      "numeric_rows": 29217,
+      "building_count": 1285,
+      "facade_receiver_count": 6819,
+      "receiver_height_counts_m": {
+        "1.5": 2920,
+        "4.0": 6819
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "9a621095b655a50456184d9e9521a8d56edbdd75a0fcee14c97694e423514f43",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e361-n3785-g20a50f10-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5556522,
+            "sha256": "75e57e9f7a30ed4c6dde4e1801dfc1c246954fdcdb8c7040fa3a8e50de066526"
+          },
+          "buildings.geojson": {
+            "bytes": 1831160,
+            "sha256": "a957fa85f1bf46d06f8c965b7db2c83b98cf841a386f7d14eba3983bdf6ced7b"
+          },
+          "build-manifest.json": {
+            "bytes": 1531,
+            "sha256": "51410f585a9569b9f153088b473e7a7fd3acc4fbe8e74606e6e36f1a69fd8048"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 478,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e361-n3785/benchmark.geojson",
+          "sha256": "75e57e9f7a30ed4c6dde4e1801dfc1c246954fdcdb8c7040fa3a8e50de066526",
+          "bytes": 5556522
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e361-n3785/buildings.geojson",
+          "sha256": "a957fa85f1bf46d06f8c965b7db2c83b98cf841a386f7d14eba3983bdf6ced7b",
+          "bytes": 1831160
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e361-n3785/build-manifest.json",
+          "sha256": "51410f585a9569b9f153088b473e7a7fd3acc4fbe8e74606e6e36f1a69fd8048",
+          "bytes": 1531
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e361-n3786",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e361-n3786-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.50903285095906,
+        34.205728877099745,
+        -118.49763115227908,
+        34.2149284859876
+      ],
+      "receiver_count": 10330,
+      "numeric_rows": 30990,
+      "building_count": 1568,
+      "facade_receiver_count": 7565,
+      "receiver_height_counts_m": {
+        "1.5": 2765,
+        "4.0": 7565
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "86f0f682247c6639e87ef2bd77f464a96125f96758f1ec510addb36e0ffeb97f",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e361-n3786-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5903386,
+            "sha256": "b6122956a184147566cde1c20a9affbe8f3a1efc62ac2439487fdfae900d2c28"
+          },
+          "buildings.geojson": {
+            "bytes": 2097675,
+            "sha256": "5a041bc45f1a6fb25e90e0003538698076328fcaf4da6215bde6a7ec4f35b204"
+          },
+          "build-manifest.json": {
+            "bytes": 1531,
+            "sha256": "5f11039f672816fcb1cec74392938e18da4b44e18e8917e1a649a5f797ff52b0"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 490,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e361-n3786/benchmark.geojson",
+          "sha256": "b6122956a184147566cde1c20a9affbe8f3a1efc62ac2439487fdfae900d2c28",
+          "bytes": 5903386
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e361-n3786/buildings.geojson",
+          "sha256": "5a041bc45f1a6fb25e90e0003538698076328fcaf4da6215bde6a7ec4f35b204",
+          "bytes": 2097675
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e361-n3786/build-manifest.json",
+          "sha256": "5f11039f672816fcb1cec74392938e18da4b44e18e8917e1a649a5f797ff52b0",
+          "bytes": 1531
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e361-n3787",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-sfv-e361-n3787-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.509200170459,
+        34.21463322661001,
+        -118.49805036735674,
+        34.22387852620231
+      ],
+      "receiver_count": 9081,
+      "numeric_rows": 27243,
+      "building_count": 1088,
+      "facade_receiver_count": 6082,
+      "receiver_height_counts_m": {
+        "1.5": 2999,
+        "4.0": 6082
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "50c34678d9a7170af897064796ce28df2a388403f7e681e195e8ec48080fe8cf",
+      "provenance": {
+        "attempt_id": "phase1-county-sfv-e361-n3787-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5172569,
+            "sha256": "9b8e4b9b230618f1a44abb2b490f393a187485d33910b6d5800e5beb2f310d78"
+          },
+          "buildings.geojson": {
+            "bytes": 1522828,
+            "sha256": "35018db897b63c3847aaaca36ea2026a44a2c4b36a1b5a8b9610e875ece20bd6"
+          },
+          "build-manifest.json": {
+            "bytes": 1528,
+            "sha256": "32977befe69992c78116d53f30666c338946067767abc0afa75c0b281573b69a"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 344,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e361-n3787/benchmark.geojson",
+          "sha256": "9b8e4b9b230618f1a44abb2b490f393a187485d33910b6d5800e5beb2f310d78",
+          "bytes": 5172569
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e361-n3787/buildings.geojson",
+          "sha256": "35018db897b63c3847aaaca36ea2026a44a2c4b36a1b5a8b9610e875ece20bd6",
+          "bytes": 1522828
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e361-n3787/build-manifest.json",
+          "sha256": "32977befe69992c78116d53f30666c338946067767abc0afa75c0b281573b69a",
+          "bytes": 1528
+        }
+      ]
     }
   ],
   "admission": {
