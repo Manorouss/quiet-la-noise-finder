@@ -14,7 +14,8 @@ test('one combined study contract retains c03 legacy default and admits c02 expa
   assert.deepEqual(c02.masked_ids, []);
   assert.deepEqual(c02.quality_flags.physical_ceiling_masked_ids, []);
   assert.equal(c03.masked_ids.length, 0);
-  assert.equal(contract.tiles.length, 12);
+  assert.ok(contract.tiles.length >= 12);
+  assert.ok(contract.tiles.filter((tile) => tile.model === 'county-v1').every((tile) => tile.tile_id.startsWith('cty-')));
   assert.ok(contract.tiles.every((tile) => tile.masked_ids.length === 0));
   assert.equal(contract.shared_assumptions.physics_contract_sha256.length, 64);
   assert.equal(contract.shared_assumptions.source_contract_sha256.length, 64);

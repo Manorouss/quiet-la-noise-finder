@@ -1,0 +1,39 @@
+{
+  "schema": "quiet_la_tarzana_direct_union_tile_v1",
+  "model": "tarzana-combined-road-study-r02-v1",
+  "study_model": "county-v1",
+  "tile_id": "cty-e354-n3787",
+  "status": "candidate_pending_owner_review",
+  "receiver_count": 10369,
+  "numeric_rows": 31107,
+  "building_count": 1322,
+  "facade_receiver_count": 7401,
+  "receiver_height_counts_m": {
+    "1.5": 2968,
+    "4.0": 7401
+  },
+  "bbox_wgs84": [
+    -118.58509782087867,
+    34.21380960536648,
+    -118.57367265361451,
+    34.22302123684502
+  ],
+  "masked_ids": [],
+  "min_laeq": 27.391785,
+  "max_laeq": 82.26325,
+  "source_csv_sha256": "28ff9598bbad5339955601209393bc127371ce2adc0990b35f06ef2a2e9c51e1",
+  "attempt_id": "phase1-county-sfv-e354-n3787-g20a50f10-nv-mac8-v1",
+  "quality_flags": {
+    "physical_ceiling_margin_db": 6.0,
+    "physical_ceiling_masked_ids": [],
+    "on_road_distance_m": 3.0,
+    "on_road_count": 437,
+    "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+  },
+  "assumptions": {
+    "source_scenario": "County model v1: Census TIGER 2025 roads; FHWA HPMS 2024 AADT where available (50/50 on divided carriageways), documented functional-class defaults elsewhere.",
+    "traffic": "Evening flow = 0.6 × day, night = 0.2 × day. Not observed or current traffic.",
+    "method": "Direct union export copied as emitted; physically impossible receivers masked, on-road receivers labelled.",
+    "calibration": "Uncalibrated modeled exterior LAeq; not a measurement, interior level, or quietness rating."
+  }
+}

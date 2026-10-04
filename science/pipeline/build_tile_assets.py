@@ -78,6 +78,16 @@ def same_footprint(left: dict, right: dict, tolerance: float = 5e-7) -> bool:
     return all(same_ring(a, b) for a, b in zip(a_rings, b_rings))
 
 
+def building_key(study: str, source_bld_id: str, utm_polygon: dict) -> str:
+    """LARIAC ids for the pilot; county DPW ids repeat across distinct buildings, so add the UTM centroid."""
+    if study == "tarzana-pilot":
+        return f"lariac:{source_bld_id}"
+    ring = utm_polygon["coordinates"][0]
+    cx = sum(float(p[0]) for p in ring[:-1]) / max(1, len(ring) - 1)
+    cy = sum(float(p[1]) for p in ring[:-1]) / max(1, len(ring) - 1)
+    return f"dpw:{source_bld_id}@{round(cx)},{round(cy)}"
+
+
 def known_buildings(out_root: Path, tile_id: str) -> dict[str, tuple[str, dict]]:
     """source_bld_id -> (tile_id, geometry) from the release and earlier candidates."""
     known: dict[str, tuple[str, dict]] = {}
@@ -97,6 +107,7 @@ def main() -> int:
     parser.add_argument("--out-root", type=Path, required=True)
     parser.add_argument("--margin-db", type=float, default=6.0)
     parser.add_argument("--on-road-m", type=float, default=3.0)
+    parser.add_argument("--study", choices=("tarzana-pilot", "county-v1"), default="tarzana-pilot")
     args = parser.parse_args()
     tile_id, attempt = args.tile, args.attempt.resolve()
     out = args.out_root.resolve() / tile_id
@@ -157,14 +168,16 @@ def main() -> int:
         feature_props = {
             "id": rid, "receiver_key": f"{tile_id}:{props['RECEIVER_KEY']}", "source_receiver_key": props["RECEIVER_KEY"],
             "source_tile": tile_id, "masked": rid in masked, "receiver_family": props.get("RECEIVER_FAMILY"),
-            "building_pk": building_pk, "building_key": f"lariac:{source_bld_id}" if source_bld_id else None,
+            "building_pk": building_pk,
+            "building_key": building_key(args.study, source_bld_id, buildings_by_pk[building_pk]["geometry"]) if source_bld_id else None,
             "height_agl_m": h, **values,
         }
         if rid in on_road:
             feature_props["on_road"] = True
         receivers.append({"type": "Feature", "id": f"{tile_id}:{rid}", "geometry": {"type": "Point", "coordinates": [lng, lat]}, "properties": feature_props})
 
-    known = known_buildings(args.out_root.resolve(), tile_id)
+    # County tiles own each building by centroid, so no cross-tile sharing to reconcile.
+    known = known_buildings(args.out_root.resolve(), tile_id) if args.study == "tarzana-pilot" else {}
     buildings, shared = [], []
     for pk, rids in sorted(linked.items()):
         props = buildings_by_pk[pk]["properties"]
@@ -185,7 +198,7 @@ def main() -> int:
             levels = [grouped[r][period]["laeq"] for r in rids if r not in masked]
             summaries[period] = {"min": min(levels) if levels else None, "max": max(levels) if levels else None,
                                  "receiver_count": len(rids), "unavailable_count": len(rids) - len(levels)}
-        key = f"lariac:{source_bld_id}"
+        key = building_key(args.study, source_bld_id, geom)
         buildings.append({"type": "Feature", "id": key, "geometry": geometry, "properties": {
             "building_pk": pk, "building_key": key, "source_tile": tile_id, "source_tile_ids": sorted(tiles),
             "source_bld_id": source_bld_id, "height_m": float(props["HEIGHT"]), "receiver_ids": sorted(rids),
@@ -200,19 +213,21 @@ def main() -> int:
                "on_road_distance_m": args.on_road_m, "on_road_count": len(on_road),
                "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"}
     assumptions = {
-        "source_scenario": "Assumed historical-context mixed-road scenario (852 corrected freeway + 583 corrected lower-road sources).",
+        "source_scenario": "Assumed historical-context mixed-road scenario (852 corrected freeway + 583 corrected lower-road sources)."
+        if args.study == "tarzana-pilot" else
+        "County model v1: Census TIGER 2025 roads; FHWA HPMS 2024 AADT where available (50/50 on divided carriageways), documented functional-class defaults elsewhere.",
         "traffic": "Evening flow = 0.6 × day, night = 0.2 × day. Not observed or current traffic.",
         "method": "Direct union export copied as emitted; physically impossible receivers masked, on-road receivers labelled.",
         "calibration": "Uncalibrated modeled exterior LAeq; not a measurement, interior level, or quietness rating.",
     }
-    meta = {"model": MODEL, "tile_id": tile_id, "status": "candidate_pending_owner_review", "coordinate_crs": "OGC:CRS84",
+    meta = {"model": MODEL, "study_model": args.study, "tile_id": tile_id, "status": "candidate_pending_owner_review", "coordinate_crs": "OGC:CRS84",
             "source_projected_crs": "EPSG:26911", "bbox_wgs84": bbox, "receiver_count": len(receivers),
             "numeric_rows": 3 * (len(receivers) - len(masked)), "numeric_laeq_min": min(levels), "numeric_laeq_max": max(levels),
             "masked_ids": sorted(masked), "receiver_height_counts_m": dict(sorted(heights.items())),
             "building_count": len(buildings), "facade_receiver_count": facade, "attempt_id": manifest["attempt_id"],
             "source_hashes": {"export": sha(export_bytes)}, "shared_building_source_ids": sorted(shared),
             "quality_flags": quality, "assumptions": assumptions}
-    public_manifest = {"schema": "quiet_la_tarzana_direct_union_tile_v1", "model": MODEL, "tile_id": tile_id,
+    public_manifest = {"schema": "quiet_la_tarzana_direct_union_tile_v1", "model": MODEL, "study_model": args.study, "tile_id": tile_id,
                        "status": meta["status"], "receiver_count": len(receivers), "numeric_rows": meta["numeric_rows"],
                        "building_count": len(buildings), "facade_receiver_count": facade,
                        "receiver_height_counts_m": meta["receiver_height_counts_m"], "bbox_wgs84": bbox,

@@ -89,6 +89,8 @@ def main() -> int:
     parser.add_argument("--no-vertical", action="store_true",
                         help="disable diffraction around vertical edges (lateral paths); CNOSSOS-EU / NoiseModelling: off for road sources")
     parser.add_argument("--max-error-db", default="0.0", help="NoiseModelling confMaxError source pruning")
+    parser.add_argument("--keep-runtime", action="store_true",
+                        help="keep the engine database (by default it is deleted after a successful run; exports and manifests stay)")
     args = parser.parse_args()
 
     attempt = stage(args.source_attempt.resolve(), args.label)
@@ -144,6 +146,11 @@ def main() -> int:
     finally:
         if args.host == "pc":
             ssh(f'powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort {args.port} -State Listen -ErrorAction SilentlyContinue | ForEach-Object {{ Stop-Process -Id $_.OwningProcess -Force }}"', check=False)
+    if not args.keep_runtime:
+        # The H2 database and the PC's input copy are only needed while the engine runs.
+        shutil.rmtree(attempt / "runtime", ignore_errors=True)
+        if args.host == "pc":
+            ssh(f'powershell -NoProfile -Command "Remove-Item -Recurse -Force {win(pc_attempt)} -ErrorAction SilentlyContinue"', check=False)
     (attempt / "run_host.json").write_text(json.dumps({
         "host": args.host, "threads": args.threads, "horizontal_diffraction": not args.no_horizontal, "vertical_diffraction": not args.no_vertical,
         "max_error_db": args.max_error_db, "overlay": "hf_v1", "pc_attempt": pc_attempt if args.host == "pc" else None,

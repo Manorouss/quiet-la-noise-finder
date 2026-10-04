@@ -48,6 +48,7 @@ def main() -> int:
         entry = {
             "tile_id": tile_id,
             "status": "accepted_expansion",
+            "model": manifest.get("study_model", "tarzana-pilot"),
             "source_attempt": manifest["attempt_id"],
             "bbox_wgs84": manifest["bbox_wgs84"],
             "receiver_count": manifest["receiver_count"],
