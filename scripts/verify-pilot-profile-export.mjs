@@ -22,7 +22,7 @@ export async function verifyPilotProfileExport(root = defaultRoot) {
   if (manifest.tiles.some((staged) => !expectedTiles.some((tile) => tile.tile_id === staged.tile_id))) throw new Error('pilot stage includes a tile without release admission');
   if (!manifest.tiles.some((tile) => tile.tile_id === contract.default_tile_id)) throw new Error('default pilot tile missing from stage');
 
-  const allowedPaths = new Set(['_local-data/v3/pilot/staged-manifest.json', 'pilot/index.html', 'pilot/index.txt']);
+  const allowedPaths = new Set(['_local-data/v3/pilot/staged-manifest.json', 'pilot/index.html', 'pilot/index.txt', 'map/index.html', 'map/index.txt']);
   let tileAssetBytes = 0;
   for (const stagedTile of manifest.tiles) {
     const tile = contract.tiles.find((candidate) => candidate.tile_id === stagedTile.tile_id);
@@ -57,6 +57,9 @@ export async function verifyPilotProfileExport(root = defaultRoot) {
     if (!html.includes('Quiet LA') || !html.includes('Tarzana')) throw new Error(`pilot identity/disclosure missing from ${route}`);
     if (!html.includes('noindex,nofollow,noarchive')) throw new Error(`pilot export lacks noindex meta in ${route}`);
   }
+  // The county map reads its data from object storage (NEXT_PUBLIC_QUIET_LA_LAYERS_URL); only the page ships here.
+  const countyHtml = await fs.readFile(path.join(root, 'map/index.html'), 'utf8');
+  if (!countyHtml.includes('Quiet LA') || !countyHtml.includes('noindex,nofollow,noarchive')) throw new Error('county map page lacks identity or noindex meta');
   const compact = compactRows(rows);
   const serialized = Buffer.from(`${JSON.stringify(compact)}\n`);
   return {

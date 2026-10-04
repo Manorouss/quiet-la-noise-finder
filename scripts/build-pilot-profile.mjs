@@ -21,6 +21,7 @@ buildIsolatedProfile({
     NEXT_PUBLIC_QUIET_LA_DATA_PROFILE: 'pilot_v1',
     NEXT_PUBLIC_QUIET_LA_DATA_ROOT: '/_local-data/v3',
     NEXT_PUBLIC_QUIET_LA_LOCAL_RECOVERY_COMMAND: '',
+    NEXT_PUBLIC_QUIET_LA_LAYERS_URL: process.env.QUIET_LA_LAYERS_URL ?? '/county-layers/',
   },
   postBuild: async (stageRoot) => {
     const stageLocalRoot = path.join(stageRoot, '_local-data');
