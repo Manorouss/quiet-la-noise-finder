@@ -339,7 +339,7 @@ def ground_z(terrain, origin, x, y):
     return terrain[row, col]
 
 
-def build_receivers(name: str, tile: Polygon, polys, props, terrain, origin, grid: float, facade_spacing: float):
+def build_receivers(name: str, tile: Polygon, polys, props, terrain, origin, grid: float, facade_spacing: float, dense_zone=None):
     receivers = []
     tree = STRtree(polys) if polys else None
     near_tile = [i for i in (tree.query(tile.buffer(5.0)) if tree else [])]
@@ -347,12 +347,19 @@ def build_receivers(name: str, tile: Polygon, polys, props, terrain, origin, gri
     xmin, ymin, xmax, ymax = tile.bounds
     xs, ys = np.meshgrid(np.arange(xmin + grid / 2, xmax, grid), np.arange(ymin + grid / 2, ymax, grid))
     xs, ys = xs.ravel(), ys.ravel()
+    spacing = np.full(len(xs), grid)
+    if dense_zone is not None and not dense_zone.is_empty and grid > 10:
+        # Adaptive grid: add the 10 m lattice inside the near-road zone, where levels change fastest.
+        dx, dy = np.meshgrid(np.arange(xmin + 5, xmax, 10.0), np.arange(ymin + 5, ymax, 10.0))
+        dx, dy = dx.ravel(), dy.ravel()
+        near = shapely.contains_xy(dense_zone, dx, dy)
+        xs, ys, spacing = np.concatenate([xs, dx[near]]), np.concatenate([ys, dy[near]]), np.concatenate([spacing, np.full(int(near.sum()), 10.0)])
     keep = ~shapely.contains_xy(blocked, xs, ys) if not blocked.is_empty else np.ones(len(xs), bool)
     zs = ground_z(terrain, origin, xs[keep], ys[keep])
-    for x, y, z in zip(xs[keep], ys[keep], zs):
+    for x, y, z, g in zip(xs[keep], ys[keep], zs, spacing[keep]):
         receivers.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [float(x), float(y), 1.5]},
-                          "properties": {"RECEIVER_KEY": f"{name}:grid{int(grid)}:{x:.1f}:{y:.1f}", "RECEIVER_FAMILY": "open_space_metric_lattice",
-                                         "HEIGHT_ABOVE_GROUND_M": 1.5, "GROUND_ELEVATION_M": round(float(z), 3), "GRID_SPACING_M": grid,
+                          "properties": {"RECEIVER_KEY": f"{name}:grid{int(g)}:{x:.1f}:{y:.1f}", "RECEIVER_FAMILY": "open_space_metric_lattice",
+                                         "HEIGHT_ABOVE_GROUND_M": 1.5, "GROUND_ELEVATION_M": round(float(z), 3), "GRID_SPACING_M": float(g),
                                          "VERTICAL_CONVENTION": "relative_to_imported_terrain"}})
     for i in near_tile:
         i = int(i)
@@ -403,6 +410,9 @@ def main() -> int:
     parser.add_argument("--halo", type=float, default=1500.0)
     parser.add_argument("--grid", type=float, default=10.0)
     parser.add_argument("--facade-spacing", type=float, default=4.0)
+    parser.add_argument("--dense-near-roads", type=float, default=0.0,
+                        help="add a 10 m grid within this many metres of roads with two-way AADT >= --dense-aadt (0 = off)")
+    parser.add_argument("--dense-aadt", type=float, default=5000.0)
     args = parser.parse_args()
     if args.lonlat:
         x, y = TO_UTM_WGS.transform(*args.lonlat)
@@ -411,7 +421,8 @@ def main() -> int:
         x0, y0 = args.x0, args.y0
     tile = box(x0, y0, x0 + args.size, y0 + args.size)
     halo = tile.buffer(args.halo, join_style=2)
-    attempt_id = f"phase1-county-{args.name}-g{int(args.grid)}f{int(args.facade_spacing)}-v1"
+    layout = f"g{int(args.grid)}{'a' + str(int(args.dense_near_roads)) if args.dense_near_roads else ''}f{int(args.facade_spacing)}"
+    attempt_id = f"phase1-county-{args.name}-{layout}-v1"
     out = CAMPAIGN / "attempts" / attempt_id
     if (out / "attempt_manifest.json").exists():
         raise FileExistsError(f"tile package already exists: {out}")
@@ -428,7 +439,11 @@ def main() -> int:
     timings["buildings_s"] = round(time.monotonic() - started - timings["roads_s"], 1)
 
     terrain, origin = build_terrain(halo, out / "input/terrain.asc")
-    receivers = build_receivers(args.name, tile, polys, props, terrain, origin, args.grid, args.facade_spacing)
+    dense_zone = None
+    if args.dense_near_roads:
+        busy = [e["geom"] for e in edges if traffic_for(e)["aadt_assigned"] / e["split"] >= args.dense_aadt and e["geom"].distance(tile) <= args.dense_near_roads]
+        dense_zone = shapely.union_all([g.buffer(args.dense_near_roads) for g in busy]).intersection(tile) if busy else None
+    receivers = build_receivers(args.name, tile, polys, props, terrain, origin, args.grid, args.facade_spacing, dense_zone)
     timings["terrain_receivers_s"] = round(time.monotonic() - started - timings["roads_s"] - timings["buildings_s"], 1)
 
     sources, periods, basis_counts = [], [], {}
@@ -461,17 +476,18 @@ def main() -> int:
     }
     terrain_path = out / "input/terrain.asc"
     inputs["terrain.asc"] = {"path": "input/terrain.asc", "sha256": sha(terrain_path), "bytes": terrain_path.stat().st_size}
-    prefix = ("CTY_" + args.name.upper().replace("-", "_") + f"_G{int(args.grid)}F{int(args.facade_spacing)}")[:56]
+    prefix = ("CTY_" + args.name.upper().replace("-", "_") + "_" + layout.upper())[:56]
     families = {}
     for r in receivers:
         families[r["properties"]["RECEIVER_FAMILY"]] = families.get(r["properties"]["RECEIVER_FAMILY"], 0) + 1
     manifest = {
-        "schema_version": 1, "attempt_id": attempt_id, "region_key": f"county_{args.name.replace('-', '_')}_g{int(args.grid)}f{int(args.facade_spacing)}",
+        "schema_version": 1, "attempt_id": attempt_id, "region_key": f"county_{args.name.replace('-', '_')}_{layout}",
         "table_prefix": prefix, "counts": {"receivers": len(receivers), "sources": len(sources), "period_rows": len(periods)},
         "inputs": inputs, "write_scope": {"public_or_dev_writes": False, "raw_export_path_reserved_only": "export/receivers_level_d_e_n.csv"},
         "propagation_authorized": False, "public_output_writes_authorized": False,
         "tile": {"x0": x0, "y0": y0, "size_m": args.size, "halo_m": args.halo, "center_wgs84": list(TO_WGS.transform(x0 + args.size / 2, y0 + args.size / 2))},
-        "receiver_design": {"grid_m": args.grid, "facade_spacing_m": args.facade_spacing, "families": families},
+        "receiver_design": {"grid_m": args.grid, "facade_spacing_m": args.facade_spacing, "dense_near_roads_m": args.dense_near_roads,
+                            "dense_aadt": args.dense_aadt, "families": families},
         "buildings": {"count": len(buildings), "height_imputed": sum(p["imputed"] for p in props), "source": BUILDINGS_URL, "height_units": "metres from LARIAC feet"},
         "traffic": {"basis_counts": dict(sorted(basis_counts.items())), "hpms_records_in_halo": len(hpms), "class_defaults": CLASS_DEFAULTS,
                     "diurnal": "day hourly = AADT/16; evening = 0.6 x day; night = 0.2 x day (pilot convention)",
