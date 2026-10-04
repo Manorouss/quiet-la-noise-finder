@@ -45,7 +45,9 @@ const periodName: Record<Period, string> = { D: 'Day', E: 'Evening', N: 'Night' 
 // guideline (53 dB Lden, 45 dB Lnight) falls in the yellow band, so orange and above means louder than recommended.
 const BAND_EDGES = [45, 50, 55, 60, 65, 70, 75, 80];
 const BAND_COLORS = ['#86c58f', '#c3e19a', '#f2ec7d', '#f8c35b', '#f28f3b', '#e35a32', '#c1272d', '#8e1b4d', '#4a1a6b'];
-const bandStep = ['step', ['get', 'value'], BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]])] as unknown as ExpressionSpecification;
+// Masked receivers and receivers without a value for the period are grey, never a quiet color.
+const bandColor = (period: Period) => ['case', ['any', ['get', 'masked'], ['==', ['get', `v${period}`], null]], '#9ea3a8',
+  ['step', ['to-number', ['get', `v${period}`]], BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]])]] as unknown as ExpressionSpecification;
 
 async function fetchAsset(path: string): Promise<unknown> {
   const profile = resolveRuntimeProfile(process.env.NEXT_PUBLIC_QUIET_LA_DATA_PROFILE);
@@ -58,6 +60,13 @@ async function fetchAsset(path: string): Promise<unknown> {
 function validValue(receiver: Receiver | undefined, period: Period): number | null {
   const value = receiver?.properties?.[period]?.laeq;
   return typeof value === 'number' && Number.isFinite(value) && value !== -99 ? value : null;
+}
+// Map features carry all three periods (vD/vE/vN), so a period switch only changes the paint expression.
+function receiverMapFeatures(receivers: Receiver[]) {
+  return receivers.map((f) => ({ ...f, properties: { ...f.properties, vD: validValue(f, 'D'), vE: validValue(f, 'E'), vN: validValue(f, 'N'), id: f.properties.receiver_key } })) as Feature<Point, Record<string, unknown>>[];
+}
+function buildingMapFeatures(buildings: PilotData['buildings']) {
+  return buildings.map((f) => ({ ...f, properties: { ...f.properties, id: f.properties.building_key } })) as Feature<Polygon, Record<string, unknown>>[];
 }
 function receiverStatus(receiver: Receiver) {
   if (receiver.properties.masked) return 'unavailable';
@@ -315,17 +324,15 @@ export default function PilotPortal() {
     map.on('load', () => {
       map.setPadding(viewportPadding());
       const currentPilot = dataRef.current ?? pilot;
-      const receiverFeatures = currentPilot.receivers.map((f) => ({ ...f, properties: { ...f.properties, value: validValue(f, periodRef.current), id: f.properties.receiver_key } })) as Feature<Point, Record<string, unknown>>[];
-      const buildings = currentPilot.buildings.map((f) => ({ ...f, properties: { ...f.properties, id: f.properties.building_key } })) as Feature<Polygon, Record<string, unknown>>[];
-      map.addSource('pilot-receivers', { type: 'geojson', data: featureCollection(receiverFeatures) });
-      map.addSource('pilot-buildings', { type: 'geojson', data: featureCollection(buildings) });
+      map.addSource('pilot-receivers', { type: 'geojson', data: featureCollection(receiverMapFeatures(currentPilot.receivers)) });
+      map.addSource('pilot-buildings', { type: 'geojson', data: featureCollection(buildingMapFeatures(currentPilot.buildings)) });
       map.addSource('pilot-coverage', { type: 'geojson', data: COVERAGE });
       map.addLayer({ id: 'pilot-coverage-fill', type: 'fill', source: 'pilot-coverage', paint: { 'fill-color': '#5b6b7f', 'fill-opacity': 0.04 } });
       map.addLayer({ id: 'pilot-coverage-line', type: 'line', source: 'pilot-coverage', paint: { 'line-color': '#4a5a6e', 'line-width': 1.4, 'line-opacity': 0.75, 'line-dasharray': [2, 2] } });
       map.addLayer({ id: 'pilot-buildings-fill', type: 'fill', source: 'pilot-buildings', paint: { 'fill-color': '#d8cfb9', 'fill-opacity': .30 } });
       map.addLayer({ id: 'pilot-buildings-line', type: 'line', source: 'pilot-buildings', paint: { 'line-color': '#786f5b', 'line-width': 1.1, 'line-opacity': .72 } });
       map.addLayer({ id: 'pilot-buildings-3d', type: 'fill-extrusion', source: 'pilot-buildings', layout: { visibility: mode3dRef.current ? 'visible' : 'none' }, paint: { 'fill-extrusion-color': '#a99f8b', 'fill-extrusion-base': 0, 'fill-extrusion-height': ['coalesce', ['get', 'height_m'], 4], 'fill-extrusion-opacity': .72 } });
-      map.addLayer({ id: 'pilot-receivers', type: 'circle', source: 'pilot-receivers', paint: { 'circle-color': ['case', ['get', 'masked'], '#9ea3a8', bandStep], 'circle-radius': ['case', ['==', ['get', 'receiver_family'], 'building_facade_exterior'], 4.2, 2.8], 'circle-opacity': ['case', ['get', 'masked'], .55, .78], 'circle-stroke-color': 'rgba(255,255,255,.68)', 'circle-stroke-width': .6 } });
+      map.addLayer({ id: 'pilot-receivers', type: 'circle', source: 'pilot-receivers', paint: { 'circle-color': bandColor(periodRef.current), 'circle-radius': ['case', ['==', ['get', 'receiver_family'], 'building_facade_exterior'], 4.2, 2.8], 'circle-opacity': ['case', ['get', 'masked'], .55, .78], 'circle-stroke-color': 'rgba(255,255,255,.68)', 'circle-stroke-width': .6 } });
       map.addLayer({ id: 'pilot-building-selected', type: 'line', source: 'pilot-buildings', filter: ['==', ['get', 'id'], ''], paint: { 'line-color': '#171b22', 'line-width': 3.5, 'line-opacity': .95 } });
       map.addLayer({ id: 'pilot-receiver-selected', type: 'circle', source: 'pilot-receivers', filter: ['==', ['get', 'id'], ''], paint: { 'circle-color': 'rgba(255,255,255,0)', 'circle-stroke-color': '#171b22', 'circle-stroke-width': 2.2, 'circle-radius': 8 } });
       map.setFilter('pilot-building-selected', ['==', ['get', 'id'], selectedBuildingKeyRef.current ?? '']);
@@ -355,20 +362,29 @@ export default function PilotPortal() {
   }, []);
 
   useEffect(() => { if (data) void installMap(data); }, [data, installMap]);
-  useEffect(() => {
+  // Each effect touches only what changed: re-sending every receiver to the map worker on a click or a
+  // period switch made the map stall. Not gated on isStyleLoaded(), which is false while basemap tiles
+  // load; an update skipped then was never retried, leaving newly loaded tiles off the map.
+  const whenMapReady = useCallback((apply: (map: import('maplibre-gl').Map) => void) => {
     const map = mapRef.current; if (!map) return;
-    // Not gated on isStyleLoaded(): it is false while basemap tiles are still loading, and an update
-    // dropped then was never retried, leaving newly loaded tiles off the map.
-    const apply = () => {
-    const receiverFeatures = data?.receivers.map((f) => ({ ...f, properties: { ...f.properties, value: validValue(f, period), id: f.properties.receiver_key } })) as Feature<Point, Record<string, unknown>>[] | undefined;
-    const buildings = data?.buildings.map((f) => ({ ...f, properties: { ...f.properties, id: f.properties.building_key } })) as Feature<Polygon, Record<string, unknown>>[] | undefined;
-    if (receiverFeatures && map.getSource('pilot-receivers')) (map.getSource('pilot-receivers') as import('maplibre-gl').GeoJSONSource).setData(featureCollection(receiverFeatures));
-    if (buildings && map.getSource('pilot-buildings')) (map.getSource('pilot-buildings') as import('maplibre-gl').GeoJSONSource).setData(featureCollection(buildings));
-    if (map.getLayer('pilot-building-selected')) map.setFilter('pilot-building-selected', ['==', ['get', 'id'], selectedBuilding?.properties.building_key ?? '']);
-    if (map.getLayer('pilot-receiver-selected')) map.setFilter('pilot-receiver-selected', ['==', ['get', 'id'], selectedReceiver?.properties.receiver_key ?? '']);
-    };
-    if (map.getSource('pilot-receivers')) apply(); else map.once('load', apply);
-  }, [data, period, selectedBuilding, selectedReceiver]);
+    if (map.getSource('pilot-receivers')) apply(map); else map.once('load', () => apply(map));
+  }, []);
+  useEffect(() => {
+    if (!data) return;
+    whenMapReady((map) => {
+      (map.getSource('pilot-receivers') as import('maplibre-gl').GeoJSONSource).setData(featureCollection(receiverMapFeatures(data.receivers)));
+      (map.getSource('pilot-buildings') as import('maplibre-gl').GeoJSONSource).setData(featureCollection(buildingMapFeatures(data.buildings)));
+    });
+  }, [data, whenMapReady]);
+  useEffect(() => {
+    whenMapReady((map) => { if (map.getLayer('pilot-receivers')) map.setPaintProperty('pilot-receivers', 'circle-color', bandColor(period)); });
+  }, [period, whenMapReady]);
+  useEffect(() => {
+    whenMapReady((map) => {
+      if (map.getLayer('pilot-building-selected')) map.setFilter('pilot-building-selected', ['==', ['get', 'id'], selectedBuilding?.properties.building_key ?? '']);
+      if (map.getLayer('pilot-receiver-selected')) map.setFilter('pilot-receiver-selected', ['==', ['get', 'id'], selectedReceiver?.properties.receiver_key ?? '']);
+    });
+  }, [selectedBuilding, selectedReceiver, whenMapReady]);
   useEffect(() => {
     if (skipSelectionVisibilityRef.current) { skipSelectionVisibilityRef.current = false; return; }
     if (mapRef.current && !hashCameraActiveRef.current && (selectedBuildingPk !== null || selectedReceiverId !== null)) focusSelectionRef.current(250);
