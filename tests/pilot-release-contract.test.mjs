@@ -11,15 +11,16 @@ test('one combined study contract retains c03 legacy default and admits c02 expa
   const [c03, c02] = contract.tiles;
   assert.equal(c03.status, 'accepted_legacy_default');
   assert.equal(c02.status, 'accepted_expansion');
-  assert.equal(c02.masked_ids.length, 21);
-  assert.deepEqual(c02.masked_ids, c02.quality_flags.physical_ceiling_masked_ids);
-  assert.ok(c02.masked_ids.includes(70252));
-  assert.equal(c03.masked_ids.length, 2);
+  assert.deepEqual(c02.masked_ids, []);
+  assert.deepEqual(c02.quality_flags.physical_ceiling_masked_ids, []);
+  assert.equal(c03.masked_ids.length, 0);
+  assert.equal(contract.tiles.length, 12);
+  assert.ok(contract.tiles.every((tile) => tile.masked_ids.length === 0));
   assert.equal(contract.shared_assumptions.physics_contract_sha256.length, 64);
   assert.equal(contract.shared_assumptions.source_contract_sha256.length, 64);
   assert.equal(c02.provenance['cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees'], 0);
-  assert.equal(c02.provenance.cross_tile_duplicate_building_source_ids.length, 2);
-  assert.equal(c02.assets.reduce((total, asset) => total + asset.bytes, 0), 5766709);
+  assert.equal(c02.provenance.cross_tile_duplicate_building_source_ids.length, 7);
+  assert.equal(c02.assets.reduce((total, asset) => total + asset.bytes, 0), 5085107);
 });
 
 test('viewport intersection loads neighboring study tiles only when their extent is visible', () => {

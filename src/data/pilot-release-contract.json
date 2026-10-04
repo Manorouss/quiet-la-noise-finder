@@ -21,7 +21,10 @@
     "traffic_scenario": "assumed historical-context activity; evening flow = 0.6 × day and night flow = 0.2 × day",
     "reflection_order": 0,
     "max_source_distance_m": 1500,
-    "statement": "Uncalibrated modeled exterior LAeq; not a measurement, current traffic observation, interior level, or quietness rating."
+    "statement": "Uncalibrated modeled exterior LAeq; not a measurement, current traffic observation, interior level, or quietness rating.",
+    "diffraction": "horizontal edges (roofs, terrain) on; vertical edges (around building sides) off, per CNOSSOS-EU / Directive 2015/996 guidance for road sources",
+    "source_scenario": "852 corrected freeway + 583 corrected lower-road sources (1,435), shared by all 12 tiles",
+    "engine_threads_note": "results are identical for 2 and 8 engine threads"
   },
   "identity": {
     "receiver_key": "tile_id:source_RECEIVER_KEY; source numeric PK retained as provenance",
@@ -37,174 +40,994 @@
     {
       "tile_id": "r02-c03",
       "status": "accepted_legacy_default",
-      "source_attempt": "phase1-tarzana-full-mixed-r02-c03-freeway-v1",
+      "source_attempt": "phase1-tarzana-full-mixed-r02-c03-union-hf583-nv-mac8-v1",
       "bbox_wgs84": [
-        -118.5676170373723,
-        34.16737962599366,
-        -118.55673652027743,
-        34.17364674452306
+        -118.56761703141507,
+        34.16737930375903,
+        -118.55673651436047,
+        34.17364642243031
       ],
       "receiver_count": 6421,
-      "numeric_rows": 19257,
+      "numeric_rows": 19263,
       "building_count": 80,
       "facade_receiver_count": 1573,
       "receiver_height_counts_m": {
         "1.5": 4848,
         "4.0": 1573
       },
-      "masked_ids": [
-        85715,
-        88627
-      ],
-      "source_csv_sha256": "2aa9c5b826bf772bd3d9c5d9545dd72fff9f54fc9410aa090165a692a5c5756e",
+      "masked_ids": [],
+      "source_csv_sha256": "3bd1fd3834153178683dce19cb2367143eda9cc092042903e5b71187e1e5daa3",
       "provenance": {
         "source_manifest_original_sha256": "f2f47b8a1a6a2af1c7885c763b12e58b970bb563a70822f6e1cbe7cd2e2fac37",
         "receiver_input_sha256": "172fbbd2c88967e846f2d9aaedf8ac81205671acbb71f642096c11f48b410054",
         "attempt_manifest_sha256": "68372093867ae82e955627c5a340b5ae2e785a7f077de625e9dcdc01c18f79b3",
-        "shared_buildings_input_sha256": "c5b28e287932c26b4302d56daec1f2bddfcbfc515a0789570408a5622e152d1a"
+        "shared_buildings_input_sha256": "c5b28e287932c26b4302d56daec1f2bddfcbfc515a0789570408a5622e152d1a",
+        "attempt_id": "phase1-tarzana-full-mixed-r02-c03-union-hf583-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "389949885603",
+          "390134885417",
+          "393295885809"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 3387884,
+            "sha256": "38086d5fbee409a4ae68efe0815d8e99c1dfdcd6da4e9ef37613f143c4e1cb74"
+          },
+          "buildings.geojson": {
+            "bytes": 179346,
+            "sha256": "2cf0dadaec11c418467b6510a2817abf5c255f7910246d25f5babc13bbe61e9e"
+          },
+          "build-manifest.json": {
+            "bytes": 1445,
+            "sha256": "77efb80be5bf838d9497178fdd6f7c739a93d3fea66dc5e0f293496a9d664816"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
       },
-      "assets": [
-        {
-          "kind": "receivers",
-          "path": "benchmark.geojson",
-          "sha256": "8e54f44fb5b847a8f6c4a000ef4a26e3bc7e32e2445a8eb42c24910d04146fd6",
-          "bytes": 2757292
-        },
-        {
-          "kind": "buildings",
-          "path": "buildings.geojson",
-          "sha256": "b1f25db888ebb749751fc9b4beb2a2ab93bb6be28e23e273243e03d1ef937bd5",
-          "bytes": 102267
-        },
-        {
-          "kind": "manifest",
-          "path": "build-manifest.json",
-          "sha256": "d733b7e11af379b2a31a1cda7559481ef5d7a175464c5d3b92c5c273c2c15769",
-          "bytes": 496
-        }
-      ],
       "quality_flags": {
         "physical_ceiling_margin_db": 6.0,
         "physical_ceiling_masked_ids": [],
         "on_road_distance_m": 3.0,
         "on_road_count": 169,
-        "method": "science/qa/physical_ceiling.py and apply_release_flags.py"
-      }
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "benchmark.geojson",
+          "sha256": "38086d5fbee409a4ae68efe0815d8e99c1dfdcd6da4e9ef37613f143c4e1cb74",
+          "bytes": 3387884
+        },
+        {
+          "kind": "buildings",
+          "path": "buildings.geojson",
+          "sha256": "2cf0dadaec11c418467b6510a2817abf5c255f7910246d25f5babc13bbe61e9e",
+          "bytes": 179346
+        },
+        {
+          "kind": "manifest",
+          "path": "build-manifest.json",
+          "sha256": "77efb80be5bf838d9497178fdd6f7c739a93d3fea66dc5e0f293496a9d664816",
+          "bytes": 1445
+        }
+      ]
     },
     {
       "tile_id": "r02-c02",
       "status": "accepted_expansion",
-      "source_attempt": "phase1-tarzana-full-mixed-r02-c02-freeway-v3",
+      "source_attempt": "phase1-tarzana-full-mixed-r02-c02-union-hf583-nv-pc16-v1",
       "bbox_wgs84": [
-        -118.57845038808348,
-        34.16724199303553,
-        -118.56758243534561,
-        34.17352170005376
+        -118.57845038208485,
+        34.16724167080256,
+        -118.56758242938746,
+        34.17352137796424
       ],
       "receiver_count": 8809,
-      "numeric_rows": 26364,
+      "numeric_rows": 26427,
       "building_count": 206,
       "facade_receiver_count": 3695,
       "receiver_height_counts_m": {
         "1.5": 5114,
         "4.0": 3695
       },
-      "masked_ids": [
-        63253,
-        63254,
-        63255,
-        63669,
-        63670,
-        64105,
-        64106,
-        64557,
-        64558,
-        69371,
-        69796,
-        70252,
-        73719,
-        74533,
-        74929,
-        74930,
-        74931,
-        75332,
-        75333,
-        75334,
-        75760
-      ],
-      "source_csv_sha256": "c9a0b54b50d6eec922e787729dff545d1baf7e64186fd1a5e02ef5efffb97a27",
-      "assets": [
-        {
-          "kind": "receivers",
-          "path": "tiles/r02-c02/benchmark.geojson",
-          "sha256": "f13e5ba163af01c7fd2fb274d4dfa8b47eda6805a9d0ac2544d79e5f6141569a",
-          "bytes": 5353573
-        },
-        {
-          "kind": "buildings",
-          "path": "tiles/r02-c02/buildings.geojson",
-          "sha256": "1440bc868c92d142050016c754cdcc6d1938f953bdd6c3b54dac0fa2baaab6d6",
-          "bytes": 411820
-        },
-        {
-          "kind": "manifest",
-          "path": "tiles/r02-c02/build-manifest.json",
-          "sha256": "8befaf990b7345363055d56ef5ece635682622fa899ca399d9f9f987a83bcf71",
-          "bytes": 1316
-        }
-      ],
+      "masked_ids": [],
+      "source_csv_sha256": "defdf84bbd374750025ba89b69a4faace44821af9b163c0274d04cffe89dfd68",
       "provenance": {
-        "combined_derivative_sha256": "c9a0b54b50d6eec922e787729dff545d1baf7e64186fd1a5e02ef5efffb97a27",
-        "receiver_input_sha256": "7fcac86432bd5f13f65aa94a5fb8bc63ad932d72d00327014bf953472ee9913a",
-        "shared_buildings_input_sha256": "c5b28e287932c26b4302d56daec1f2bddfcbfc515a0789570408a5622e152d1a",
-        "attempt_manifest_sha256": "ad4d12b5db7c7afec5c2476a402ab2a60d08ed95f0b1d225ddfd27e4a2f9a5bf",
-        "combination_manifest_sha256": "4e4800cdb92eaa99898795380adf44f4bff6432b6448480f5ddfd8dc0ffa3560",
-        "independent_acceptance_audit_sha256": "4696dc83f66282c2788510f21709ad17edf535ecf52c66c3eb5b6fe41835ab79",
-        "review_package_relocations": {
-          "combination_manifest": {
-            "sha256": "813be983e80f00e9bc45e6c035233a790bac2c7a8436932eccf6b5596704e313",
-            "change": "output.path only; derivative CSV bytes/hash and combination counts/formula are unchanged"
-          },
-          "independent_acceptance_audit": {
-            "sha256": "2f41d759c5e33206d6001c536d654781514f7bf117452817cccc640db03b4b89",
-            "change": "campaign evidence paths and the corresponding relocated combination-manifest byte/hash binding only; acceptance status, numeric audit results, gates, derivative hash and receiver-input hash are unchanged"
-          }
-        },
+        "attempt_id": "phase1-tarzana-full-mixed-r02-c02-union-hf583-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
         "cross_tile_duplicate_building_source_ids": [
+          "388357886043",
+          "388412886011",
+          "388520886005",
+          "388694886024",
+          "388864885996",
           "389949885603",
           "390134885417"
         ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4668198,
+            "sha256": "31738921a777972c8e1f56d18bfd0eb2b4f992f24464f7b8d42fda7c72efcc20"
+          },
+          "buildings.geojson": {
+            "bytes": 415462,
+            "sha256": "58f0488cc4288e686ab608fde38404c110e79024cad749f68741797c3e8923b3"
+          },
+          "build-manifest.json": {
+            "bytes": 1447,
+            "sha256": "e27b2e5a3938bfc754225dba46a994ad10dbf8ee39d8ca22a58cfe3dc272a837"
+          }
+        },
         "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
       },
       "quality_flags": {
         "physical_ceiling_margin_db": 6.0,
-        "physical_ceiling_masked_ids": [
-          63253,
-          63254,
-          63255,
-          63669,
-          63670,
-          64105,
-          64106,
-          64557,
-          64558,
-          69371,
-          69796,
-          70252,
-          73719,
-          74533,
-          74929,
-          74930,
-          74931,
-          75332,
-          75333,
-          75334,
-          75760
-        ],
+        "physical_ceiling_masked_ids": [],
         "on_road_distance_m": 3.0,
         "on_road_count": 297,
-        "method": "science/qa/physical_ceiling.py and apply_release_flags.py"
-      }
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r02-c02/benchmark.geojson",
+          "sha256": "31738921a777972c8e1f56d18bfd0eb2b4f992f24464f7b8d42fda7c72efcc20",
+          "bytes": 4668198
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r02-c02/buildings.geojson",
+          "sha256": "58f0488cc4288e686ab608fde38404c110e79024cad749f68741797c3e8923b3",
+          "bytes": 415462
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r02-c02/build-manifest.json",
+          "sha256": "e27b2e5a3938bfc754225dba46a994ad10dbf8ee39d8ca22a58cfe3dc272a837",
+          "bytes": 1447
+        }
+      ]
+    },
+    {
+      "tile_id": "r02-c04",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r02-c04-union-hf583-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.55677726244949,
+        34.167517373797224,
+        -118.54589545746514,
+        34.17378357547958
+      ],
+      "receiver_count": 7506,
+      "numeric_rows": 22518,
+      "building_count": 179,
+      "facade_receiver_count": 2715,
+      "receiver_height_counts_m": {
+        "1.5": 4791,
+        "4.0": 2715
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "925e1b4e11820a10250cc3f9195d354dbd914bdd2e3f59ade5898f7a84f3aae6",
+      "provenance": {
+        "attempt_id": "phase1-tarzana-full-mixed-r02-c04-union-hf583-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "393295885809",
+          "396540885759",
+          "396607885448"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 3971693,
+            "sha256": "e88b7b5ee4dec89dabb06fa2dd4136455a5efafc13890fc6679c92a64f2fc456"
+          },
+          "buildings.geojson": {
+            "bytes": 336434,
+            "sha256": "2ab0325f8a609139bad0f00d54c507a03b0d907c9afb0ba3650ffd40646de2c2"
+          },
+          "build-manifest.json": {
+            "bytes": 1448,
+            "sha256": "70677ba51a3f26ffc773f461b9e6038f7783adda12251cc36947dc82338f26b2"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 219,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r02-c04/benchmark.geojson",
+          "sha256": "e88b7b5ee4dec89dabb06fa2dd4136455a5efafc13890fc6679c92a64f2fc456",
+          "bytes": 3971693
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r02-c04/buildings.geojson",
+          "sha256": "2ab0325f8a609139bad0f00d54c507a03b0d907c9afb0ba3650ffd40646de2c2",
+          "bytes": 336434
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r02-c04/build-manifest.json",
+          "sha256": "70677ba51a3f26ffc773f461b9e6038f7783adda12251cc36947dc82338f26b2",
+          "bytes": 1448
+        }
+      ]
+    },
+    {
+      "tile_id": "r02-c05",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r02-c05-union-hf583-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.54592962380312,
+        34.16765448587408,
+        -118.53502352181343,
+        34.17397057850259
+      ],
+      "receiver_count": 8430,
+      "numeric_rows": 25290,
+      "building_count": 223,
+      "facade_receiver_count": 3972,
+      "receiver_height_counts_m": {
+        "1.5": 4458,
+        "4.0": 3972
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "6886c5f0298115750296d8a9065477e8ba0d3c35ad34a4064bb8bd71732517bf",
+      "provenance": {
+        "attempt_id": "phase1-tarzana-full-mixed-r02-c05-union-hf583-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "396540885759",
+          "396582886078",
+          "396607885448",
+          "396822886082",
+          "399272886173",
+          "399371886150",
+          "399823886127"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4473113,
+            "sha256": "cfc0507a6c24d4de6af52e8713e6ea17e36725c89ebe2b1c13501e6f93c70319"
+          },
+          "buildings.geojson": {
+            "bytes": 569998,
+            "sha256": "155da2f354ac95fcf8934ccad17ac4e8d11fe1df16f4a17238447f93e785aadf"
+          },
+          "build-manifest.json": {
+            "bytes": 1447,
+            "sha256": "d789b9582a7020440abc1bceff4a8a1249f9032ce1212a8a3ce82b1c5bb2ecd4"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 277,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r02-c05/benchmark.geojson",
+          "sha256": "cfc0507a6c24d4de6af52e8713e6ea17e36725c89ebe2b1c13501e6f93c70319",
+          "bytes": 4473113
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r02-c05/buildings.geojson",
+          "sha256": "155da2f354ac95fcf8934ccad17ac4e8d11fe1df16f4a17238447f93e785aadf",
+          "bytes": 569998
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r02-c05/build-manifest.json",
+          "sha256": "d789b9582a7020440abc1bceff4a8a1249f9032ce1212a8a3ce82b1c5bb2ecd4",
+          "bytes": 1447
+        }
+      ]
+    },
+    {
+      "tile_id": "r03-c02",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r03-c02-union-hf583-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.57858219508023,
+        34.173460789575245,
+        -118.56771580786634,
+        34.179777494589764
+      ],
+      "receiver_count": 8344,
+      "numeric_rows": 25032,
+      "building_count": 268,
+      "facade_receiver_count": 3411,
+      "receiver_height_counts_m": {
+        "1.5": 4933,
+        "4.0": 3411
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "55c08292fa308b5a3a035aac4897bca5b8c9e3ceabb28d439f00143a97c56d2e",
+      "provenance": {
+        "attempt_id": "phase1-tarzana-full-mixed-r03-c02-union-hf583-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "2014121101810000",
+          "2014121119580000",
+          "201700286233",
+          "201700286241",
+          "201700286242",
+          "388357886043",
+          "388412886011",
+          "388520886005",
+          "388533888274",
+          "388694886024",
+          "388863888298",
+          "388864885996",
+          "389160888279",
+          "389418888283",
+          "389514888263",
+          "389966888052",
+          "389971888103",
+          "390020888226"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4425011,
+            "sha256": "340d8c2b3ea3ea02fdc3ecc318d2bb2e9ec705f5ef8eb0c958d1d7192a98a6b1"
+          },
+          "buildings.geojson": {
+            "bytes": 446537,
+            "sha256": "9fd5ab1034b092d6eabb98e393b182baff29c9c792f8fcbefabcf99262638fe0"
+          },
+          "build-manifest.json": {
+            "bytes": 1447,
+            "sha256": "e84d21a832455d1ecc7a8570f387d558749af9aaa441921b5114c30621b7d437"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 81,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r03-c02/benchmark.geojson",
+          "sha256": "340d8c2b3ea3ea02fdc3ecc318d2bb2e9ec705f5ef8eb0c958d1d7192a98a6b1",
+          "bytes": 4425011
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r03-c02/buildings.geojson",
+          "sha256": "9fd5ab1034b092d6eabb98e393b182baff29c9c792f8fcbefabcf99262638fe0",
+          "bytes": 446537
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r03-c02/build-manifest.json",
+          "sha256": "e84d21a832455d1ecc7a8570f387d558749af9aaa441921b5114c30621b7d437",
+          "bytes": 1447
+        }
+      ]
+    },
+    {
+      "tile_id": "r03-c03",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r03-c03-union-hf583-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.56775427692453,
+        34.17359984985027,
+        -118.5568507553516,
+        34.17987293440623
+      ],
+      "receiver_count": 7304,
+      "numeric_rows": 21912,
+      "building_count": 188,
+      "facade_receiver_count": 2262,
+      "receiver_height_counts_m": {
+        "1.5": 5042,
+        "4.0": 2262
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "413bebd318b75e4424f2c04aa6ae5a122ce6fb1538f5407568873407bccb4847",
+      "provenance": {
+        "attempt_id": "phase1-tarzana-full-mixed-r03-c03-union-hf583-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "2014121103110000",
+          "201700286247",
+          "201700286251",
+          "389966888052",
+          "389971888103",
+          "390020888226",
+          "390297888324",
+          "390470888312",
+          "390523888374",
+          "390722888293",
+          "390845888304",
+          "390891888313",
+          "390914888298",
+          "391905888326"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 3862200,
+            "sha256": "a2c5606cfb4d8a5c97f4b04f0325f72cca977797b678b758dd1a110acc8d7a73"
+          },
+          "buildings.geojson": {
+            "bytes": 315126,
+            "sha256": "88f60a8cd8543c546e262acec18d9f8b7e1caff703bb1ddca49d25fcdf3a595b"
+          },
+          "build-manifest.json": {
+            "bytes": 1445,
+            "sha256": "e07c4b97f1368f2c9f51822d2d4dd83e2d71519f6942ace6282c9405b9d9456c"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 95,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r03-c03/benchmark.geojson",
+          "sha256": "a2c5606cfb4d8a5c97f4b04f0325f72cca977797b678b758dd1a110acc8d7a73",
+          "bytes": 3862200
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r03-c03/buildings.geojson",
+          "sha256": "88f60a8cd8543c546e262acec18d9f8b7e1caff703bb1ddca49d25fcdf3a595b",
+          "bytes": 315126
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r03-c03/build-manifest.json",
+          "sha256": "e07c4b97f1368f2c9f51822d2d4dd83e2d71519f6942ace6282c9405b9d9456c",
+          "bytes": 1445
+        }
+      ]
+    },
+    {
+      "tile_id": "r03-c04",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r03-c04-union-hf583-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.5568548996437,
+        34.173737951963076,
+        -118.54600397159551,
+        34.18005698378428
+      ],
+      "receiver_count": 7083,
+      "numeric_rows": 21249,
+      "building_count": 245,
+      "facade_receiver_count": 2563,
+      "receiver_height_counts_m": {
+        "1.5": 4520,
+        "4.0": 2563
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "ab9d472549bfb4265f93a1e424356f09da8cd7df94eb00f30fcb0b521d43e886",
+      "provenance": {
+        "attempt_id": "phase1-tarzana-full-mixed-r03-c04-union-hf583-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "2014121117350000",
+          "2014121117360000",
+          "2014121117370000",
+          "2014121117400000",
+          "2014121117480000",
+          "2014121117490000",
+          "393950888331",
+          "394095888337",
+          "394130888335",
+          "394609888312",
+          "394665888309",
+          "394943888330",
+          "395143888372",
+          "395163888338",
+          "395186888340",
+          "395299888339",
+          "395695888338",
+          "395830888342",
+          "395957888351",
+          "396165888357",
+          "396257888346",
+          "396304888331",
+          "396409888358"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 3751177,
+            "sha256": "c93685b3288ecc98e7ef8e17ccbe2ede3228bf8de88094376376848b141564ad"
+          },
+          "buildings.geojson": {
+            "bytes": 381501,
+            "sha256": "b3221e04a5f406c15be3568be338a601f57a5b3b20e46697f9d3e4ccc35cb45f"
+          },
+          "build-manifest.json": {
+            "bytes": 1446,
+            "sha256": "6bdf486146ccccbcc921bc9e67ddc4074be760cf9de30882b2561d51ccff5f8a"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 43,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r03-c04/benchmark.geojson",
+          "sha256": "c93685b3288ecc98e7ef8e17ccbe2ede3228bf8de88094376376848b141564ad",
+          "bytes": 3751177
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r03-c04/buildings.geojson",
+          "sha256": "b3221e04a5f406c15be3568be338a601f57a5b3b20e46697f9d3e4ccc35cb45f",
+          "bytes": 381501
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r03-c04/build-manifest.json",
+          "sha256": "6bdf486146ccccbcc921bc9e67ddc4074be760cf9de30882b2561d51ccff5f8a",
+          "bytes": 1446
+        }
+      ]
+    },
+    {
+      "tile_id": "r03-c05",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r03-c05-union-hf583-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.54604888110892,
+        34.173873279066555,
+        -118.53511978159024,
+        34.180162870508795
+      ],
+      "receiver_count": 7596,
+      "numeric_rows": 22788,
+      "building_count": 285,
+      "facade_receiver_count": 4051,
+      "receiver_height_counts_m": {
+        "1.5": 3545,
+        "4.0": 4051
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "7618c1705219bf40241e3a778fe95e1d6d603cbda58ebf760b6db636e1aa0005",
+      "provenance": {
+        "attempt_id": "phase1-tarzana-full-mixed-r03-c05-union-hf583-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "201700286246",
+          "396569888316",
+          "396582886078",
+          "396669888342",
+          "396750888347",
+          "396794888348",
+          "396822886082",
+          "398640888420",
+          "398766888420",
+          "399272886173",
+          "399371886150",
+          "399823886127"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4043093,
+            "sha256": "ae08b26114829220548d9ba3d1364e6cf4f6fe554627950a9558238502b006ca"
+          },
+          "buildings.geojson": {
+            "bytes": 541626,
+            "sha256": "630393a0c0e037cab7df56dab2cdcacd9eb62395e3ac6874ec06ffdc83e872d4"
+          },
+          "build-manifest.json": {
+            "bytes": 1449,
+            "sha256": "1e7ede508408bda381973433d8fb76f477b01e1d44ffe0bcd68c6ff67a56566e"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 117,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r03-c05/benchmark.geojson",
+          "sha256": "ae08b26114829220548d9ba3d1364e6cf4f6fe554627950a9558238502b006ca",
+          "bytes": 4043093
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r03-c05/buildings.geojson",
+          "sha256": "630393a0c0e037cab7df56dab2cdcacd9eb62395e3ac6874ec06ffdc83e872d4",
+          "bytes": 541626
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r03-c05/build-manifest.json",
+          "sha256": "1e7ede508408bda381973433d8fb76f477b01e1d44ffe0bcd68c6ff67a56566e",
+          "bytes": 1449
+        }
+      ]
+    },
+    {
+      "tile_id": "r04-c02",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r04-c02-union-hf583-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.57866570885075,
+        34.17968129670767,
+        -118.5677868616042,
+        34.1860028046582
+      ],
+      "receiver_count": 6963,
+      "numeric_rows": 20889,
+      "building_count": 94,
+      "facade_receiver_count": 1329,
+      "receiver_height_counts_m": {
+        "1.5": 5634,
+        "4.0": 1329
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "0bbc42ab9a707804242cb7573d1f1a73522a91106f43ad49ba7bbb6a12927c4c",
+      "provenance": {
+        "attempt_id": "phase1-tarzana-full-mixed-r04-c02-union-hf583-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "2014121101810000",
+          "2014121119580000",
+          "201700286233",
+          "201700286241",
+          "201700286242",
+          "201700286713",
+          "388533888274",
+          "388863888298",
+          "389160888279",
+          "389418888283",
+          "389514888263",
+          "389917890251",
+          "389954888609",
+          "389957890321",
+          "389966888468"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 3682103,
+            "sha256": "49d922aff8fc39430f2a8a9106613759153c3d855b365b2cc19274e0e809b438"
+          },
+          "buildings.geojson": {
+            "bytes": 163654,
+            "sha256": "5e8202a4c8ff790e199065fb88b741041b96d3b5bdde49e520b7a096180bac4c"
+          },
+          "build-manifest.json": {
+            "bytes": 1444,
+            "sha256": "5c0bb664856f6bd60ce5559280995230ba59317e771b7481d363872c05f02ea2"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 96,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r04-c02/benchmark.geojson",
+          "sha256": "49d922aff8fc39430f2a8a9106613759153c3d855b365b2cc19274e0e809b438",
+          "bytes": 3682103
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r04-c02/buildings.geojson",
+          "sha256": "5e8202a4c8ff790e199065fb88b741041b96d3b5bdde49e520b7a096180bac4c",
+          "bytes": 163654
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r04-c02/build-manifest.json",
+          "sha256": "5c0bb664856f6bd60ce5559280995230ba59317e771b7481d363872c05f02ea2",
+          "bytes": 1444
+        }
+      ]
+    },
+    {
+      "tile_id": "r04-c03",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r04-c03-union-hf583-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.5678598723994,
+        34.179812800010154,
+        -118.55696503138103,
+        34.18608755835723
+      ],
+      "receiver_count": 8668,
+      "numeric_rows": 26004,
+      "building_count": 386,
+      "facade_receiver_count": 4109,
+      "receiver_height_counts_m": {
+        "1.5": 4559,
+        "4.0": 4109
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "6dfa4240fc22ed54feb6df828fbd87fd5aafdabb9ce3253078a609cb3ba6caad",
+      "provenance": {
+        "attempt_id": "phase1-tarzana-full-mixed-r04-c03-union-hf583-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "2014121103110000",
+          "201700286247",
+          "201700286251",
+          "201700286387",
+          "201700286713",
+          "389917890251",
+          "389954888609",
+          "389957890321",
+          "389966888468",
+          "390297888324",
+          "390470888312",
+          "390523888374",
+          "390722888293",
+          "390845888304",
+          "390891888313",
+          "390914888298",
+          "391905888326",
+          "393201888980",
+          "393232889516",
+          "393237889363"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4612634,
+            "sha256": "bf2d740de6ec1387f582d3e8ea2ad4b4dda28b620e5be49dc09b8cc3ea8f1b05"
+          },
+          "buildings.geojson": {
+            "bytes": 600858,
+            "sha256": "b8b3c61a3e023a06ff862206cd857af9422ef397bf131d31eb5b708e3a94540e"
+          },
+          "build-manifest.json": {
+            "bytes": 1446,
+            "sha256": "13ca2db89828e3c775183e3a99d69c3e5632fb1d9e46c48727f617b5408461e2"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 46,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r04-c03/benchmark.geojson",
+          "sha256": "bf2d740de6ec1387f582d3e8ea2ad4b4dda28b620e5be49dc09b8cc3ea8f1b05",
+          "bytes": 4612634
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r04-c03/buildings.geojson",
+          "sha256": "b8b3c61a3e023a06ff862206cd857af9422ef397bf131d31eb5b708e3a94540e",
+          "bytes": 600858
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r04-c03/build-manifest.json",
+          "sha256": "13ca2db89828e3c775183e3a99d69c3e5632fb1d9e46c48727f617b5408461e2",
+          "bytes": 1446
+        }
+      ]
+    },
+    {
+      "tile_id": "r04-c04",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r04-c04-union-hf583-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.55696920225743,
+        34.179958523476415,
+        -118.54609550643026,
+        34.18622477512892
+      ],
+      "receiver_count": 7932,
+      "numeric_rows": 23796,
+      "building_count": 396,
+      "facade_receiver_count": 3830,
+      "receiver_height_counts_m": {
+        "1.5": 4102,
+        "4.0": 3830
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "21472e4bf40d67599ece5afa106740c48974b99e6fae19f6c7cca21de7d084d6",
+      "provenance": {
+        "attempt_id": "phase1-tarzana-full-mixed-r04-c04-union-hf583-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "2014121117350000",
+          "2014121117360000",
+          "2014121117370000",
+          "2014121117400000",
+          "2014121117480000",
+          "2014121117490000",
+          "201700286387",
+          "393201888980",
+          "393232889516",
+          "393237889363",
+          "393950888331",
+          "394095888337",
+          "394130888335",
+          "394609888312",
+          "394665888309",
+          "394943888330",
+          "395143888372",
+          "395163888338",
+          "395186888340",
+          "395299888339",
+          "395695888338",
+          "395830888342",
+          "395957888351",
+          "396165888357",
+          "396257888346",
+          "396304888331",
+          "396409888358",
+          "396477888728",
+          "396486888573"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4221694,
+            "sha256": "74075505b13a36e84b6b714fe13e4f8a6afbcb50de060524b315444f7b4ea236"
+          },
+          "buildings.geojson": {
+            "bytes": 599133,
+            "sha256": "d9f02e887686689109e196c89f5611f7c2df8dae596b9d3bf8460c85db6ba7d4"
+          },
+          "build-manifest.json": {
+            "bytes": 1448,
+            "sha256": "ed1a822beacd4ca090b8d9a6246d2f170f7f758472f57dbbaf35a894ea8a1a7b"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 65,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r04-c04/benchmark.geojson",
+          "sha256": "74075505b13a36e84b6b714fe13e4f8a6afbcb50de060524b315444f7b4ea236",
+          "bytes": 4221694
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r04-c04/buildings.geojson",
+          "sha256": "d9f02e887686689109e196c89f5611f7c2df8dae596b9d3bf8460c85db6ba7d4",
+          "bytes": 599133
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r04-c04/build-manifest.json",
+          "sha256": "ed1a822beacd4ca090b8d9a6246d2f170f7f758472f57dbbaf35a894ea8a1a7b",
+          "bytes": 1448
+        }
+      ]
+    },
+    {
+      "tile_id": "r04-c05",
+      "status": "accepted_expansion",
+      "source_attempt": "phase1-tarzana-full-mixed-r04-c05-union-hf583-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.54611754770899,
+        34.180074113452044,
+        -118.53524324463521,
+        34.18640921498828
+      ],
+      "receiver_count": 8315,
+      "numeric_rows": 24945,
+      "building_count": 281,
+      "facade_receiver_count": 3693,
+      "receiver_height_counts_m": {
+        "1.5": 4622,
+        "4.0": 3693
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "342c0da7f5b48c8a5f05435cd80d13fbe0a5bcdf1e782df8acbda7b3a119c180",
+      "provenance": {
+        "attempt_id": "phase1-tarzana-full-mixed-r04-c05-union-hf583-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [
+          "201700286246",
+          "396477888728",
+          "396486888573",
+          "396569888316",
+          "396669888342",
+          "396750888347",
+          "396794888348",
+          "398640888420",
+          "398766888420"
+        ],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4421791,
+            "sha256": "26bba32043a469ea0190ef2d7eea73ea5249bffb6f75949edbc22d762628213e"
+          },
+          "buildings.geojson": {
+            "bytes": 491552,
+            "sha256": "51fcd4695c1e0441570df6ee7274f22a6329ccb53466416bd2ef5f40de1e5425"
+          },
+          "build-manifest.json": {
+            "bytes": 1449,
+            "sha256": "a2bb5d01d9898a223368df77f8349da5394c11a088e1690ca0c6c7b9d97b1a4b"
+          }
+        },
+        "cross_tile_receiver_coordinate_duplicates_at_1e-7_degrees": 0
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 132,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/r04-c05/benchmark.geojson",
+          "sha256": "26bba32043a469ea0190ef2d7eea73ea5249bffb6f75949edbc22d762628213e",
+          "bytes": 4421791
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/r04-c05/buildings.geojson",
+          "sha256": "51fcd4695c1e0441570df6ee7274f22a6329ccb53466416bd2ef5f40de1e5425",
+          "bytes": 491552
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/r04-c05/build-manifest.json",
+          "sha256": "a2bb5d01d9898a223368df77f8349da5394c11a088e1690ca0c6c7b9d97b1a4b",
+          "bytes": 1449
+        }
+      ]
     }
   ],
   "admission": {
