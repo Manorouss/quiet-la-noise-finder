@@ -9,6 +9,7 @@ class), ret (return number), intensity.
 
 Usage:
   ept_fetch.py --box 373000 3779000 374000 3780000 --out points.npz [--dataset CA_LosAngeles_1_B23]
+  ept_fetch.py --box ... --corridor-sources sources.geojson --corridor 70 --out corridor.npz
 """
 from __future__ import annotations
 
@@ -22,6 +23,9 @@ from pathlib import Path
 import laspy
 import numpy as np
 from pyproj import Transformer
+from shapely.geometry import box as shp_box, shape
+from shapely.ops import transform as shp_transform, unary_union
+from shapely.prepared import prep
 
 BASE = "https://s3-us-west-2.amazonaws.com/usgs-lidar-public"
 TO_MERC = Transformer.from_crs("EPSG:26911", "EPSG:3857", always_xy=True)
@@ -48,7 +52,17 @@ def main() -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--dataset", default="CA_LosAngeles_1_B23")
     parser.add_argument("--jobs", type=int, default=8)
+    parser.add_argument("--corridor-sources", type=Path, help="only fetch within --corridor m of freeway (S1100) lines in this EPSG:26911 GeoJSON")
+    parser.add_argument("--corridor", type=float, default=70.0)
     args = parser.parse_args()
+    corridor = None
+    if args.corridor_sources:
+        lines = [shape(f["geometry"]) for f in json.loads(args.corridor_sources.read_text())["features"] if f["properties"].get("MTFCC") == "S1100"]
+        utm = unary_union(lines).buffer(args.corridor).intersection(shp_box(*args.box))
+        corridor = shp_transform(lambda x, y, z=None: TO_MERC.transform(x, y), utm)
+        if corridor.is_empty:
+            raise SystemExit("no freeway corridor in the box")
+        corridor_prep = prep(corridor)
     root = f"{BASE}/{args.dataset}"
     ept = json.loads(get(f"{root}/ept.json"))
     cube = ept["bounds"]
@@ -58,7 +72,8 @@ def main() -> int:
     while pending:
         hierarchy = json.loads(get(f"{root}/ept-hierarchy/{pending.pop()}.json"))
         for key, count in hierarchy.items():
-            if not intersects(node_bounds(cube, key), box3857):
+            bounds = node_bounds(cube, key)
+            if not intersects(bounds, box3857) or (corridor is not None and not corridor_prep.intersects(shp_box(*bounds))):
                 continue
             if count == -1:
                 pending.append(key)
@@ -74,6 +89,9 @@ def main() -> int:
             las = laspy.read(handle.name)
         x, y = np.asarray(las.x), np.asarray(las.y)
         keep = (x >= box3857[0]) & (x <= box3857[2]) & (y >= box3857[1]) & (y <= box3857[3])
+        if corridor is not None and keep.any():
+            from shapely import contains_xy
+            keep[keep] = contains_xy(corridor, x[keep], y[keep])
         return x[keep], y[keep], np.asarray(las.z)[keep], np.asarray(las.classification)[keep], np.asarray(las.return_number)[keep], np.asarray(las.intensity)[keep]
 
     with ThreadPoolExecutor(args.jobs) as pool:

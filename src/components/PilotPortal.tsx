@@ -441,7 +441,7 @@ export default function PilotPortal() {
   if (loadState === 'error') return <main className="pilot-shell"><div className="pilot-state pilot-state--error" role="alert"><strong>The pilot could not start.</strong><span>{error}</span><button type="button" onClick={() => window.location.reload()}>Reload</button></div></main>;
   return <main className="pilot-shell" aria-labelledby="pilot-title">
     <div ref={hostRef} className="pilot-map" aria-label="Combined-road pilot map. Building footprints and sampled exterior receivers." />
-    <header className="pilot-brand glass"><div className="brand-lockup"><span className="brand-mark" aria-hidden="true">QL</span><div><h1 id="pilot-title">Quiet LA</h1><p>Building preview</p></div></div><span className="internal-badge">{profile.badge}</span></header>
+    <header className="pilot-brand glass"><div className="brand-lockup"><span className="brand-mark" aria-hidden="true">QL</span><div><h1 id="pilot-title">Quiet LA</h1><p>Building preview</p></div></div><span className="internal-badge">{profile.badge}</span><a className="pilot-new-map" href="/map/">New: county map →</a></header>
     <aside ref={panelRef} className="pilot-panel glass" aria-label="Combined-road pilot controls">
       <div className="pilot-heading"><div><span className="eyebrow">Los Angeles · combined roads</span><h2>Exterior road noise</h2></div><span className="pilot-back">{data?.buildings.length ?? 0} buildings</span></div>
       <p className="pilot-intro">Modeled exterior exposure for {data?.buildings.length ?? 0} buildings across {data?.loadedTileIds.length ?? 0} loaded coverage tile{data?.loadedTileIds.length === 1 ? '' : 's'}, sampled at 4 m height. Freeway and local roads under an assumed traffic scenario.</p>

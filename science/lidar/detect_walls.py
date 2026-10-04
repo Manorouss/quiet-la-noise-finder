@@ -23,7 +23,7 @@ import numpy as np
 from pyproj import Transformer
 from rasterio import features
 from rasterio.transform import from_origin
-from shapely.geometry import LineString, mapping, shape
+from shapely.geometry import LineString, box, mapping, shape
 from shapely.ops import transform as shp_transform, unary_union
 
 TO_LONLAT = Transformer.from_crs("EPSG:26911", "OGC:CRS84", always_xy=True)
@@ -96,17 +96,7 @@ def polyline(xy: np.ndarray, max_gap: float = 4.0, chunk: float = 40.0) -> list[
     return lines
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--points", type=Path, required=True)
-    parser.add_argument("--sources", type=Path, required=True, help="tile sources.geojson (EPSG:26911)")
-    parser.add_argument("--buildings", type=Path, required=True, help="tile buildings.geojson (EPSG:26911)")
-    parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--corridor", type=float, default=60.0)
-    parser.add_argument("--min-length", type=float, default=25.0)
-    args = parser.parse_args()
-    d = np.load(args.points)
-    x, y, z, cls, ret = d["x"], d["y"], d["z"], d["cls"], d["ret"]
+def detect_block(x, y, z, cls, ret, freeways, footprints, args) -> list[dict]:
     x0, y0 = np.floor(x.min()), np.floor(y.min())
     cols, rows = int(np.ceil((x.max() - x0) / CELL)) + 1, int(np.ceil((y.max() - y0) / CELL)) + 1
     ix, iy = ((x - x0) / CELL).astype(int), ((y - y0) / CELL).astype(int)
@@ -122,14 +112,10 @@ def main() -> int:
     np.add.at(multi, (iy[ng], ix[ng]), (ret[ng] > 1).astype(float))
     height = top - fill_gaps(ground)
     transform = from_origin(x0, y0 + rows * CELL, CELL, CELL)
-    freeways = unary_union([shape(f["geometry"]) for f in json.loads(args.sources.read_text())["features"] if f["properties"].get("MTFCC") == "S1100"])
-    if freeways.is_empty:
-        args.out.write_text(json.dumps({"type": "FeatureCollection", "features": []}))
-        print("no freeway in this area")
-        return 0
-    corridor = features.rasterize([(freeways.buffer(args.corridor), 1)], out_shape=(rows, cols), transform=transform)[::-1]
-    footprints = [shape(f["geometry"]).buffer(1.0) for f in json.loads(args.buildings.read_text())["features"] if not f["properties"].get("BARRIER")]
-    buildings = features.rasterize([(p, 1) for p in footprints], out_shape=(rows, cols), transform=transform)[::-1] if footprints else np.zeros((rows, cols))
+    corridor = features.rasterize([(freeways.buffer(args.corridor).intersection(box(x0, y0, x0 + cols * CELL, y0 + rows * CELL)), 1)], out_shape=(rows, cols), transform=transform)[::-1]
+    local = box(x0, y0, x0 + cols * CELL, y0 + rows * CELL)
+    near = [p for p in footprints if p.intersects(local)]
+    buildings = features.rasterize([(p, 1) for p in near], out_shape=(rows, cols), transform=transform)[::-1] if near else np.zeros((rows, cols))
     with np.errstate(invalid="ignore", divide="ignore"):
         single = np.where(hits > 0, 1 - multi / hits, 0)
         candidate = (height >= 1.8) & (height <= 7.0) & (single >= 0.6) & (corridor == 1) & (buildings == 0)
@@ -161,8 +147,45 @@ def main() -> int:
             continue
         wall_height = f"{float(np.median(height[rr, cc])):.1f}"
         for line in pieces:
-            walls.append({"type": "Feature", "properties": {"height": wall_height, "source": "lidar_detected", "length_m": round(line.length, 1)},
-                          "geometry": mapping(shp_transform(lambda a, b, c=None: TO_LONLAT.transform(a, b), line))})
+            walls.append({"line": line, "height": wall_height})
+    return walls
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--points", type=Path, required=True)
+    parser.add_argument("--sources", type=Path, required=True, help="tile sources.geojson (EPSG:26911)")
+    parser.add_argument("--buildings", type=Path, required=True, help="tile buildings.geojson (EPSG:26911)")
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--corridor", type=float, default=60.0)
+    parser.add_argument("--min-length", type=float, default=25.0)
+    args = parser.parse_args()
+    d = np.load(args.points)
+    freeways = unary_union([shape(f["geometry"]) for f in json.loads(args.sources.read_text())["features"] if f["properties"].get("MTFCC") == "S1100"])
+    footprints = [shape(f["geometry"]).buffer(1.0) for f in json.loads(args.buildings.read_text())["features"] if not f["properties"].get("BARRIER")]
+    if freeways.is_empty:
+        args.out.write_text(json.dumps({"type": "FeatureCollection", "features": []}))
+        print("no freeway in this area")
+        return 0
+    corridor_all = freeways.buffer(args.corridor)
+    block, overlap = 500.0, 40.0
+    xmin, ymin, xmax, ymax = corridor_all.bounds
+    walls = []
+    for bx in np.arange(np.floor(xmin / block) * block, xmax, block):
+        for by in np.arange(np.floor(ymin / block) * block, ymax, block):
+            core = box(bx, by, bx + block, by + block)
+            if not core.intersects(corridor_all):
+                continue
+            x0b, y0b, x1b, y1b = bx - overlap, by - overlap, bx + block + overlap, by + block + overlap
+            sel = (d["x"] >= x0b) & (d["x"] < x1b) & (d["y"] >= y0b) & (d["y"] < y1b)
+            if sel.sum() < 1000:
+                continue
+            for wall in detect_block(d["x"][sel], d["y"][sel], d["z"][sel], d["cls"][sel], d["ret"][sel], freeways, footprints, args):
+                clipped = wall["line"].intersection(core)
+                for part in getattr(clipped, "geoms", [clipped]):
+                    if part.geom_type == "LineString" and part.length >= 5:
+                        walls.append({"type": "Feature", "properties": {"height": wall["height"], "source": "lidar_detected", "length_m": round(part.length, 1)},
+                                      "geometry": mapping(shp_transform(lambda a, b, c=None: TO_LONLAT.transform(a, b), part))})
     args.out.write_text(json.dumps({"type": "FeatureCollection", "features": walls}) + "\n")
     print(f"{len(walls)} wall lines, {sum(w['properties']['length_m'] for w in walls) / 1000:.2f} km")
     return 0
