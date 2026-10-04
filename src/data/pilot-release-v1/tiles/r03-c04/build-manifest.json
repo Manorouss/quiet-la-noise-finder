@@ -1,32 +1,32 @@
 {
   "schema": "quiet_la_tarzana_direct_union_tile_v1",
   "model": "tarzana-combined-road-study-r02-v1",
-  "tile_id": "r02-c03",
+  "tile_id": "r03-c04",
   "status": "candidate_pending_owner_review",
-  "receiver_count": 6421,
-  "numeric_rows": 19263,
-  "building_count": 80,
-  "facade_receiver_count": 1573,
+  "receiver_count": 7083,
+  "numeric_rows": 21249,
+  "building_count": 245,
+  "facade_receiver_count": 2563,
   "receiver_height_counts_m": {
-    "1.5": 4848,
-    "4.0": 1573
+    "1.5": 4520,
+    "4.0": 2563
   },
   "bbox_wgs84": [
-    -118.56761703141507,
-    34.16737930375903,
-    -118.55673651436047,
-    34.17364642243031
+    -118.5568548996437,
+    34.173737951963076,
+    -118.54600397159551,
+    34.18005698378428
   ],
   "masked_ids": [],
-  "min_laeq": 37.51874,
-  "max_laeq": 97.11242,
-  "source_csv_sha256": "3bd1fd3834153178683dce19cb2367143eda9cc092042903e5b71187e1e5daa3",
-  "attempt_id": "phase1-tarzana-full-mixed-r02-c03-union-hf583-nv-mac8-v1",
+  "min_laeq": 41.071762,
+  "max_laeq": 95.24611,
+  "source_csv_sha256": "ab9d472549bfb4265f93a1e424356f09da8cd7df94eb00f30fcb0b521d43e886",
+  "attempt_id": "phase1-tarzana-full-mixed-r03-c04-union-hf583-nv-mac8-v1",
   "quality_flags": {
     "physical_ceiling_margin_db": 6.0,
     "physical_ceiling_masked_ids": [],
     "on_road_distance_m": 3.0,
-    "on_road_count": 169,
+    "on_road_count": 43,
     "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
   },
   "assumptions": {
