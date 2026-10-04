@@ -11,11 +11,13 @@ on-road labels). Later roots win when a tile appears twice. Outputs, in --out:
   buildings.pmtiles  footprints: k key, h height (m), d/e/n highest facade LAeq, c count.
   roads.pmtiles      modeled road sources clipped to each tile core: a AADT, c MTFCC,
                      nm name, t traffic basis (hpms | default). Minor roads appear later.
-  field.pmtiles      raster-dem, custom encoding: R/G/B = Day/Evening/Night, value v
-                     means 25 + 0.3 v dB; 0 means not modeled. Built by normalized
+  field_{d,e,n}.pmtiles  raster-dem per period in Terrarium encoding with elevation = LAeq
+                     (dB, 0.1 dB steps); elevation 0 means not modeled. Built by normalized
                      Gaussian convolution of the receiver values (dB) on a 5 m grid per
                      tile, using neighbours' receivers for seamless edges; gaps inside
                      large buildings are filled from a wider kernel within modeled tiles.
+                     Web tiles sample that grid bilinearly.
+  glow_{d,e,n}.pmtiles the same surface with a 24 m kernel, for the soft Glow style.
   coverage.geojson   modeled 1 km tiles, plus coverage_outline.geojson (dissolved edge).
   basemap/           Protomaps LA County basemap (hard link to the downloaded extract).
   context/           fire stations, heliports and airport noise contours (GeoJSON).
@@ -55,8 +57,7 @@ TO_LONLAT = Transformer.from_crs("EPSG:26911", "OGC:CRS84", always_xy=True)
 PERIODS = ("D", "E", "N")
 CELL = 5.0              # field grid (m)
 MARGIN = 100.0          # neighbour receivers used around each tile (m)
-SIGMA, SIGMA_FILL = 9.0, 30.0
-DB0, DB_STEP = 25.0, 0.3
+SIGMA, SIGMA_FILL, SIGMA_GLOW = 9.0, 30.0, 24.0
 FIELD_MAX_ZOOM, FIELD_MIN_ZOOM = 15, 10
 ROAD_MINZOOM = {"S1100": 10, "S1200": 11, "S1630": 12}  # other classes: 13
 
@@ -173,8 +174,8 @@ def smooth(array: np.ndarray, sigma_px: float) -> np.ndarray:
     return np.apply_along_axis(lambda v: np.convolve(v, kernel, mode="same"), 1, out)
 
 
-def tile_field(origin: tuple[int, int], pts: np.ndarray) -> np.ndarray:
-    """Values (3, H, W) on the 5 m grid of the 1 km tile core, NaN where unknown."""
+def tile_field(origin: tuple[int, int], pts: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """(field, glow): values (3, H, W) on the 5 m grid of the 1 km tile core, NaN where unknown."""
     x0, y0 = origin
     lo_x, lo_y = x0 - MARGIN, y0 - MARGIN
     size = int((1000 + 2 * MARGIN) / CELL)
@@ -185,16 +186,17 @@ def tile_field(origin: tuple[int, int], pts: np.ndarray) -> np.ndarray:
     count = np.zeros((size, size))
     np.add.at(count, (iy, ix), 1.0)
     result = np.full((3, size, size), np.nan)
-    den_small, den_fill = smooth(count, SIGMA / CELL), smooth(count, SIGMA_FILL / CELL)
+    glow = np.full((3, size, size), np.nan)
+    den_small, den_fill, den_glow = smooth(count, SIGMA / CELL), smooth(count, SIGMA_FILL / CELL), smooth(count, SIGMA_GLOW / CELL)
     for band in range(3):
         total = np.zeros((size, size))
         np.add.at(total, (iy, ix), values[:, band])
-        small, fill = smooth(total, SIGMA / CELL), smooth(total, SIGMA_FILL / CELL)
+        small, fill, wide = smooth(total, SIGMA / CELL), smooth(total, SIGMA_FILL / CELL), smooth(total, SIGMA_GLOW / CELL)
         with np.errstate(invalid="ignore", divide="ignore"):
-            field = np.where(den_small > 0.05, small / den_small, np.where(den_fill > 0.02, fill / den_fill, np.nan))
-        result[band] = field
+            result[band] = np.where(den_small > 0.05, small / den_small, np.where(den_fill > 0.02, fill / den_fill, np.nan))
+            glow[band] = np.where(den_glow > 0.02, wide / den_glow, np.nan)
     core = slice(int(MARGIN / CELL), int((MARGIN + 1000) / CELL))
-    return result[:, core, core]
+    return result[:, core, core], glow[:, core, core]
 
 
 def lonlat_of_pixels(z: int, tx: int, ty: int, size: int = 256) -> tuple[np.ndarray, np.ndarray]:
@@ -214,10 +216,18 @@ def lonlat_to_tile(lon: float, lat: float, z: int) -> tuple[int, int]:
 
 
 def encode(values: np.ndarray) -> bytes:
-    """values (3, 256, 256) dB with NaN → lossless RGB PNG in the custom DEM encoding."""
-    codes = np.where(np.isnan(values), 0, np.clip(np.rint((values - DB0) / DB_STEP), 1, 255)).astype(np.uint8)
+    """values (256, 256) dB with NaN → lossless Terrarium PNG (elevation = dB, 0 = not modeled).
+
+    MapLibre's color-relief shader encodes its colour stops in the source encoding, so a
+    standard encoding is required; the custom per-channel trick decodes but cannot be ramped.
+    """
+    db = np.where(np.isnan(values), 0.0, np.round(values, 1)) + 32768.0
+    red = np.floor(db / 256.0)
+    green = np.floor(db - red * 256.0)
+    blue = np.round((db - red * 256.0 - green) * 256.0)
+    rgb = np.stack([red, green, np.minimum(blue, 255)], axis=-1).astype(np.uint8)
     buffer = io.BytesIO()
-    Image.fromarray(np.moveaxis(codes, 0, -1), "RGB").save(buffer, "PNG", optimize=True)
+    Image.fromarray(rgb, "RGB").save(buffer, "PNG", optimize=True)
     return buffer.getvalue()
 
 
@@ -230,9 +240,11 @@ def downsample(children: dict[tuple[int, int], np.ndarray]) -> np.ndarray:
         return np.nanmean(blocks, axis=(2, 4))
 
 
-def build_field(fields: dict[tuple[int, int], np.ndarray], mbtiles: Path) -> int:
-    db = sqlite3.connect(mbtiles)
-    db.executescript("CREATE TABLE metadata (name text, value text); CREATE TABLE tiles (zoom_level integer, tile_column integer, tile_row integer, tile_data blob);")
+def build_field(fields: dict[tuple[int, int], np.ndarray], mbtiles: dict[str, Path]) -> int:
+    dbs = {}
+    for band, path in mbtiles.items():
+        dbs[band] = sqlite3.connect(path)
+        dbs[band].executescript("CREATE TABLE metadata (name text, value text); CREATE TABLE tiles (zoom_level integer, tile_column integer, tile_row integer, tile_data blob);")
     cells = list(fields)
     lons, lats = [], []
     for cx, cy in cells:
@@ -255,15 +267,25 @@ def build_field(fields: dict[tuple[int, int], np.ndarray], mbtiles: Path) -> int
             if cell not in fields:
                 continue
             mask = (cx == cell[0]) & (cy == cell[1])
-            col = np.clip(((x[mask] - cell[0] * 1000) / CELL).astype(int), 0, 199)
-            row = np.clip(((y[mask] - cell[1] * 1000) / CELL).astype(int), 0, 199)
-            values[:, mask] = fields[cell][:, row, col]
+            # Bilinear between 5 m cell centres (clamped at the tile edge) for a smooth surface.
+            fx = np.clip((x[mask] - cell[0] * 1000) / CELL - 0.5, 0, 199)
+            fy = np.clip((y[mask] - cell[1] * 1000) / CELL - 0.5, 0, 199)
+            c0, r0 = np.floor(fx).astype(int), np.floor(fy).astype(int)
+            c1, r1 = np.minimum(c0 + 1, 199), np.minimum(r0 + 1, 199)
+            wx, wy = fx - c0, fy - r0
+            grid = fields[cell]
+            corners = [(grid[:, r0, c0], (1 - wx) * (1 - wy)), (grid[:, r0, c1], wx * (1 - wy)), (grid[:, r1, c0], (1 - wx) * wy), (grid[:, r1, c1], wx * wy)]
+            total = sum(np.nan_to_num(v) * w for v, w in corners)
+            weight = sum(np.isfinite(v) * w for v, w in corners)
+            with np.errstate(invalid="ignore", divide="ignore"):
+                values[:, mask] = np.where(weight > 0.5, total / weight, np.nan)
         if np.isfinite(values).any():
             level[(tx, ty)] = values
     written = 0
     while True:
         for (tx, ty), values in level.items():
-            db.execute("INSERT INTO tiles VALUES (?, ?, ?, ?)", (z, tx, 2 ** z - 1 - ty, encode(values)))
+            for index, band in enumerate(mbtiles):
+                dbs[band].execute("INSERT INTO tiles VALUES (?, ?, ?, ?)", (z, tx, 2 ** z - 1 - ty, encode(values[index])))
             written += 1
         if z == FIELD_MIN_ZOOM:
             break
@@ -272,12 +294,13 @@ def build_field(fields: dict[tuple[int, int], np.ndarray], mbtiles: Path) -> int
             parents.setdefault((tx // 2, ty // 2), {})[(tx % 2, ty % 2)] = values
         level = {key: downsample(children) for key, children in parents.items()}
         z -= 1
-    meta = {"name": "quiet-la-field", "format": "png", "type": "overlay", "minzoom": str(FIELD_MIN_ZOOM), "maxzoom": str(FIELD_MAX_ZOOM),
-            "bounds": f"{min(lons)},{min(lats)},{max(lons)},{max(lats)}", "center": f"{(min(lons) + max(lons)) / 2},{(min(lats) + max(lats)) / 2},{FIELD_MIN_ZOOM + 3}",
-            "description": f"Road-noise LAeq; R/G/B = D/E/N; dB = {DB0} + {DB_STEP} * value; 0 = not modeled"}
-    db.executemany("INSERT INTO metadata VALUES (?, ?)", meta.items())
-    db.commit()
-    db.close()
+    for band, db in dbs.items():
+        meta = {"name": f"quiet-la-field-{band}", "format": "png", "type": "overlay", "minzoom": str(FIELD_MIN_ZOOM), "maxzoom": str(FIELD_MAX_ZOOM),
+                "bounds": f"{min(lons)},{min(lats)},{max(lons)},{max(lats)}", "center": f"{(min(lons) + max(lons)) / 2},{(min(lats) + max(lats)) / 2},{FIELD_MIN_ZOOM + 3}",
+                "description": f"Road-noise LAeq ({band.upper()}), Terrarium raster-dem: elevation = dB; 0 = not modeled"}
+        db.executemany("INSERT INTO metadata VALUES (?, ?)", meta.items())
+        db.commit()
+        db.close()
     return written
 
 
@@ -308,12 +331,16 @@ def main() -> int:
         n_roads = write_ndjson(tmp / "roads.ndjson", road_features(tiles))
         tippecanoe(tmp / "roads.ndjson", out / "roads.pmtiles", "roads", ["-Z10", "-z16", "--no-tile-size-limit"])
         by_cell = {(origins[t][0] // 1000, origins[t][1] // 1000): t for t in tiles}
-        fields = {}
+        fields, glows = {}, {}
         for (cx, cy), tile_id in by_cell.items():
             nearby = [points[by_cell[(cx + dx, cy + dy)]] for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (cx + dx, cy + dy) in by_cell]
-            fields[(cx, cy)] = tile_field(origins[tile_id], np.vstack(nearby))
-        n_field = build_field(fields, tmp / "field.mbtiles")
-        subprocess.run(["pmtiles", "convert", str(tmp / "field.mbtiles"), str(out / "field.pmtiles")], check=True, capture_output=True)
+            fields[(cx, cy)], glows[(cx, cy)] = tile_field(origins[tile_id], np.vstack(nearby))
+        n_field = build_field(fields, {band: tmp / f"field_{band}.mbtiles" for band in "den"})
+        build_field(glows, {band: tmp / f"glow_{band}.mbtiles" for band in "den"})
+        for kind in ("field", "glow"):
+            for band in "den":
+                subprocess.run(["pmtiles", "convert", str(tmp / f"{kind}_{band}.mbtiles"), str(out / f"{kind}_{band}.pmtiles")], check=True, capture_output=True)
+        (out / "field.pmtiles").unlink(missing_ok=True)
     coverage = {"type": "FeatureCollection", "features": [
         {"type": "Feature", "properties": {"tile_id": t, "model": manifests[t].get("study_model", "county-v1")},
          "geometry": {"type": "Polygon", "coordinates": [[list(TO_LONLAT.transform(origins[t][0] + dx, origins[t][1] + dy)) for dx, dy in ((0, 0), (1000, 0), (1000, 1000), (0, 1000), (0, 0))]]}}
@@ -340,10 +367,10 @@ def main() -> int:
     layers = {
         "schema": "quiet_la_county_layers_v1", "built_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "tiles": sorted(tiles), "receiver_count": n_receivers, "building_count": n_buildings, "road_segments": n_roads, "field_tiles": n_field,
-        "field_encoding": {"type": "custom", "red": "D", "green": "E", "blue": "N", "db": f"{DB0} + {DB_STEP} * value", "nodata": 0,
-                           "cell_m": CELL, "sigma_m": SIGMA, "fill_sigma_m": SIGMA_FILL, "zooms": [FIELD_MIN_ZOOM, FIELD_MAX_ZOOM]},
+        "field_encoding": {"type": "terrarium", "files": {"D": "field_d.pmtiles", "E": "field_e.pmtiles", "N": "field_n.pmtiles"}, "db": "elevation (0.1 dB steps)", "nodata": 0,
+                           "cell_m": CELL, "sigma_m": SIGMA, "fill_sigma_m": SIGMA_FILL, "glow_sigma_m": SIGMA_GLOW, "zooms": [FIELD_MIN_ZOOM, FIELD_MAX_ZOOM]},
         "files": {name: {"sha256": sha(out / name), "bytes": (out / name).stat().st_size}
-                  for name in ("receivers.pmtiles", "buildings.pmtiles", "roads.pmtiles", "field.pmtiles", "coverage.geojson", *extra)},
+                  for name in ("receivers.pmtiles", "buildings.pmtiles", "roads.pmtiles", *(f"{k}_{b}.pmtiles" for k in ("field", "glow") for b in "den"), "coverage.geojson", *extra)},
         "builder": "science/pipeline/build_county_layers.py", "seconds": round(time.time() - started, 1),
     }
     (out / "layers.json").write_text(json.dumps(layers, indent=1) + "\n")

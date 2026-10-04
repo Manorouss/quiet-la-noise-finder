@@ -76,7 +76,7 @@ def main() -> int:
     args = parser.parse_args()
     mounts = [(prefix, Path(directory).resolve()) for prefix, directory in (m.split("=", 1) for m in args.mount)]
     root = args.root.resolve()
-    os.chdir(root)
+
     ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(root, mounts)).serve_forever()
     return 0
 

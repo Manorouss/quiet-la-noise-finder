@@ -19,9 +19,8 @@ export const CONTEXT_FILES: Record<ContextId, string> = {
   'city-fire': 'context/la_city_fire_stations.geojson',
 };
 export const PERIOD_KEY: Record<Period, 'd' | 'e' | 'n'> = { D: 'd', E: 'e', N: 'n' };
-// field.pmtiles: R/G/B hold Day/Evening/Night as dB = 25 + 0.3 * value; 0 = not modeled (decodes to 25).
-const FIELD_FACTORS: Record<Period, [number, number, number]> = { D: [0.3, 0, 0], E: [0, 0.3, 0], N: [0, 0, 0.3] };
-const NODATA_DB = 25.15;
+// field_{d,e,n}.pmtiles: Terrarium raster-dem whose elevation is the LAeq in dB; 0 = not modeled.
+const NODATA_DB = 20;
 const CLEAR = 'rgba(0,0,0,0)';
 const TERRAIN_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const SATELLITE_TILES = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
@@ -33,10 +32,11 @@ const bandStep = (input: unknown) => expr(['step', input, BAND_COLORS[0], ...BAN
 function fieldColor(noise: NoiseStyle) {
   if (noise === 'bands') return expr(['step', ['elevation'], CLEAR, NODATA_DB, BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]])]);
   if (noise === 'glow') {
-    return expr(['interpolate', ['linear'], ['elevation'], NODATA_DB, CLEAR, 52, 'rgba(242,236,125,0)', 58, 'rgba(248,195,91,0.5)', 64, 'rgba(242,143,59,0.75)', 70, 'rgba(227,90,50,0.85)', 76, 'rgba(193,39,45,0.92)', 82, 'rgba(74,26,107,0.95)']);
+    // Soft heat: quiet places stay clear, louder ones glow brighter and warmer (24 m blurred surface).
+    return expr(['interpolate', ['linear'], ['elevation'], 0, CLEAR, 50, 'rgba(242,236,125,0)', 55, 'rgba(248,214,104,0.35)', 60, 'rgba(248,170,80,0.6)', 65, 'rgba(242,120,55,0.78)', 70, 'rgba(227,70,48,0.88)', 75, 'rgba(193,30,60,0.94)', 80, 'rgba(120,20,95,0.97)', 86, 'rgba(60,14,90,1)']);
   }
   // Smooth field: each band color sits at its band centre.
-  return expr(['interpolate', ['linear'], ['elevation'], NODATA_DB, CLEAR, NODATA_DB + 0.1, BAND_COLORS[0], 42.5, BAND_COLORS[0],
+  return expr(['interpolate', ['linear'], ['elevation'], 0, CLEAR, NODATA_DB, CLEAR, NODATA_DB + 0.1, BAND_COLORS[0], 42.5, BAND_COLORS[0],
     ...BAND_COLORS.slice(1).flatMap((color, i) => [47.5 + 5 * i, color])]);
 }
 
@@ -63,7 +63,6 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
   const below = base.layers.slice(0, firstRoad < 0 ? firstLabel : firstRoad);
   const middle = base.layers.slice(below.length, firstLabel).filter((layer) => !(o.mode3d && layer.id === 'buildings'));
   const labels = base.layers.slice(firstLabel);
-  const [red, green, blue] = FIELD_FACTORS[o.period];
   const showField = o.noise !== 'dots';
   const key = PERIOD_KEY[o.period];
   const visible = (on: boolean) => ({ visibility: on ? 'visible' as const : 'none' as const });
@@ -71,8 +70,7 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
     ...base.sources,
     'terrain-dem': { type: 'raster-dem', tiles: [TERRAIN_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15, attribution: 'Terrain: Mapzen / AWS Open Data' },
     'hillshade-dem': { type: 'raster-dem', tiles: [TERRAIN_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15 },
-    // The period lives in the decoding factors, so a period switch reloads only the visible field tiles.
-    field: { type: 'raster-dem', url: `pmtiles://${o.layersUrl}field.pmtiles`, encoding: 'custom', redFactor: red, greenFactor: green, blueFactor: blue, baseShift: 25, tileSize: 256 },
+    field: { type: 'raster-dem', url: `pmtiles://${o.layersUrl}${o.noise === 'glow' ? 'glow' : 'field'}_${PERIOD_KEY[o.period]}.pmtiles`, encoding: 'terrarium', tileSize: 256 },
     receivers: { type: 'vector', url: `pmtiles://${o.layersUrl}receivers.pmtiles` },
     buildings: { type: 'vector', url: `pmtiles://${o.layersUrl}buildings.pmtiles` },
     roads: { type: 'vector', url: `pmtiles://${o.layersUrl}roads.pmtiles` },
@@ -81,9 +79,12 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
   for (const id of Object.keys(CONTEXT_FILES) as ContextId[]) sources[`context-${id}`] = { type: 'geojson', data: `${o.layersUrl}${CONTEXT_FILES[id]}` };
   const noiseLayers: LayerSpecification[] = [
     { id: 'hillshade', type: 'hillshade', source: 'hillshade-dem', paint: { 'hillshade-exaggeration': dark ? 0.25 : 0.18, 'hillshade-shadow-color': dark ? '#000000' : '#5b5f66', 'hillshade-highlight-color': '#ffffff' } },
-    { id: 'noise-field', type: 'color-relief', source: 'field', layout: visible(showField), paint: { 'color-relief-color': fieldColor(o.noise), 'color-relief-opacity': o.noise === 'glow' ? 1 : 0.8, resampling: 'nearest' } as never },
     { id: 'building-footprints', type: 'fill', source: 'buildings', 'source-layer': 'buildings', minzoom: 14, layout: visible(!o.mode3d), paint: { 'fill-color': dark ? '#d9dde3' : '#ffffff', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.12, 17, 0.32], 'fill-outline-color': dark ? 'rgba(255,255,255,0.35)' : 'rgba(60,64,72,0.35)' } },
   ];
+  // Above the basemap streets (so road corridors read as loud), below labels. Nearest sampling keeps the
+  // modeled edge sharp; the glow ramp is clear below 50 dB, so its smooth sampling cannot fake quiet.
+  const field: LayerSpecification = { id: 'noise-field', type: 'color-relief', source: 'field', layout: visible(showField),
+    paint: { 'color-relief-color': fieldColor(o.noise), 'color-relief-opacity': o.noise === 'glow' ? 1 : 0.86, resampling: o.noise === 'glow' ? 'linear' : 'nearest' } as never };
   const overlay: LayerSpecification[] = [
     { id: 'roads-modeled-casing', type: 'line', source: 'roads', 'source-layer': 'roads', layout: { ...visible(o.roads), 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#0d1017' : '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 1.5, 16, 7] } },
     { id: 'roads-modeled', type: 'line', source: 'roads', 'source-layer': 'roads', layout: { ...visible(o.roads), 'line-cap': 'round', 'line-join': 'round' },
@@ -110,8 +111,8 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
     glyphs: 'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf',
     sprite: `https://protomaps.github.io/basemaps-assets/sprites/v4/${dark ? 'dark' : o.theme === 'grayscale' ? 'grayscale' : 'light'}`,
     sources,
-    layers: [...below, ...noiseLayers, ...middle, ...overlay, ...labels],
-    terrain: o.mode3d ? { source: 'terrain-dem', exaggeration: 1.2 } : undefined,
+    layers: [...below, ...noiseLayers.slice(0, 1), ...middle, field, ...noiseLayers.slice(1), ...overlay, ...labels],
+    terrain: o.mode3d ? { source: 'terrain-dem', exaggeration: 1.25 } : undefined,
     sky: o.mode3d ? (dark
       ? { 'sky-color': '#0b1a33', 'horizon-color': '#27354d', 'fog-color': '#1a2231', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.5, 'atmosphere-blend': 0.6 }
       : { 'sky-color': '#9cc3eb', 'horizon-color': '#e9eef4', 'fog-color': '#eef1f3', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.45, 'atmosphere-blend': 0.5 }) : undefined,
