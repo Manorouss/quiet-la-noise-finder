@@ -3760,6 +3760,618 @@
           "bytes": 1528
         }
       ]
+    },
+    {
+      "tile_id": "cty-e372-n3777",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-la-e372-n3777-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.38827249594321,
+        34.12598319314059,
+        -118.37710999404774,
+        34.135223772183565
+      ],
+      "receiver_count": 8182,
+      "numeric_rows": 24546,
+      "building_count": 727,
+      "facade_receiver_count": 5453,
+      "receiver_height_counts_m": {
+        "1.5": 2729,
+        "4.0": 5453
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "4f25824a5697b2583846f86097a77b5f4898ff2436b465c643fe26e50e58e28d",
+      "provenance": {
+        "attempt_id": "phase1-county-la-e372-n3777-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4640516,
+            "sha256": "543fb8692d8b80e974ff5e9274d767bdfbd21df0af9be0f14f92cb408a845559"
+          },
+          "buildings.geojson": {
+            "bytes": 1186282,
+            "sha256": "311015bbb0553e8d531588b0d3f6c54881c91a441f06988929639b37e45a6d5c"
+          },
+          "build-manifest.json": {
+            "bytes": 1529,
+            "sha256": "c9e73594701e0d47199f0a94af931082c6af268f270694a6cd73922d0585d6ad"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 295,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e372-n3777/benchmark.geojson",
+          "sha256": "543fb8692d8b80e974ff5e9274d767bdfbd21df0af9be0f14f92cb408a845559",
+          "bytes": 4640516
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e372-n3777/buildings.geojson",
+          "sha256": "311015bbb0553e8d531588b0d3f6c54881c91a441f06988929639b37e45a6d5c",
+          "bytes": 1186282
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e372-n3777/build-manifest.json",
+          "sha256": "c9e73594701e0d47199f0a94af931082c6af268f270694a6cd73922d0585d6ad",
+          "bytes": 1529
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e372-n3778",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-la-e372-n3778-g20a50f10-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.38834414461029,
+        34.134954927727044,
+        -118.37725757312467,
+        34.14418199544705
+      ],
+      "receiver_count": 8617,
+      "numeric_rows": 25851,
+      "building_count": 996,
+      "facade_receiver_count": 5785,
+      "receiver_height_counts_m": {
+        "1.5": 2832,
+        "4.0": 5785
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "39112c78e03ac6014cad3eb5e82ceb83e594b0e647e1cac87b96a208c936fa55",
+      "provenance": {
+        "attempt_id": "phase1-county-la-e372-n3778-g20a50f10-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4890820,
+            "sha256": "b96df61d80b894e1e318a17a7886eb38f07d43730fdaab6bf9dbc9cea48b874e"
+          },
+          "buildings.geojson": {
+            "bytes": 1481713,
+            "sha256": "3fe5bd7f4aec69010684a6e2af4dd6e028e33595f26e3b3b37d6a72f60616366"
+          },
+          "build-manifest.json": {
+            "bytes": 1529,
+            "sha256": "e3515e55e9a1c0deaf19fa38e1917317f23694c7eed0a30303b4fdb2166bdb1b"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 388,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e372-n3778/benchmark.geojson",
+          "sha256": "b96df61d80b894e1e318a17a7886eb38f07d43730fdaab6bf9dbc9cea48b874e",
+          "bytes": 4890820
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e372-n3778/buildings.geojson",
+          "sha256": "3fe5bd7f4aec69010684a6e2af4dd6e028e33595f26e3b3b37d6a72f60616366",
+          "bytes": 1481713
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e372-n3778/build-manifest.json",
+          "sha256": "e3515e55e9a1c0deaf19fa38e1917317f23694c7eed0a30303b4fdb2166bdb1b",
+          "bytes": 1529
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e372-n3779",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-la-e372-n3779-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.3887771232528,
+        34.14402470340186,
+        -118.37739913170975,
+        34.15329700281434
+      ],
+      "receiver_count": 10565,
+      "numeric_rows": 31695,
+      "building_count": 1403,
+      "facade_receiver_count": 7827,
+      "receiver_height_counts_m": {
+        "1.5": 2738,
+        "4.0": 7827
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "eea403a6b548004dcf3a43ff07acb91c6b04d7069937d603d07db4d8b2bf98e8",
+      "provenance": {
+        "attempt_id": "phase1-county-la-e372-n3779-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 6013680,
+            "sha256": "8a68e31c18b3d444b803b91397c62f407e5018d79976338ee6765bcc761ca414"
+          },
+          "buildings.geojson": {
+            "bytes": 2077372,
+            "sha256": "de31457b0c42f936723efbef406917540849d861184b80b256ea26e5dd75a086"
+          },
+          "build-manifest.json": {
+            "bytes": 1530,
+            "sha256": "aaaecf8107b0e045c5cd85772b2c97bb21d9b1d12422e1c525d322bda9d109f3"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 667,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e372-n3779/benchmark.geojson",
+          "sha256": "8a68e31c18b3d444b803b91397c62f407e5018d79976338ee6765bcc761ca414",
+          "bytes": 6013680
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e372-n3779/buildings.geojson",
+          "sha256": "de31457b0c42f936723efbef406917540849d861184b80b256ea26e5dd75a086",
+          "bytes": 2077372
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e372-n3779/build-manifest.json",
+          "sha256": "aaaecf8107b0e045c5cd85772b2c97bb21d9b1d12422e1c525d322bda9d109f3",
+          "bytes": 1530
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e373-n3777",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-la-e373-n3777-g20a50f10-nv-pc16-v1",
+      "bbox_wgs84": [
+        -118.37743915262759,
+        34.126055396792516,
+        -118.36628669782371,
+        34.13534362722018
+      ],
+      "receiver_count": 7173,
+      "numeric_rows": 21519,
+      "building_count": 518,
+      "facade_receiver_count": 3854,
+      "receiver_height_counts_m": {
+        "1.5": 3319,
+        "4.0": 3854
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "c6307b8dc1c82c0eb6de078a2c07c270917f168f36251b6978162e67e2493385",
+      "provenance": {
+        "attempt_id": "phase1-county-la-e373-n3777-g20a50f10-nv-pc16-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4049833,
+            "sha256": "b5486e7e697535bb12d51d5f9ffb8c221d642f5420124a2bbd9af936dbcb65d1"
+          },
+          "buildings.geojson": {
+            "bytes": 843738,
+            "sha256": "c6384ec91bb25ac848b4d359668e1ad2736e2fe8107504b3d534582900c88744"
+          },
+          "build-manifest.json": {
+            "bytes": 1529,
+            "sha256": "ae109f40c471009977331062a2567f66aa5f48706eabada9fa535a76b935f08c"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 289,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e373-n3777/benchmark.geojson",
+          "sha256": "b5486e7e697535bb12d51d5f9ffb8c221d642f5420124a2bbd9af936dbcb65d1",
+          "bytes": 4049833
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e373-n3777/buildings.geojson",
+          "sha256": "c6384ec91bb25ac848b4d359668e1ad2736e2fe8107504b3d534582900c88744",
+          "bytes": 843738
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e373-n3777/build-manifest.json",
+          "sha256": "ae109f40c471009977331062a2567f66aa5f48706eabada9fa535a76b935f08c",
+          "bytes": 1529
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e373-n3778",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-la-e373-n3778-g20a50f10-nv-pc16-v2",
+      "bbox_wgs84": [
+        -118.37756067470612,
+        34.13504278834299,
+        -118.36640795863809,
+        34.14446702000703
+      ],
+      "receiver_count": 8608,
+      "numeric_rows": 25824,
+      "building_count": 765,
+      "facade_receiver_count": 5378,
+      "receiver_height_counts_m": {
+        "1.5": 3230,
+        "4.0": 5378
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "0279639b91b372056962ae2f41d60c2ec33b871a9511349773addf7441d7c048",
+      "provenance": {
+        "attempt_id": "phase1-county-la-e373-n3778-g20a50f10-nv-pc16-v2",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4874886,
+            "sha256": "02dd262ca80fc65ed2896a1aec18871af099272594e8cc783ddf08021546d5f0"
+          },
+          "buildings.geojson": {
+            "bytes": 1285358,
+            "sha256": "0c7f70f8d986eb377a8679a5483f5249f7f624193ef80a29a2115d0f62dab545"
+          },
+          "build-manifest.json": {
+            "bytes": 1528,
+            "sha256": "b62ceb0b9c8376d877dae04e77a5aea190c074e0e37ab8cd9e673f4a45517bcc"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 452,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e373-n3778/benchmark.geojson",
+          "sha256": "02dd262ca80fc65ed2896a1aec18871af099272594e8cc783ddf08021546d5f0",
+          "bytes": 4874886
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e373-n3778/buildings.geojson",
+          "sha256": "0c7f70f8d986eb377a8679a5483f5249f7f624193ef80a29a2115d0f62dab545",
+          "bytes": 1285358
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e373-n3778/build-manifest.json",
+          "sha256": "b62ceb0b9c8376d877dae04e77a5aea190c074e0e37ab8cd9e673f4a45517bcc",
+          "bytes": 1528
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e373-n3779",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-la-e373-n3779-g20a50f10-nv-pc8-v2",
+      "bbox_wgs84": [
+        -118.37774952113286,
+        34.14390464847727,
+        -118.36660307966847,
+        34.15327540786552
+      ],
+      "receiver_count": 10490,
+      "numeric_rows": 31470,
+      "building_count": 806,
+      "facade_receiver_count": 5144,
+      "receiver_height_counts_m": {
+        "1.5": 5346,
+        "4.0": 5144
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "f74b3d56e08a9039bdda4f76cad7fde3c398662403f6185ba457db080132e473",
+      "provenance": {
+        "attempt_id": "phase1-county-la-e373-n3779-g20a50f10-nv-pc8-v2",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5911603,
+            "sha256": "688f52fbc3d1494d2756347b4bd3b71d5534b68be1161b05f3e6986435e62bdb"
+          },
+          "buildings.geojson": {
+            "bytes": 1253367,
+            "sha256": "5c61374a784356c0b9fab4c6c2a548594f9b7ea9d9f54dcee53babb26e117d31"
+          },
+          "build-manifest.json": {
+            "bytes": 1528,
+            "sha256": "247fd6b949feb689c7a3cd56ecdcfbb6540b741cdd54625d43173b4ebde37a4c"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 1002,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e373-n3779/benchmark.geojson",
+          "sha256": "688f52fbc3d1494d2756347b4bd3b71d5534b68be1161b05f3e6986435e62bdb",
+          "bytes": 5911603
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e373-n3779/buildings.geojson",
+          "sha256": "5c61374a784356c0b9fab4c6c2a548594f9b7ea9d9f54dcee53babb26e117d31",
+          "bytes": 1253367
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e373-n3779/build-manifest.json",
+          "sha256": "247fd6b949feb689c7a3cd56ecdcfbb6540b741cdd54625d43173b4ebde37a4c",
+          "bytes": 1528
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e374-n3777",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-la-e374-n3777-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.36667500160915,
+        34.12621002128466,
+        -118.35552778799948,
+        34.135380500593826
+      ],
+      "receiver_count": 6520,
+      "numeric_rows": 19560,
+      "building_count": 594,
+      "facade_receiver_count": 3756,
+      "receiver_height_counts_m": {
+        "1.5": 2764,
+        "4.0": 3756
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "b16c2227f4a8c328f6e0589e43629ab5911aac9f7f71bb9132ca22a349c964f4",
+      "provenance": {
+        "attempt_id": "phase1-county-la-e374-n3777-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 3685386,
+            "sha256": "02d828aea60ca152dfb88f073c2267dab78d793b9b31ce321b8e7e8b88882877"
+          },
+          "buildings.geojson": {
+            "bytes": 884661,
+            "sha256": "f7c639ba6f321fcfa3bc763e34549fd0332b91e36eb5bcdbea3b80e51b00a844"
+          },
+          "build-manifest.json": {
+            "bytes": 1530,
+            "sha256": "29ea651e450b133219b0b9f5aca704ab519b3c8dc2ac8c763df768137070bdda"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 364,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e374-n3777/benchmark.geojson",
+          "sha256": "02d828aea60ca152dfb88f073c2267dab78d793b9b31ce321b8e7e8b88882877",
+          "bytes": 3685386
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e374-n3777/buildings.geojson",
+          "sha256": "f7c639ba6f321fcfa3bc763e34549fd0332b91e36eb5bcdbea3b80e51b00a844",
+          "bytes": 884661
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e374-n3777/build-manifest.json",
+          "sha256": "29ea651e450b133219b0b9f5aca704ab519b3c8dc2ac8c763df768137070bdda",
+          "bytes": 1530
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e374-n3778",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-la-e374-n3778-g20a50f10-nv-mac8-v2",
+      "bbox_wgs84": [
+        -118.36666352540425,
+        34.135235825006525,
+        -118.35544988460603,
+        34.1444366528446
+      ],
+      "receiver_count": 7487,
+      "numeric_rows": 22461,
+      "building_count": 393,
+      "facade_receiver_count": 2875,
+      "receiver_height_counts_m": {
+        "1.5": 4612,
+        "4.0": 2875
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "3a8148f3289bf05916b99ca22cb241358d4f99319038c62a1b193d46807dd8cb",
+      "provenance": {
+        "attempt_id": "phase1-county-la-e374-n3778-g20a50f10-nv-mac8-v2",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 4201718,
+            "sha256": "1ae68de7b389c8040645c86956b676c64ca62b0b1c40cdace94b19e53c852e1e"
+          },
+          "buildings.geojson": {
+            "bytes": 634442,
+            "sha256": "631697c22fe7f5ca4e3a0bc30eab061679767e0146f9246664506091890f7a55"
+          },
+          "build-manifest.json": {
+            "bytes": 1529,
+            "sha256": "a0df64707bb17ce53661af6d19f401bff762e6d47c478a5835e163111a2dc7ba"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 568,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e374-n3778/benchmark.geojson",
+          "sha256": "1ae68de7b389c8040645c86956b676c64ca62b0b1c40cdace94b19e53c852e1e",
+          "bytes": 4201718
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e374-n3778/buildings.geojson",
+          "sha256": "631697c22fe7f5ca4e3a0bc30eab061679767e0146f9246664506091890f7a55",
+          "bytes": 634442
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e374-n3778/build-manifest.json",
+          "sha256": "a0df64707bb17ce53661af6d19f401bff762e6d47c478a5835e163111a2dc7ba",
+          "bytes": 1529
+        }
+      ]
+    },
+    {
+      "tile_id": "cty-e374-n3779",
+      "status": "accepted_expansion",
+      "model": "county-v1",
+      "source_attempt": "phase1-county-la-e374-n3779-g20a50f10-nv-mac8-v1",
+      "bbox_wgs84": [
+        -118.36690527026083,
+        34.144183520977585,
+        -118.3558317372886,
+        34.1534892429991
+      ],
+      "receiver_count": 10057,
+      "numeric_rows": 30171,
+      "building_count": 1025,
+      "facade_receiver_count": 6168,
+      "receiver_height_counts_m": {
+        "1.5": 3889,
+        "4.0": 6168
+      },
+      "masked_ids": [],
+      "source_csv_sha256": "88d9b6803407539ca2415d7686518fc3850aa020065e898fac4a4bfa34826c79",
+      "provenance": {
+        "attempt_id": "phase1-county-la-e374-n3779-g20a50f10-nv-mac8-v1",
+        "builder": "science/pipeline/build_tile_assets.py",
+        "cross_tile_duplicate_building_source_ids": [],
+        "build_receipt_outputs": {
+          "benchmark.geojson": {
+            "bytes": 5696135,
+            "sha256": "633e0bf7a742d36482271a447d1bca42e700c00e7b039ad866f4b2e37c97da95"
+          },
+          "buildings.geojson": {
+            "bytes": 1579463,
+            "sha256": "4ab4563437e4c3478bc079234a6e70a1e3bf22cd6e1a674339ecc2edac7f5112"
+          },
+          "build-manifest.json": {
+            "bytes": 1527,
+            "sha256": "6835cbb1f21cb18445777ba0778d205ac317846d823600350b48c671b567876f"
+          }
+        }
+      },
+      "quality_flags": {
+        "physical_ceiling_margin_db": 6.0,
+        "physical_ceiling_masked_ids": [],
+        "on_road_distance_m": 3.0,
+        "on_road_count": 794,
+        "method": "science/qa/physical_ceiling.py; science/pipeline/build_tile_assets.py"
+      },
+      "assets": [
+        {
+          "kind": "receivers",
+          "path": "tiles/cty-e374-n3779/benchmark.geojson",
+          "sha256": "633e0bf7a742d36482271a447d1bca42e700c00e7b039ad866f4b2e37c97da95",
+          "bytes": 5696135
+        },
+        {
+          "kind": "buildings",
+          "path": "tiles/cty-e374-n3779/buildings.geojson",
+          "sha256": "4ab4563437e4c3478bc079234a6e70a1e3bf22cd6e1a674339ecc2edac7f5112",
+          "bytes": 1579463
+        },
+        {
+          "kind": "manifest",
+          "path": "tiles/cty-e374-n3779/build-manifest.json",
+          "sha256": "6835cbb1f21cb18445777ba0778d205ac317846d823600350b48c671b567876f",
+          "bytes": 1527
+        }
+      ]
     }
   ],
   "admission": {
