@@ -36,6 +36,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import statistics
 import struct
 import subprocess
@@ -301,10 +302,43 @@ def prepare_buildings(raw):
     return polys, props
 
 
-def build_terrain(halo: Polygon, out: Path):
+WALL_DEFAULT_HEIGHT_M = 4.3  # typical Caltrans sound wall (14 ft) when the source has no height
+
+
+def wall_height(tags: dict) -> tuple[float, bool]:
+    """OSM height tag in metres (accepts '4', '4.5 m', "14'", '14 ft'); default otherwise."""
+    raw = str(tags.get("height", "")).strip().lower()
+    match = re.match(r"^([0-9]+(?:\.[0-9]+)?)\s*(m|ft|'|feet)?$", raw)
+    if not match:
+        return WALL_DEFAULT_HEIGHT_M, True
+    value = float(match.group(1)) * (0.3048 if match.group(2) in ("ft", "'", "feet") else 1.0)
+    return (value, False) if 1.0 <= value <= 12.0 else (WALL_DEFAULT_HEIGHT_M, True)
+
+
+def load_walls(halo: Polygon, path: Path) -> list[dict]:
+    """Sound walls (WGS84 GeoJSON lines or thin polygons) inside the halo, as 0.3 m wide obstacles."""
+    to_utm = Transformer.from_crs("OGC:CRS84", "EPSG:26911", always_xy=True)
+    walls = []
+    for feature in json.loads(path.read_text())["features"]:
+        geom = shape(feature["geometry"])
+        if geom.geom_type not in ("LineString", "MultiLineString", "Polygon", "MultiPolygon"):
+            continue
+        utm = shp_transform(lambda x, y, z=None: to_utm.transform(x, y), geom)
+        if not utm.intersects(halo):
+            continue
+        line = utm.boundary if utm.geom_type in ("Polygon", "MultiPolygon") else utm
+        footprint = line.intersection(halo).buffer(0.15, cap_style=2, join_style=2)
+        height, imputed = wall_height(feature.get("properties", {}))
+        for part in getattr(footprint, "geoms", [footprint]):
+            if part.area > 0.05:
+                walls.append({"polygon": part, "height": height, "imputed": imputed, "id": str(feature.get("properties", {}).get("@id") or feature.get("id") or "")})
+    return walls
+
+
+def build_terrain(halo: Polygon, out: Path, dem_dir: Path = DEM_DIR, cell: float = 10.0):
     xmin, ymin, xmax, ymax = halo.bounds
     sources = []
-    for tif in sorted(DEM_DIR.glob("*.tif")):
+    for tif in sorted(dem_dir.glob("*.tif")):
         src = rasterio.open(tif)
         b = transform_bounds("EPSG:26911", src.crs, xmin, ymin, xmax, ymax)
         if not (b[2] < src.bounds.left or b[0] > src.bounds.right or b[3] < src.bounds.bottom or b[1] > src.bounds.top):
@@ -316,14 +350,14 @@ def build_terrain(halo: Polygon, out: Path):
     crs = sources[0].crs
     mosaic, mosaic_transform = merge(sources, bounds=transform_bounds("EPSG:26911", crs, xmin - 100, ymin - 100, xmax + 100, ymax + 100))
     nodata = sources[0].nodata if sources[0].nodata is not None else -999999.0
+    native = abs(sources[0].res[0])
     for s in sources:
         s.close()
-    cell = 10.0
     width, height = int(round((xmax - xmin) / cell)), int(round((ymax - ymin) / cell))
     dst_transform = rasterio.transform.from_origin(xmin, ymax, cell, cell)
     terrain = np.full((height, width), -9999.0, dtype=np.float32)
     reproject(mosaic[0], terrain, src_transform=mosaic_transform, src_crs=crs, dst_transform=dst_transform, dst_crs="EPSG:26911",
-              src_nodata=nodata, dst_nodata=-9999.0, resampling=Resampling.bilinear)
+              src_nodata=nodata, dst_nodata=-9999.0, resampling=Resampling.average if cell > 2 * native else Resampling.bilinear)
     if (terrain == -9999.0).mean() > 0.01:
         raise ValueError("DEM leaves more than 1% of the tile halo without data")
     lines = [f"ncols {width}", f"nrows {height}", f"xllcorner {xmin:.3f}", f"yllcorner {ymin:.3f}", f"cellsize {cell:.3f}", "NODATA_value -9999"]
@@ -413,6 +447,9 @@ def main() -> int:
     parser.add_argument("--dense-near-roads", type=float, default=0.0,
                         help="add a 10 m grid within this many metres of roads with two-way AADT >= --dense-aadt (0 = off)")
     parser.add_argument("--dense-aadt", type=float, default=5000.0)
+    parser.add_argument("--dem-dir", type=Path, default=None, help="GeoTIFF DEM directory (default: USGS 1/3 arc-second mosaic)")
+    parser.add_argument("--dem-cell", type=float, default=10.0, help="terrain grid in metres; non-default DEMs add t<cell> to the layout")
+    parser.add_argument("--walls", type=Path, default=None, help="sound walls GeoJSON (WGS84); adds w to the layout")
     args = parser.parse_args()
     if args.lonlat:
         x, y = TO_UTM_WGS.transform(*args.lonlat)
@@ -422,6 +459,10 @@ def main() -> int:
     tile = box(x0, y0, x0 + args.size, y0 + args.size)
     halo = tile.buffer(args.halo, join_style=2)
     layout = f"g{int(args.grid)}{'a' + str(int(args.dense_near_roads)) if args.dense_near_roads else ''}f{int(args.facade_spacing)}"
+    if args.dem_dir or args.dem_cell != 10.0:
+        layout += f"t{args.dem_cell:g}"
+    if args.walls:
+        layout += "w"
     attempt_id = f"phase1-county-{args.name}-{layout}-v1"
     out = CAMPAIGN / "attempts" / attempt_id
     if (out / "attempt_manifest.json").exists():
@@ -438,7 +479,7 @@ def main() -> int:
     polys, props = prepare_buildings(raw)
     timings["buildings_s"] = round(time.monotonic() - started - timings["roads_s"], 1)
 
-    terrain, origin = build_terrain(halo, out / "input/terrain.asc")
+    terrain, origin = build_terrain(halo, out / "input/terrain.asc", args.dem_dir or DEM_DIR, args.dem_cell)
     dense_zone = None
     if args.dense_near_roads:
         busy = [e["geom"] for e in edges if traffic_for(e)["aadt_assigned"] / e["split"] >= args.dense_aadt and e["geom"].distance(tile) <= args.dense_near_roads]
@@ -465,6 +506,12 @@ def main() -> int:
     buildings = [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [list(map(list, p.exterior.coords))]},
                   "properties": {"PK": i + 1, "HEIGHT": round(props[i]["height_m"], 3), "SOURCE_BLD_ID": props[i]["bld_id"],
                                  "HEIGHT_IMPUTED": props[i]["imputed"]}} for i, p in enumerate(polys)]
+    # Sound walls are obstacles only: no facade receivers, BARRIER=1 keeps them out of public building assets.
+    walls = load_walls(halo, args.walls) if args.walls else []
+    for wall in walls:
+        buildings.append({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [list(map(list, wall["polygon"].exterior.coords))]},
+                          "properties": {"PK": len(buildings) + 1, "HEIGHT": round(wall["height"], 2), "SOURCE_BLD_ID": f"wall:{wall['id']}",
+                                         "HEIGHT_IMPUTED": wall["imputed"], "BARRIER": 1}})
     crs = {"type": "name", "properties": {"name": "EPSG:26911"}}
     ground = {"type": "FeatureCollection", "crs": crs, "features": [{"type": "Feature", "geometry": halo.__geo_interface__, "properties": {"PK": 1, "G": 0.5, "SOURCE": "uniform G sensitivity assumption (pilot convention)"}}]}
     inputs = {
@@ -492,7 +539,7 @@ def main() -> int:
         "traffic": {"basis_counts": dict(sorted(basis_counts.items())), "hpms_records_in_halo": len(hpms), "class_defaults": CLASS_DEFAULTS,
                     "diurnal": "day hourly = AADT/16; evening = 0.6 x day; night = 0.2 x day (pilot convention)",
                     "split": "two-way AADT x 0.5 on divided carriageways"},
-        "physics_contract": {"engine": "NoiseModelling 6.0.0", "pavement": "NL08", "ground_G": 0.5, "terrain_cell_m": 10.0,
+        "physics_contract": {"engine": "NoiseModelling 6.0.0", "pavement": "NL08", "ground_G": 0.5, "terrain_cell_m": args.dem_cell, "terrain_source": str((args.dem_dir or DEM_DIR).name), "sound_walls": len(walls), "sound_wall_source": args.walls.name if args.walls else None,
                              "vertical_convention": "receiver and source Z relative to imported terrain"},
         "input_hashes": {"tiger_edges_zip": sha(EDGES), "hpms_rows_jsonl": sha(HPMS)},
         "build_timings_s": timings,

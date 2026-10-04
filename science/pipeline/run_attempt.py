@@ -134,6 +134,9 @@ def main() -> int:
     parser.add_argument("--no-vertical", action="store_true",
                         help="disable diffraction around vertical edges (lateral paths); CNOSSOS-EU / NoiseModelling: off for road sources")
     parser.add_argument("--max-error-db", default="0.0", help="NoiseModelling confMaxError source pruning")
+    parser.add_argument("--refl-order", type=int, default=None, help="confReflOrder override (reflections off by default)")
+    parser.add_argument("--refl-dist", type=float, default=None, help="confMaxReflDist override in metres")
+    parser.add_argument("--terrain-downscale", type=int, default=None, help="Import_Asc_File downscale override (runner default 2)")
     parser.add_argument("--keep-runtime", action="store_true",
                         help="keep the engine database (by default it is deleted after a successful run; exports and manifests stay)")
     args = parser.parse_args()
@@ -167,11 +170,17 @@ def main() -> int:
             values["confDiffHorizontal"] = "false"
         if args.no_vertical:
             values["confDiffVertical"] = "false"
+        if args.refl_order is not None:
+            values["confReflOrder"] = str(args.refl_order)
+        if args.refl_dist is not None:
+            values["confMaxReflDist"] = str(args.refl_dist)
         return values
 
     original_execute = runner.execute_wps
 
     def execute_wps(endpoint, provenance, events, label, process, parameters):
+        if args.terrain_downscale is not None and "downscale" in parameters:
+            parameters = {**parameters, "downscale": str(args.terrain_downscale)}
         if args.host == "mac":
             return original_execute(endpoint, provenance, events, label, process, parameters)
         remote = dict(parameters)
@@ -201,6 +210,7 @@ def main() -> int:
     (attempt / "run_host.json").write_text(json.dumps({
         "host": args.host, "threads": args.threads, "horizontal_diffraction": not args.no_horizontal, "vertical_diffraction": not args.no_vertical,
         "max_error_db": args.max_error_db, "overlay": "hf_v1", "pc_attempt": pc_attempt if args.host == "pc" else None,
+        "refl_order": args.refl_order if args.refl_order is not None else 0, "refl_dist_m": args.refl_dist, "terrain_downscale": args.terrain_downscale or 2,
     }, indent=1) + "\n")
     print(attempt)
     return 0

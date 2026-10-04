@@ -327,7 +327,7 @@ def main() -> int:
         n_receivers = write_ndjson(tmp / "receivers.ndjson", receiver_features(tiles, points))
         tippecanoe(tmp / "receivers.ndjson", out / "receivers.pmtiles", "receivers", ["-Z11", "-z16", "-B16", "-r2", "--no-tile-size-limit"])
         n_buildings = write_ndjson(tmp / "buildings.ndjson", building_features(tiles))
-        tippecanoe(tmp / "buildings.ndjson", out / "buildings.pmtiles", "buildings", ["-Z13", "-z16", "--no-tile-size-limit", "--no-feature-limit"])
+        tippecanoe(tmp / "buildings.ndjson", out / "buildings.pmtiles", "buildings", ["-Z13", "-z16", "--no-tile-size-limit", "--no-feature-limit", "--no-tiny-polygon-reduction", "--no-simplification-of-shared-nodes", "--simplification=1"])
         n_roads = write_ndjson(tmp / "roads.ndjson", road_features(tiles))
         tippecanoe(tmp / "roads.ndjson", out / "roads.pmtiles", "roads", ["-Z10", "-z16", "--no-tile-size-limit"])
         by_cell = {(origins[t][0] // 1000, origins[t][1] // 1000): t for t in tiles}

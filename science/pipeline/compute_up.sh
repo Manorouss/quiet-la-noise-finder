@@ -1,7 +1,8 @@
 #!/bin/bash
 # Start whichever parts of the county compute are not running; safe to run any time.
 # Parts: the tile builder (county_daemon.py), the three engine workers (Mac :9110 x8,
-# PC :9111 x16, PC :9112 x8) and the progress page (compute_dashboard.py, port 8765).
+# PC :9111 x16, PC :9112 x8), the progress page (compute_dashboard.py, port 8765) and the
+# 2-hourly public map publisher (publish_county_layers.sh → R2).
 # After a Mac restart nothing is running: tiles that were mid-run go back to the
 # queue (their partial attempts stay; reruns get a new -v<N>) and stale PC engines
 # are stopped. Pause flags are kept, so a paused machine stays paused.
@@ -33,5 +34,6 @@ for spec in "mac 9110 8" "pc 9111 16" "pc 9112 8"; do
     LABEL_PREFIX=nv RUN_ARGS=--no-vertical nohup /bin/bash "$P/queue_worker_persist.sh" "$Q" "$1" "$2" "$3" > /dev/null 2>&1 &
     echo "started $1 worker :$2 ($3 threads)"; }
 done
+alive "publish_county_layers.sh" || { nohup /bin/bash "$P/publish_county_layers.sh" > /dev/null 2>&1 & echo "started 2-hourly map publishing"; }
 alive "compute_dashboard.py" || { nohup python3 "$P/compute_dashboard.py" >> "$C/dashboard.log" 2>&1 & echo "started progress page"; }
 echo "Progress page: http://localhost:8765/ (from the PC or a phone: http://$(ipconfig getifaddr en0 || echo '<mac-ip>'):8765/)"
