@@ -109,7 +109,7 @@ async function searchAddress(page, typed, pick) {
     await idle(page);
     await page.waitForTimeout(1500);
     const share = await warmShare(page);
-    check(`style ${style} draws the noise`, share > 0.03, share.toFixed(3));
+    check(`style ${style} draws the noise`, share > (style === "Dots" ? 0.01 : 0.03), share.toFixed(3));  // dots are sparse at street level
   }
   check('styles switch without errors', report.errors.filter((e) => e.startsWith('desktop')).length === 0);
 
