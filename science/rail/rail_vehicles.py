@@ -37,7 +37,8 @@ def vehicles(traction: str = TRACTION) -> dict:
     car = copy.deepcopy(v["SNCF78"])
     car.update({"Description": "US freight car, composite brake shoes, heavy axle load (approximation)", "Reference": "Quiet LA", "RefContact": "SNCF5"})
     lrv = copy.deepcopy(v["SNCF68"])
-    lrv.update({"Description": "LA Metro light-rail vehicle (approximation)", "Reference": "Quiet LA", "NbCoach": 1, "NbAxlePerVeh": 6, "Length": 27})
+    lrv.update({"Description": "LA Metro light-rail vehicle (approximation)", "Reference": "Quiet LA", "NbCoach": 1, "NbAxlePerVeh": 6, "Length": 27,
+                "TrailerWheelDiameter": 660, "SourceSpacing": 0})  # (SNCF68 has no trailer wheel diameter: no rolling noise for a single unit)
     v.update({"US_DIESEL_PAX": loco, "US_FRT_LOCO": freight_loco, "US_FRT_CAR": car, "LA_LRV": lrv})
     return v
 
