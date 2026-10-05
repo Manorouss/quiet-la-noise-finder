@@ -177,8 +177,15 @@ def main() -> int:
         return values
 
     original_execute = runner.execute_wps
+    unthrottled = []
 
     def execute_wps(endpoint, provenance, events, label, process, parameters):
+        if args.host == "pc" and not unthrottled:
+            # Engines started over SSH run as background processes, which Windows keeps on the efficiency
+            # cores (P-cores idle, ~1/3 of the CPU used). Opt them out of power throttling once the engine
+            # is up (science/pipeline/pc/unthrottle.ps1, copied to D:/quietla/tools).
+            ssh(f'powershell -NoProfile -ExecutionPolicy Bypass -File {win(PC_ROOT)}\\tools\\unthrottle.ps1', check=False)
+            unthrottled.append(True)
         if args.terrain_downscale is not None and "downscale" in parameters:
             parameters = {**parameters, "downscale": str(args.terrain_downscale)}
         if args.host == "mac":

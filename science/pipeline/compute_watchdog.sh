@@ -44,6 +44,8 @@ while [ ! -f "$C/STOP-watchdog" ]; do
   if "${SSH[@]}" "echo ok" < /dev/null > /dev/null 2>&1; then
     [ "$pc_down" = 1 ] && note "PC answers again"
     pc_down=0
+    # Backstop for run_attempt.py: keep the PC engines off Windows power throttling (efficiency cores only).
+    "${SSH[@]}" 'powershell -NoProfile -ExecutionPolicy Bypass -File D:\quietla\tools\unthrottle.ps1' < /dev/null > /dev/null 2>&1
   else
     [ "$pc_down" = 0 ] && note "ALERT PC does not answer over SSH"
     pc_down=1
