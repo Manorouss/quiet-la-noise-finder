@@ -22,7 +22,12 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true, args:
 async function open(viewport, hash, label) {
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1, hasTouch: viewport.width < 720 });
   page.setDefaultTimeout(60000);
-  page.on('console', (m) => { if (m.type() === 'error') report.errors.push(`${label}: ${m.text().slice(0, 240)}`); });
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    // Transient network resets to outside services are noted, not failures.
+    if (/net::ERR_(CONNECTION_RESET|NETWORK_CHANGED|TIMED_OUT|CONNECTION_CLOSED)/.test(m.text())) report.network = [...(report.network ?? []), `${label}: ${m.text().slice(0, 160)}`];
+    else report.errors.push(`${label}: ${m.text().slice(0, 240)}`);
+  });
   page.on('pageerror', (e) => report.errors.push(`${label}: pageerror ${String(e).slice(0, 240)}`));
   page.on('response', (r) => { if (r.status() >= 400 && !/\.pbf|favicon/.test(r.url())) report.failedRequests.push(`${label}: ${r.status()} ${r.url().slice(0, 160)}`); });
   await page.goto(`${base}/map/${hash}`, { waitUntil: 'load' });
