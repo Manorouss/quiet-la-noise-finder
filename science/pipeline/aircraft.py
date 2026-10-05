@@ -6,7 +6,13 @@ inside the CLASS line = union of all bands >= CLASS). The official maps stop at 
 airports (California quarterly reports), although aircraft are clearly heard beyond, so each
 airport's contours are extended outward down to 55 CNEL: every 5 dB step grows the contour area
 by the ratio between the airport's two outermost official contours (clamped to 1.8-2.8, default
-2.3), which follows how its own contours spread.
+2.3), which follows how its own contours spread. The growth is not the same in every direction:
+along each ray from the inner contour's centre it is proportional to the spacing of the two outermost
+official lines there (smoothed over 15 degrees), so contours stretch along the flight paths as the
+official ones do. Checked against the 7 Van Nuys Airport noise monitors (2025, science/qa/
+validate_monitors.py): RMS error 3.0 dB, against 7.3 dB for equal growth in every direction, with the
+same match to held-out official contours (Santa Monica 60, LAX 65, Whiteman 65). With one official
+contour only, the growth is equal in every direction.
 
 Level at a point between contour lines c and c + 5: c + 5 * d_out / (d_out + d_in), with the
 distances to the two lines. Inside the innermost contour: c + 5 * min(1, d_out / R), R being the
@@ -33,7 +39,51 @@ from shapely.ops import polylabel, transform as shp_transform, unary_union
 TO_UTM = Transformer.from_crs("OGC:CRS84", "EPSG:26911", always_xy=True)
 FLOOR_DB = 55
 RATIO_DEFAULT, RATIO_MIN, RATIO_MAX = 2.3, 1.8, 2.8
+RAYS, SMOOTH_DEG, SPACING_FLOOR = 720, 15.0, 0.25  # directional growth (see the module notes)
 MIN_YEAR = 2000
+
+
+def _ray_radii(polygon, cx: float, cy: float, angles: np.ndarray) -> np.ndarray:
+    """Distance from (cx, cy) to the farthest crossing of the polygon boundary along each ray (NaN if none)."""
+    radii = np.full(len(angles), np.nan)
+    boundary, far = polygon.boundary, 100000.0
+    for i, a in enumerate(angles):
+        hit = shapely.LineString([(cx, cy), (cx + far * math.cos(a), cy + far * math.sin(a))]).intersection(boundary)
+        points = [] if hit.is_empty else [g for g in getattr(hit, "geoms", [hit]) if g.geom_type == "Point"]
+        if points:
+            radii[i] = max(math.hypot(q.x - cx, q.y - cy) for q in points)
+    return radii
+
+
+def grow_directional(outer, inner, ratio: float, steps: int) -> list:
+    """Contours `steps` x 5 dB below `outer`: each grows the area by `ratio`, distributing the growth along
+    rays from the centre of `inner` in proportion to the spacing between `outer` and `inner` there."""
+    centre = inner.centroid if outer.contains(inner.centroid) else inner.representative_point()
+    cx, cy = centre.x, centre.y
+    angles = np.linspace(0, 2 * math.pi, RAYS, endpoint=False)
+    radii = _ray_radii(outer, cx, cy, angles)
+    spacing = radii - _ray_radii(inner, cx, cy, angles)
+    median = np.nanmedian(spacing)
+    spacing = np.maximum(np.where(np.isfinite(spacing), spacing, median), SPACING_FLOOR * median)
+    k = max(1, int(SMOOTH_DEG / 360 * RAYS))
+    spacing = np.convolve(np.concatenate([spacing[-k:], spacing, spacing[:k]]), np.ones(2 * k + 1) / (2 * k + 1), mode="valid")
+    radii = np.where(np.isfinite(radii), radii, np.nanmedian(radii))
+    out, previous = [], outer
+    for _ in range(steps):
+        def grown(a: float, base=radii, prev=previous):
+            ring = [(cx + r * math.cos(t), cy + r * math.sin(t)) for r, t in zip(base + a * spacing, angles)]
+            return unary_union([shapely.Polygon(ring).buffer(0), prev]).buffer(0)
+        target, lo, hi = previous.area * ratio, 0.0, 1.0
+        while grown(hi).area < target and hi < 1e4:
+            hi *= 2
+        for _ in range(30):
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if grown(mid).area < target else (lo, mid)
+        previous = grown(hi)
+        out.append(previous)
+        radii = _ray_radii(previous, cx, cy, angles)
+        radii = np.where(np.isfinite(radii), radii, np.nanmedian(radii))
+    return out
 
 
 def grow_to_area(polygon, target: float):
@@ -61,10 +111,15 @@ class Airport:
         if outer + 5 in self.contour and self.contour[outer + 5].area > 0:
             ratio = min(max(self.contour[outer].area / self.contour[outer + 5].area, RATIO_MIN), RATIO_MAX)
         self.ratio = ratio
-        c = outer
-        while c > FLOOR_DB:
-            self.contour[c - 5] = grow_to_area(self.contour[c], self.contour[c].area * ratio)
-            c -= 5
+        steps = int((outer - FLOOR_DB) // 5)
+        if steps > 0 and outer + 5 in self.contour:
+            for i, grown in enumerate(grow_directional(self.contour[outer], self.contour[outer + 5], ratio, steps), 1):
+                self.contour[outer - 5 * i] = grown
+        else:
+            c = outer
+            while c > FLOOR_DB:
+                self.contour[c - 5] = grow_to_area(self.contour[c], self.contour[c].area * ratio)
+                c -= 5
         self.levels = sorted(self.contour)
         for g in self.contour.values():
             shapely.prepare(g)

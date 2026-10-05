@@ -1,0 +1,122 @@
+{
+ "schema": "quiet_la_noise_monitors_v1",
+ "about": "Measured noise at public permanent monitors, for checking the modeled map. Positions are estimated from the airport's monitor maps (not published as coordinates).",
+ "sources": {
+  "Van Nuys": {
+   "reports": "https://www.lawa.org/lawa-environment/noise-management/van-nuys/vny-quarterly-noise-report",
+   "used": [
+    "https://www.lawa.org/sites/lawa/files/2026-04/VNY%204Q25_20260325_Quarterly%20Report%20Map.pdf",
+    "https://www.lawa.org/sites/lawa/files/2026-04/VNY%204Q25_20260325_Quarterly%20Report.pdf",
+    "https://www.lawa.org/media/28288"
+   ],
+   "notes": "2025 = energy average of the published daily CNELs (one decimal); official annual values are rounded. Aircraft only: VNY publishes no total/community CNEL."
+  }
+ },
+ "sites": [
+  {
+   "id": "VNY03",
+   "airport": "Van Nuys",
+   "lat": 34.227066,
+   "lon": -118.491581,
+   "position_uncertainty_m": 25,
+   "location": "North Hills, south of Parthenia St, ~200 m east of Hayvenhurst Ave (north approach/departure)",
+   "metric": "aircraft CNEL (Local A/C CNEL, VNY operations)",
+   "measured": {
+    "2025": 61.4,
+    "2025_official": 61,
+    "2024_official": 63
+   },
+   "kind": "permanent monitor (Title 21)"
+  },
+  {
+   "id": "VNY05",
+   "airport": "Van Nuys",
+   "lat": 34.222028,
+   "lon": -118.488076,
+   "position_uncertainty_m": 25,
+   "location": "North Hills, ~80 m north of Roscoe Blvd between Hayvenhurst and Woodley",
+   "metric": "aircraft CNEL (Local A/C CNEL, VNY operations)",
+   "measured": {
+    "2025": 58.1,
+    "2025_official": 58,
+    "2024_official": 61
+   },
+   "kind": "permanent monitor (Title 21)"
+  },
+  {
+   "id": "VNY07",
+   "airport": "Van Nuys",
+   "lat": 34.202213,
+   "lon": -118.484854,
+   "position_uncertainty_m": 25,
+   "location": "Van Nuys, ~110 m north of Sherman Way and ~110 m west of Woodley Ave (east edge)",
+   "metric": "aircraft CNEL (Local A/C CNEL, VNY operations)",
+   "measured": {
+    "2025": 58.6,
+    "2025_official": 59,
+    "2024_official": 60
+   },
+   "kind": "permanent monitor (Title 21)"
+  },
+  {
+   "id": "VNY08",
+   "airport": "Van Nuys",
+   "lat": 34.199845,
+   "lon": -118.494687,
+   "position_uncertainty_m": 25,
+   "location": "Lake Balboa, ~150 m south of Sherman Way and ~210 m west of Hayvenhurst",
+   "metric": "aircraft CNEL (Local A/C CNEL, VNY operations)",
+   "measured": {
+    "2025": 58.5,
+    "2025_official": 58,
+    "2024_official": 60
+   },
+   "kind": "permanent monitor (Title 21)"
+  },
+  {
+   "id": "VNY10",
+   "airport": "Van Nuys",
+   "lat": 34.190362,
+   "lon": -118.486985,
+   "position_uncertainty_m": 25,
+   "location": "Southeast corner of the airport between Vanowen St and Victory Blvd (ground run-ups and taxiing nearby)",
+   "metric": "aircraft CNEL (Local A/C CNEL, VNY operations)",
+   "measured": {
+    "2025": 62.8,
+    "2025_official": 63,
+    "2024_official": 63
+   },
+   "kind": "permanent monitor (Title 21)"
+  },
+  {
+   "id": "VNY12",
+   "airport": "Van Nuys",
+   "lat": 34.187959,
+   "lon": -118.49186,
+   "position_uncertainty_m": 25,
+   "location": "~55 m east of Hayvenhurst, ~145 m north of Victory Blvd",
+   "metric": "aircraft CNEL (Local A/C CNEL, VNY operations)",
+   "measured": {
+    "2025": 59.4,
+    "2025_official": 59,
+    "2024_official": 60
+   },
+   "kind": "permanent monitor (Title 21)"
+  },
+  {
+   "id": "VNY13",
+   "airport": "Van Nuys",
+   "lat": 34.185206,
+   "lon": -118.488948,
+   "position_uncertainty_m": 25,
+   "location": "Sepulveda Basin, ~160 m south of Victory Blvd under the Runway 16R departure path",
+   "metric": "aircraft CNEL (Local A/C CNEL, VNY operations)",
+   "measured": {
+    "2025": 61.5,
+    "2025_official": 61,
+    "2024_official": 62
+   },
+   "kind": "permanent monitor (Title 21)"
+  }
+ ]
+}
