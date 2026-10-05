@@ -28,14 +28,17 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from county_models import CURRENT, MODELS, run_glob
+
 HERE = Path(__file__).resolve().parent
 PROJECT = HERE.parents[4]
 WORK = PROJECT / "implementation/work"
 CONTROL = WORK / "pipeline_control"
-QUEUE = WORK / "pipeline_queue/county_main"
 ATTEMPTS = WORK / "campaign/county_v1/attempts"
 DENSITY = WORK / "county_building_density_1km.json"
-LAYOUT = "g20a50f10"
+# Progress is for the model being computed now; cells done only on an older model show separately.
+QUEUE, LAYOUT, LABEL = CURRENT["queue"], CURRENT["layout"], CURRENT["run_label"]
+OLDER = MODELS[:-1]
 MIN_BUILDINGS = 25
 SSH = ["ssh", "-F", str(Path.home() / ".ssh/quietla_pc_config"), "-o", "ConnectTimeout=10", "quietla-pc"]
 MAC_JAVA = "/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java"
@@ -62,7 +65,7 @@ def workers() -> list[dict]:
     found = []
     for line in ps_lines():
         parts = line.split()
-        if len(parts) > 7 and parts[2] == "/bin/bash" and parts[3].endswith("queue_worker_persist.sh") and parts[4].endswith("county_main"):
+        if len(parts) > 7 and parts[2] == "/bin/bash" and parts[3].endswith("queue_worker_persist.sh") and parts[4].rstrip("/") == str(QUEUE):
             found.append({"pid": int(parts[0]), "host": parts[5], "port": int(parts[6]), "threads": int(parts[7])})
     return sorted(found, key=lambda w: (w["host"], w["port"]))
 
@@ -146,8 +149,15 @@ class Progress:
         self.density = {tuple(map(int, k.split(","))): v for k, v in json.loads(DENSITY.read_text()).items()}
         self.built: dict[str, tuple[tuple[int, int], int]] = {}
         self.runs: dict[str, dict] = {}
+        self.older: dict[str, tuple[int, int]] = {}
 
     def scan(self) -> None:
+        for model in OLDER:
+            for path in ATTEMPTS.glob(run_glob(model)):
+                if path.name not in self.older and (path / "run_host.json").exists():
+                    tile = read_json(path / "attempt_manifest.json").get("tile", {})
+                    if tile and not tile["x0"] % 1000 and not tile["y0"] % 1000:
+                        self.older[path.name] = (int(tile["x0"]) // 1000, int(tile["y0"]) // 1000)
         for path in ATTEMPTS.glob(f"phase1-county-*-{LAYOUT}-*"):
             name = path.name
             if name in self.built or name in self.runs:
@@ -158,7 +168,7 @@ class Progress:
                 if not tile or tile["x0"] % 1000 or tile["y0"] % 1000:
                     continue
                 self.built[name] = ((int(tile["x0"]) // 1000, int(tile["y0"]) // 1000), int(manifest["counts"]["receivers"]))
-            elif f"-{LAYOUT}-nv-" in name and (path / "run_host.json").exists():
+            elif f"-{LAYOUT}-{LABEL}-" in name and (path / "run_host.json").exists():
                 manifest = read_json(path / "attempt_manifest.json")
                 run = read_json(path / "phase1_run_manifest.json")
                 tile = manifest.get("tile", {})
@@ -196,11 +206,13 @@ class Progress:
                 running_cells.add((int(match[1]), int(match[2])))
         xs = [c[0] for c in cells]
         ys = [c[1] for c in cells]
-        grid = [[c[0], c[1], 3 if c in done else 2 if c in running_cells else 1 if c in built else 0] for c in sorted(cells)]
+        older = set(self.older.values())
+        grid = [[c[0], c[1], 3 if c in done else 2 if c in running_cells else 1 if c in built else 4 if c in older else 0] for c in sorted(cells)]
         recent = sorted(self.runs.values(), key=lambda r: r["ended"], reverse=True)[:8]
         return {
             "total_receivers": round(total), "done_receivers": finished, "fraction": finished / total if total else 0,
-            "cells_total": len(cells), "cells_done": len(done),
+            "cells_total": len(cells), "cells_done": len(done), "cells_older_only": len(older - set(done)),
+            "model": CURRENT["name"], "model_summary": CURRENT["summary"],
             "rate": rates, "eta_days": (total - finished) / rates["all"] / 86400 if rates.get("all") else None,
             "map": {"x0": min(xs), "x1": max(xs), "y0": min(ys), "y1": max(ys), "cells": grid},
             "recent": [{"tile": r["tile"], "host": r["host"], "receivers": r["receivers"], "minutes": round(r["seconds"] / 60, 1),
@@ -215,7 +227,7 @@ def engine_rows(all_workers: list[dict]) -> list[dict]:
         host, port, threads = worker["host"], worker["port"], worker["threads"]
         row = {"host": host, "port": port, "threads": threads, "tile": None, "stage": None, "percent": None, "minutes": None,
                "held": (CONTROL / f"held-{host}-{port}").exists(), "frozen": (CONTROL / f"frozen-{host}-{port}").exists()}
-        label = f"-{LAYOUT}-nv-{host}{threads}-v"
+        label = f"-{LAYOUT}-{LABEL}-{host}{threads}-v"
         candidates = []
         for name in running:
             tile, _, tile_host = name.rpartition(".")

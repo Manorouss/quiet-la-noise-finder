@@ -19,7 +19,14 @@ Buildings: LA County DPW footprints (CODE = Building) inside the halo, height
 feet -> metres; missing heights get the median of buildings within 100 m
 (else 4 m) and HEIGHT_IMPUTED = true.
 
-Terrain: USGS 1/3 arc-second DEM mosaic, bilinear to 10 m UTM, ESRI ASCII.
+Terrain: USGS 1/3 arc-second DEM mosaic, bilinear to 10 m UTM, ESRI ASCII (or --dem-dir, e.g.
+the 10 m cache of the 2023 lidar DEM, with gaps filled from the 1/3 arc-second DEM).
+
+Model v2 (--corridor-dir, from science/lidar/corridor_products.py): lidar-detected sound walls in
+the halo become 0.3 m obstacles, and road sources on bridges follow the lidar deck: edges within
+12 m of an OSM bridge line, running within 25 degrees of it and between its ends, are densified
+to 5 m and each vertex gets Z = deck elevation - terrain + 0.05 m (the bare-earth DEM has no decks).
+Bridges without lidar deck points get a straight deck between the terrain beyond their ends.
 
 Receivers: open-space grid at 1.5 m outside buildings + 2 m, and facade
 receivers at 4 m height, 2 m outside walls, at most --facade-spacing m apart
@@ -317,9 +324,13 @@ def wall_height(tags: dict) -> tuple[float, bool]:
 
 def load_walls(halo: Polygon, path: Path) -> list[dict]:
     """Sound walls (WGS84 GeoJSON lines or thin polygons) inside the halo, as 0.3 m wide obstacles."""
+    return wall_obstacles(halo, json.loads(path.read_text())["features"])
+
+
+def wall_obstacles(halo: Polygon, features: list[dict]) -> list[dict]:
     to_utm = Transformer.from_crs("OGC:CRS84", "EPSG:26911", always_xy=True)
     walls = []
-    for feature in json.loads(path.read_text())["features"]:
+    for feature in features:
         geom = shape(feature["geometry"])
         if geom.geom_type not in ("LineString", "MultiLineString", "Polygon", "MultiPolygon"):
             continue
@@ -333,6 +344,105 @@ def load_walls(halo: Polygon, path: Path) -> list[dict]:
             if part.area > 0.05:
                 walls.append({"polygon": part, "height": height, "imputed": imputed, "id": str(feature.get("properties", {}).get("@id") or feature.get("id") or "")})
     return walls
+
+
+def corridor_inputs(halo: Polygon, corridor_dir: Path) -> tuple[list[dict], list[dict], list[str]]:
+    """Walls (WGS84 features) and bridges (EPSG:26911, z = deck elevation) from every corridor block that touches the halo."""
+    plan = json.loads((corridor_dir / "plan.json").read_text())
+    size = plan["block_m"]
+    keys = []
+    for key in plan["blocks"]:
+        x, y = (int(part[1:]) * 1000 for part in key.split("-"))
+        if box(x, y, x + size, y + size).intersects(halo):
+            keys.append(key)
+    missing = [k for k in keys if not (corridor_dir / "blocks" / k / "done.json").exists()]
+    if missing:
+        raise RuntimeError(f"corridor blocks not built yet: {' '.join(missing)}")
+    walls, bridges = [], []
+    for key in keys:
+        for n, f in enumerate(json.loads((corridor_dir / "blocks" / key / "walls.geojson").read_text())["features"]):
+            f["properties"]["@id"] = f"{key}:{n}"
+            walls.append(f)
+        bridges += json.loads((corridor_dir / "blocks" / key / "bridges.geojson").read_text())["features"]
+    return walls, bridges, keys
+
+
+def terrain_at(terrain, origin, x, y):
+    """Bilinear terrain elevation between cell centres (as the engine's terrain import sees the grid)."""
+    xmin, ymax, cell = origin
+    c, r = (np.asarray(x) - xmin) / cell - 0.5, (ymax - np.asarray(y)) / cell - 0.5
+    c0 = np.clip(np.floor(c).astype(int), 0, terrain.shape[1] - 2)
+    r0 = np.clip(np.floor(r).astype(int), 0, terrain.shape[0] - 2)
+    fc, fr = np.clip(c - c0, 0, 1), np.clip(r - r0, 0, 1)
+    return (terrain[r0, c0] * (1 - fc) * (1 - fr) + terrain[r0, c0 + 1] * fc * (1 - fr)
+            + terrain[r0 + 1, c0] * (1 - fc) * fr + terrain[r0 + 1, c0 + 1] * fc * fr)
+
+
+def heading_at(line: LineString, d: float) -> float:
+    p0, p1 = line.interpolate(max(0.0, d - 3.0)), line.interpolate(min(line.length, d + 3.0))
+    return math.atan2(p1.y - p0.y, p1.x - p0.x)
+
+
+def apply_bridges(edges, bridge_features, terrain, origin, tolerance: float = 12.0, max_angle: float = 25.0, spacing: float = 5.0) -> dict:
+    """Give edges that run along a bridge per-vertex source heights above terrain (e["coords3d"])."""
+    decks, fallback = [], 0
+    for f in bridge_features:
+        coords = f["geometry"]["coordinates"]
+        if len(coords) < 2:
+            continue
+        line = LineString([c[:2] for c in coords])
+        stations = np.concatenate([[0.0], np.cumsum(np.hypot(np.diff([c[0] for c in coords]), np.diff([c[1] for c in coords])))])
+        if f["properties"].get("deck_source") == "none" or len(coords[0]) < 3:
+            # No deck points in the lidar (mostly short creek and wash crossings): a straight deck between
+            # the terrain 5 m beyond each end. Biased low on tall structures, which all have lidar decks.
+            ends = []
+            for a, b in ((0.0, min(5.0, line.length)), (line.length, max(0.0, line.length - 5.0))):
+                pa, pb = line.interpolate(a), line.interpolate(b)
+                norm = math.hypot(pa.x - pb.x, pa.y - pb.y) or 1.0
+                ends.append(float(terrain_at(terrain, origin, pa.x + (pa.x - pb.x) / norm * 5.0, pa.y + (pa.y - pb.y) / norm * 5.0)))
+            deck = ends[0] + (ends[1] - ends[0]) * stations / max(line.length, 1e-6)
+            fallback += 1
+        else:
+            deck = np.array([c[2] for c in coords])
+        decks.append({"line": line, "stations": stations, "deck": deck, "osm_id": f["properties"].get("osm_id")})
+    stats = {"bridges_lidar_deck": len(decks) - fallback, "bridges_end_terrain_deck": fallback,
+             "source_edges_on_bridges": 0, "source_length_on_bridges_m": 0.0, "max_height_m": 0.0}
+    if not decks:
+        return stats
+    tree = STRtree([d["line"] for d in decks])
+    for e in edges:
+        near = [int(j) for j in tree.query(e["geom"].buffer(tolerance))]
+        if not near:
+            continue
+        g = e["geom"]
+        ds = np.unique(np.concatenate([np.linspace(0.0, g.length, max(2, int(math.ceil(g.length / spacing)) + 1)),
+                                       [g.project(Point(c)) for c in g.coords]]))
+        points = [g.interpolate(d) for d in ds]
+        heights = np.zeros(len(ds))
+        on = np.zeros(len(ds), bool)
+        for k, (d, p) in enumerate(zip(ds, points)):
+            heading, best = heading_at(g, d), None
+            for j in near:
+                line = decks[j]["line"]
+                dist = line.distance(p)
+                t = line.project(p)
+                if dist > tolerance or t <= 0.0 or t >= line.length:
+                    continue
+                angle = abs(math.degrees(heading - heading_at(line, t))) % 180
+                if min(angle, 180 - angle) <= max_angle and (best is None or dist < best[0]):
+                    best = (dist, j, t)
+            if best:
+                deck = float(np.interp(best[2], decks[best[1]]["stations"], decks[best[1]]["deck"]))
+                heights[k] = min(max(deck - float(terrain_at(terrain, origin, p.x, p.y)), 0.0), 40.0)
+                on[k] = True
+        if on.any():
+            e["coords3d"] = [[p.x, p.y, round(0.05 + h, 2)] for p, h in zip(points, heights)]
+            e["bridge_max_height_m"] = round(float(heights.max()), 2)
+            stats["source_edges_on_bridges"] += 1
+            stats["source_length_on_bridges_m"] += float(np.sum(np.diff(ds) * (on[1:] | on[:-1])))
+            stats["max_height_m"] = max(stats["max_height_m"], e["bridge_max_height_m"])
+    stats["source_length_on_bridges_m"] = round(stats["source_length_on_bridges_m"], 1)
+    return stats
 
 
 def dem_grid(halo: Polygon, dem_dir: Path, cell: float) -> np.ndarray:
@@ -468,6 +578,8 @@ def main() -> int:
     parser.add_argument("--dem-dir", type=Path, default=None, help="GeoTIFF DEM directory (default: USGS 1/3 arc-second mosaic)")
     parser.add_argument("--dem-cell", type=float, default=10.0, help="terrain grid in metres; non-default DEMs add t<cell> to the layout")
     parser.add_argument("--walls", type=Path, default=None, help="sound walls GeoJSON (WGS84); adds w to the layout")
+    parser.add_argument("--corridor-dir", type=Path, default=None,
+                        help="model-v2 corridor products (lidar walls + bridge decks); adds wb to the layout")
     args = parser.parse_args()
     if args.lonlat:
         x, y = TO_UTM_WGS.transform(*args.lonlat)
@@ -479,12 +591,15 @@ def main() -> int:
     layout = f"g{int(args.grid)}{'a' + str(int(args.dense_near_roads)) if args.dense_near_roads else ''}f{int(args.facade_spacing)}"
     if args.dem_dir or args.dem_cell != 10.0:
         layout += f"t{args.dem_cell:g}"
-    if args.walls:
+    if args.walls and not args.corridor_dir:
         layout += "w"
+    if args.corridor_dir:
+        layout += "wb"
     attempt_id = f"phase1-county-{args.name}-{layout}-v1"
     out = CAMPAIGN / "attempts" / attempt_id
     if (out / "attempt_manifest.json").exists():
         raise FileExistsError(f"tile package already exists: {out}")
+    corridor_walls, corridor_bridges, corridor_blocks = corridor_inputs(halo, args.corridor_dir) if args.corridor_dir else ([], [], [])
     (out / "input").mkdir(parents=True, exist_ok=True)
     timings, started = {}, time.monotonic()
 
@@ -505,14 +620,18 @@ def main() -> int:
     receivers = build_receivers(args.name, tile, polys, props, terrain, origin, args.grid, args.facade_spacing, dense_zone)
     timings["terrain_receivers_s"] = round(time.monotonic() - started - timings["roads_s"] - timings["buildings_s"], 1)
 
+    bridge_stats = apply_bridges(edges, corridor_bridges, terrain, origin) if args.corridor_dir else None
+
     sources, periods, basis_counts = [], [], {}
     for pk, e in enumerate(edges, 1):
         t = traffic_for(e)
         kind = t["basis"].split(":")[0]
         basis_counts[f"{e['mtfcc']}:{kind}"] = basis_counts.get(f"{e['mtfcc']}:{kind}", 0) + 1
-        coords = [[x, y, 0.05] for x, y in e["geom"].coords]
+        coords = e.get("coords3d") or [[x, y, 0.05] for x, y in e["geom"].coords]
         meta = {"TLID": e["tlid"], "MTFCC": e["mtfcc"], "FULLNAME": e["name"], "TRAFFIC_BASIS": t["basis"],
                 "CARRIAGEWAY_SPLIT": e["split"], "AADT_ASSIGNED": round(t["aadt_assigned"], 1), "OBSERVED": False, "LIVE": False}
+        if e.get("coords3d"):
+            meta["BRIDGE_MAX_HEIGHT_M"] = e["bridge_max_height_m"]
         sources.append({"type": "Feature", "geometry": {"type": "LineString", "coordinates": coords}, "properties": {"PK": pk, "IDSOURCE": pk, **meta}})
         for p_ix, (period, factor) in enumerate((("D", 1.0), ("E", EVENING), ("N", NIGHT))):
             total = t["day"] * factor
@@ -525,7 +644,7 @@ def main() -> int:
                   "properties": {"PK": i + 1, "HEIGHT": round(props[i]["height_m"], 3), "SOURCE_BLD_ID": props[i]["bld_id"],
                                  "HEIGHT_IMPUTED": props[i]["imputed"]}} for i, p in enumerate(polys)]
     # Sound walls are obstacles only: no facade receivers, BARRIER=1 keeps them out of public building assets.
-    walls = load_walls(halo, args.walls) if args.walls else []
+    walls = wall_obstacles(halo, corridor_walls) if args.corridor_dir else (load_walls(halo, args.walls) if args.walls else [])
     for wall in walls:
         buildings.append({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [list(map(list, wall["polygon"].exterior.coords))]},
                           "properties": {"PK": len(buildings) + 1, "HEIGHT": round(wall["height"], 2), "SOURCE_BLD_ID": f"wall:{wall['id']}",
@@ -557,7 +676,9 @@ def main() -> int:
         "traffic": {"basis_counts": dict(sorted(basis_counts.items())), "hpms_records_in_halo": len(hpms), "class_defaults": CLASS_DEFAULTS,
                     "diurnal": "day hourly = AADT/16; evening = 0.6 x day; night = 0.2 x day (pilot convention)",
                     "split": "two-way AADT x 0.5 on divided carriageways"},
-        "physics_contract": {"engine": "NoiseModelling 6.0.0", "pavement": "NL08", "ground_G": 0.5, "terrain_cell_m": args.dem_cell, "terrain_source": terrain_source, "sound_walls": len(walls), "sound_wall_source": args.walls.name if args.walls else None,
+        "physics_contract": {"engine": "NoiseModelling 6.0.0", "pavement": "NL08", "ground_G": 0.5, "terrain_cell_m": args.dem_cell, "terrain_source": terrain_source, "sound_walls": len(walls),
+                             "sound_wall_source": "lidar_detected (corridor_products.py)" if args.corridor_dir else (args.walls.name if args.walls else None),
+                             "bridges": bridge_stats, "corridor_blocks": corridor_blocks,
                              "vertical_convention": "receiver and source Z relative to imported terrain"},
         "input_hashes": {"tiger_edges_zip": sha(EDGES), "hpms_rows_jsonl": sha(HPMS)},
         "build_timings_s": timings,

@@ -222,6 +222,36 @@ def detect_block(x, y, z, cls, ret, freeways, footprints, references, args) -> l
     return walls
 
 
+def detect_area(d, freeways, footprints, references, args, clip=None) -> list[dict]:
+    """Walls (WGS84 GeoJSON features) in point arrays d, run in 500 m blocks with 40 m overlap, optionally clipped to `clip`."""
+    corridor_all = freeways.buffer(args.corridor)
+    if clip is not None:
+        corridor_all = corridor_all.intersection(clip)
+    if corridor_all.is_empty:
+        return []
+    block, overlap = 500.0, 40.0
+    xmin, ymin, xmax, ymax = corridor_all.bounds
+    walls = []
+    for bx in np.arange(np.floor(xmin / block) * block, xmax, block):
+        for by in np.arange(np.floor(ymin / block) * block, ymax, block):
+            core = box(bx, by, bx + block, by + block)
+            if clip is not None:
+                core = core.intersection(clip)
+            if core.is_empty or not core.intersects(corridor_all):
+                continue
+            x0b, y0b, x1b, y1b = bx - overlap, by - overlap, bx + block + overlap, by + block + overlap
+            sel = (d["x"] >= x0b) & (d["x"] < x1b) & (d["y"] >= y0b) & (d["y"] < y1b)
+            if sel.sum() < 1000:
+                continue
+            for wall in detect_block(d["x"][sel], d["y"][sel], d["z"][sel], d["cls"][sel], d["ret"][sel], freeways, footprints, references, args):
+                clipped = wall["line"].intersection(core)
+                for part in getattr(clipped, "geoms", [clipped]):
+                    if part.geom_type == "LineString" and part.length >= 5:
+                        walls.append({"type": "Feature", "properties": {"height": wall["height"], "source": "lidar_detected", "length_m": round(part.length, 1)},
+                                      "geometry": mapping(shp_transform(lambda a, b, c=None: TO_LONLAT.transform(a, b), part))})
+    return walls
+
+
 def add_detection_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--corridor", type=float, default=60.0)
     parser.add_argument("--min-length", type=float, default=25.0)
@@ -246,25 +276,7 @@ def main() -> int:
         args.out.write_text(json.dumps({"type": "FeatureCollection", "features": []}))
         print("no freeway in this area")
         return 0
-    corridor_all = freeways.buffer(args.corridor)
-    block, overlap = 500.0, 40.0
-    xmin, ymin, xmax, ymax = corridor_all.bounds
-    walls = []
-    for bx in np.arange(np.floor(xmin / block) * block, xmax, block):
-        for by in np.arange(np.floor(ymin / block) * block, ymax, block):
-            core = box(bx, by, bx + block, by + block)
-            if not core.intersects(corridor_all):
-                continue
-            x0b, y0b, x1b, y1b = bx - overlap, by - overlap, bx + block + overlap, by + block + overlap
-            sel = (d["x"] >= x0b) & (d["x"] < x1b) & (d["y"] >= y0b) & (d["y"] < y1b)
-            if sel.sum() < 1000:
-                continue
-            for wall in detect_block(d["x"][sel], d["y"][sel], d["z"][sel], d["cls"][sel], d["ret"][sel], freeways, footprints, references, args):
-                clipped = wall["line"].intersection(core)
-                for part in getattr(clipped, "geoms", [clipped]):
-                    if part.geom_type == "LineString" and part.length >= 5:
-                        walls.append({"type": "Feature", "properties": {"height": wall["height"], "source": "lidar_detected", "length_m": round(part.length, 1)},
-                                      "geometry": mapping(shp_transform(lambda a, b, c=None: TO_LONLAT.transform(a, b), part))})
+    walls = detect_area(d, freeways, footprints, references, args)
     args.out.write_text(json.dumps({"type": "FeatureCollection", "features": walls}) + "\n")
     print(f"{len(walls)} wall lines, {sum(w['properties']['length_m'] for w in walls) / 1000:.2f} km")
     return 0

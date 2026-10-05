@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quiet LA Compute</title>
 <style>
-:root { --bg: #f4f2ec; --card: #fffdf8; --ink: #1c2333; --sub: #5b6474; --line: #e2ddd2; --accent: #2a9d8f; --warn: #e9a23b; --bad: #c1272d; --queued: #9ec5e8; --rest: #dcd8cf; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14171d; --card: #1d2129; --ink: #eef0f4; --sub: #9aa3b2; --line: #2c313b; --rest: #2f343e; --queued: #3d6a91; } }
-:root[data-theme="dark"] { --bg: #14171d; --card: #1d2129; --ink: #eef0f4; --sub: #9aa3b2; --line: #2c313b; --rest: #2f343e; --queued: #3d6a91; }
+:root { --bg: #f4f2ec; --card: #fffdf8; --ink: #1c2333; --sub: #5b6474; --line: #e2ddd2; --accent: #2a9d8f; --warn: #e9a23b; --bad: #c1272d; --queued: #9ec5e8; --rest: #dcd8cf; --older: #a9cfc9; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14171d; --card: #1d2129; --ink: #eef0f4; --sub: #9aa3b2; --line: #2c313b; --rest: #2f343e; --queued: #3d6a91; --older: #2c5550; } }
+:root[data-theme="dark"] { --bg: #14171d; --card: #1d2129; --ink: #eef0f4; --sub: #9aa3b2; --line: #2c313b; --rest: #2f343e; --queued: #3d6a91; --older: #2c5550; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 40px; }
@@ -71,7 +71,7 @@ th { color: var(--sub); font-weight: 600; border-top: 0; }
     <div class="card">
       <div class="machine-head"><h2 style="margin:0;font-size:17px">County map</h2><span class="muted">each square is 1 km²</span></div>
       <canvas id="map"></canvas>
-      <div class="legend"><span><i style="background:var(--accent)"></i>done</span><span><i style="background:var(--warn)"></i>computing now</span><span><i style="background:var(--queued)"></i>prepared</span><span><i style="background:var(--rest)"></i>to do</span></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>done</span><span><i style="background:var(--warn)"></i>computing now</span><span><i style="background:var(--queued)"></i>prepared</span><span><i style="background:var(--older)"></i>on the map from the older model, to redo</span><span><i style="background:var(--rest)"></i>to do</span></div>
     </div>
     <div class="card">
       <h2 style="margin:0;font-size:17px">Recently finished</h2>
@@ -121,7 +121,7 @@ function drawMap(m) {
   canvas.style.height = rows * cell + 'px'; canvas.style.width = cols * cell + 'px';
   const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
   const css = getComputedStyle(document.documentElement);
-  const colors = ['--rest', '--queued', '--warn', '--accent'].map((v) => css.getPropertyValue(v).trim());
+  const colors = ['--rest', '--queued', '--warn', '--accent', '--older'].map((v) => css.getPropertyValue(v).trim());
   for (const [x, y, s] of m.cells) {
     ctx.fillStyle = colors[s];
     ctx.fillRect((x - m.x0) * cell, (m.y1 - y) * cell, cell - (cell > 3 ? 1 : 0), cell - (cell > 3 ? 1 : 0));
@@ -136,7 +136,7 @@ async function refresh() {
   document.getElementById('pct').textContent = (s.fraction * 100).toFixed(s.fraction < 0.1 ? 2 : 1) + '% done';
   document.getElementById('bar').style.width = Math.max(0.3, s.fraction * 100) + '%';
   const eta = s.eta_days == null ? 'no recent speed yet' : s.eta_days < 1.5 ? Math.round(s.eta_days * 24) + ' hours left at the current speed' : s.eta_days.toFixed(1) + ' days left at the current speed';
-  document.getElementById('facts').innerHTML = `<span><b>${fmt(s.done_receivers)}</b> of ~${fmt(s.total_receivers)} points</span><span><b>${s.cells_done.toLocaleString()}</b> of ${s.cells_total.toLocaleString()} km²</span><span><b>${Math.round(s.rate.all || 0)}</b> points/s</span><span><b>${eta}</b></span><span>queue: ${data.queue.priority ? data.queue.priority + ' priority, ' : ''}${data.queue.todo} prepared${data.queue.failed ? ', ' + data.queue.failed + ' failed' : ''}${data.daemon ? '' : ' · tile builder stopped'}</span>`;
+  document.getElementById('facts').innerHTML = `<span>Model <b>${s.model || ''}</b>: ${s.model_summary || ''}</span><span><b>${fmt(s.done_receivers)}</b> of ~${fmt(s.total_receivers)} points</span><span><b>${s.cells_done.toLocaleString()}</b> of ${s.cells_total.toLocaleString()} km²</span><span><b>${Math.round(s.rate.all || 0)}</b> points/s</span><span><b>${eta}</b></span><span>queue: ${data.queue.priority ? data.queue.priority + ' priority, ' : ''}${data.queue.todo} prepared${data.queue.failed ? ', ' + data.queue.failed + ' failed' : ''}${data.daemon ? '' : ' · tile builder stopped'}</span>`;
   for (const host of ['mac', 'pc']) document.getElementById('card-' + host).innerHTML = machine(host, data.hosts[host], s.rate[host]);
   document.getElementById('recent').innerHTML = s.recent.map((r) => `<tr><td>${esc(r.tile)}</td><td>${r.host === 'pc' ? 'PC' : 'Mac'}</td><td>${fmt(r.receivers)}</td><td>${r.minutes} min</td><td>${r.ended}</td></tr>`).join('');
   document.getElementById('events').textContent = data.events.join('\n');

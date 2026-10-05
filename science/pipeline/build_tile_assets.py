@@ -107,7 +107,7 @@ def main() -> int:
     parser.add_argument("--out-root", type=Path, required=True)
     parser.add_argument("--margin-db", type=float, default=6.0)
     parser.add_argument("--on-road-m", type=float, default=3.0)
-    parser.add_argument("--study", choices=("tarzana-pilot", "county-v1"), default="tarzana-pilot")
+    parser.add_argument("--study", choices=("tarzana-pilot", "county-v1", "county-v2"), default="tarzana-pilot")
     args = parser.parse_args()
     tile_id, attempt = args.tile, args.attempt.resolve()
     out = args.out_root.resolve() / tile_id
