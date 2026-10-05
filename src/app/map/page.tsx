@@ -111,8 +111,8 @@ function ModelNote({ model }: { model: string | null }) {
     : 'Computed with the earlier model (no sound walls, coarser terrain); this area is being recomputed.'}</p>;
 }
 
-function Inspector({ selection, period, onClose, covered, percentiles, modelAt }: { selection: Selection | null; period: Period; onClose: () => void; covered: (lng: number, lat: number) => boolean | null; percentiles?: Layers['building_percentiles']; modelAt: (lng: number, lat: number) => string | null }) {
-  if (!selection) return <div className="inspection-empty"><strong>Select a place on the map</strong><p>Search an address above, or click any building, spot or road to see its day, evening, night and 24 h levels.</p></div>;
+function Inspector({ selection, period, onClose, covered, percentiles, modelAt, mappedKm2 }: { selection: Selection | null; period: Period; onClose: () => void; covered: (lng: number, lat: number) => boolean | null; percentiles?: Layers['building_percentiles']; modelAt: (lng: number, lat: number) => string | null; mappedKm2?: number }) {
+  if (!selection) return <div className="inspection-empty"><strong>Select a place on the map</strong><p>Search an address above, or click any building, spot or road to see its day, evening, night and 24 h levels.{mappedKm2 ? ` About ${mappedKm2.toLocaleString()} km² are mapped so far, growing outward from Tarzana.` : ''}</p></div>;
   const close = <button type="button" className="plain-icon" aria-label="Close" onClick={onClose}>×</button>;
   if (selection.kind === 'receiver') {
     const value = selection.values[period];
@@ -322,7 +322,7 @@ export default function CountyMapPage() {
         <p role="status">{message}</p>
       </form>
       <div className="quick-controls"><Choice label="Time of day" value={period} options={[['D', 'Day'], ['E', 'Evening'], ['N', 'Night'], ['Q', '24 h']]} onChange={setPeriod} /></div>
-      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} covered={covered} percentiles={layers?.building_percentiles} modelAt={modelAt} /></section>
+      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} covered={covered} percentiles={layers?.building_percentiles} modelAt={modelAt} mappedKm2={layers?.tiles.length} /></section>
       <div className="guide-body">
         <section className="guide-section"><h2>Noise display</h2><Choice label="Noise display style" value={noise} options={[['field', 'Field'], ['bands', 'Bands'], ['glow', 'Glow'], ['dots', 'Dots']]} onChange={setNoise} /><p className="control-help">{STYLE_HELP[noise]}{mode3d ? ' In 3D, buildings are colored by their loudest wall.' : ''}</p></section>
         <section className="guide-section"><h2>Base map</h2><Choice label="Base map" value={theme} options={[['light', 'Light'], ['grayscale', 'Gray'], ['dark', 'Dark'], ['satellite', 'Photo']]} onChange={setTheme} /></section>
