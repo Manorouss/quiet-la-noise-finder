@@ -5,7 +5,7 @@ Finds each completed county run of every model in county_models.py (run attempts
 run_host.json) and keeps, per 1 km cell, the run of the newest model (newest run within a
 model), so model-v1 tiles stay on the map until their v2 run exists. Runs
 build_tile_assets.py --study <model> for cells whose assets are missing or came from another
-run. Tile ids are cty-e<X>-n<Y> from the cell. Then build_county_layers.py turns all assets
+run (replaced assets move to <assets>/_replaced/). Tile ids are cty-e<X>-n<Y> from the cell. Then build_county_layers.py turns all assets
 into PMTiles. Safe to rerun: finished tiles are skipped.
 
 Usage:
@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -46,6 +47,11 @@ def build(tile_id: str, run: Path, study: str, assets: Path) -> str:
     manifest = assets / tile_id / "build-manifest.json"
     if manifest.exists() and json.loads(manifest.read_text()).get("attempt_id") == run.name:
         return "skip"
+    if (assets / tile_id).exists():
+        # A newer run (usually a newer model) replaces this tile; keep the old assets for rollback.
+        old = json.loads(manifest.read_text()).get("attempt_id", "unknown") if manifest.exists() else "incomplete"
+        (assets / "_replaced").mkdir(exist_ok=True)
+        (assets / tile_id).rename(assets / "_replaced" / f"{tile_id}.{old}.{int(time.time())}")
     log = assets / f"{tile_id}.log"
     result = subprocess.run(["python3", str(HERE / "build_tile_assets.py"), "--tile", tile_id, "--attempt", str(run),
                              "--out-root", str(assets), "--study", study], capture_output=True, text=True)
