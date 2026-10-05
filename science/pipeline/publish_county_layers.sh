@@ -23,9 +23,10 @@ upload() {  # upload <relative path> <cache seconds>
   local f=$1 ct=application/octet-stream
   case $f in *.json|*.geojson) ct=application/json;; esac
   # wrangler uploads at most 315 MB in one request; an rclone remote named r2 (S3 API with an R2 access
-  # key, set up by the owner) uploads in parts and is used whenever it exists.
+  # key, set up by the owner) uploads in parts and is used whenever it exists. --ignore-times: always a full
+  # upload, so the headers are set (an unchanged file would only get its timestamp updated, losing Cache-Control).
   if command -v rclone > /dev/null && rclone listremotes 2> /dev/null | grep -qx "r2:"; then
-    rclone copyto "$LAYERS/$f" "r2:$BUCKET/$f" --s3-no-check-bucket --s3-upload-cutoff 100M --s3-chunk-size 64M \
+    rclone copyto "$LAYERS/$f" "r2:$BUCKET/$f" --ignore-times --s3-no-check-bucket --s3-upload-cutoff 100M --s3-chunk-size 64M \
       --header-upload "Content-Type: $ct" --header-upload "Cache-Control: public, max-age=$2" > /dev/null 2>&1
   elif [ "$(stat -f %z "$LAYERS/$f")" -gt 314572800 ]; then
     echo "$(date -u +%FT%TZ) $f is over 300 MB: wrangler cannot upload it; set up the rclone remote r2 (HANDOFF.md)" >> "$LOG"; return 1
