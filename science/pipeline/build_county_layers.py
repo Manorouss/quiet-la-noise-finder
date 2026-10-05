@@ -11,16 +11,18 @@ on-road labels). Later roots win when a tile appears twice. Outputs, in --out:
                      or open space (0). All points from z16; thinned below.
   buildings.pmtiles  footprints: k integer id (selection only), h height (m), d/e/n/q highest facade
                      LAeq / CNEL, dl/el/nl/ql the quietest facade, a highest facade aircraft CNEL,
-                     c count. layers.json carries percentiles of the loudest facade per period.
+                     c count. layers.json carries percentiles of the loudest facade per period
+                     (r: roads-only CNEL of the loudest d/e/n, as the map computes it with aircraft off).
   roads.pmtiles      modeled road sources clipped to each tile core: a AADT, c MTFCC,
                      nm name, t traffic basis (hpms | default). Minor roads appear later.
-  field_{d,e,n,q}.pmtiles  raster-dem per period (q = 24 h CNEL, roads + aircraft) in Terrarium encoding with elevation = LAeq
+  field_{d,e,n,q,r}.pmtiles  raster-dem per period (q = 24 h CNEL, roads + aircraft; r = 24 h CNEL, roads only,
+                     for the map with aircraft switched off) in Terrarium encoding with elevation = LAeq
                      (dB, 0.1 dB steps); elevation 150 means not modeled (one pixel of padding past the edge). Built by normalized
                      Gaussian convolution of the receiver values (dB) on a 5 m grid per
                      tile, using neighbours' receivers for seamless edges; gaps inside
                      large buildings are filled from a wider kernel within modeled tiles.
                      Web tiles sample that grid bilinearly.
-  glow_{d,e,n,q}.pmtiles the same surface with a 24 m kernel, for the soft Glow style.
+  glow_{d,e,n,q,r}.pmtiles the same surface with a 24 m kernel, for the soft Glow style.
   coverage.geojson   modeled 1 km tiles, plus coverage_outline.geojson (dissolved edge).
   basemap/           Protomaps LA County basemap (hard link to the downloaded extract).
   context/           fire stations, heliports and airport noise contours (GeoJSON).
@@ -60,7 +62,7 @@ CONTEXT = PROJECT / "implementation/apps/quiet-la-web/public/_local-data/context
 TO_UTM = Transformer.from_crs("OGC:CRS84", "EPSG:26911", always_xy=True)
 TO_LONLAT = Transformer.from_crs("EPSG:26911", "OGC:CRS84", always_xy=True)
 PERIODS = ("D", "E", "N")
-BANDS = "denq"          # field rasters: the three periods and the 24 h CNEL (roads + aircraft)
+BANDS = "denqr"         # field rasters: the three periods, the 24 h CNEL (roads + aircraft) and roads-only CNEL
 AIRPORT_CONTOURS = CONTEXT / "la_county_airport_noise_contours.geojson"
 BUILDING_PERCENTILES: dict[str, list[float]] = {}  # filled by building_features, written to layers.json
 CELL = 5.0              # field grid (m)
@@ -124,9 +126,9 @@ def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray], air
             for name, value in zip("den", values):
                 if value is not None:
                     out[name] = round(value, 1)
-            cnel = None
+            cnel = road = None
             if all(v is not None for v in values):
-                cnel = road_cnel(*values)
+                cnel = road = road_cnel(*values)
                 if math.isfinite(air[i]):
                     out["a"] = round(float(air[i]), 1)
                     cnel = energy_sum(cnel, float(air[i]))
@@ -137,7 +139,7 @@ def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray], air
                     best["ql"] = min(best.get("ql", 999.0), out["q"])
                     if "a" in out:
                         best["a"] = max(best.get("a", -1.0), out["a"])
-            values.append(cnel)
+            values += [cnel, road]
             if p.get("masked"):
                 out["m"] = 1
             if p.get("on_road"):
@@ -179,8 +181,11 @@ def building_features(tiles: dict[str, Path], building_loudest: dict):
         feature["properties"]["k"] = k
         feature["properties"].update(building_loudest.get(key, {}))
     # Percentiles of the loudest wall per period, so the map can say how a building compares.
-    for name in "denq":
-        values = np.array([f["properties"][name] for f in merged.values() if name in f["properties"]])
+    for name in "denqr":
+        if name == "r":
+            values = np.array([road_cnel(*(f["properties"][b] for b in "den")) for f in merged.values() if all(b in f["properties"] for b in "den")])
+        else:
+            values = np.array([f["properties"][name] for f in merged.values() if name in f["properties"]])
         if len(values):
             BUILDING_PERCENTILES[name] = [round(float(v), 1) for v in np.percentile(values, np.arange(101))]
     return merged.values()
@@ -365,7 +370,7 @@ def build_field(fields: dict[tuple[int, int], np.ndarray], mbtiles: dict[str, Pa
     for band, db in dbs.items():
         meta = {"name": f"quiet-la-field-{band}", "format": "png", "type": "overlay", "minzoom": str(FIELD_MIN_ZOOM), "maxzoom": str(FIELD_MAX_ZOOM),
                 "bounds": f"{min(lons)},{min(lats)},{max(lons)},{max(lats)}", "center": f"{(min(lons) + max(lons)) / 2},{(min(lats) + max(lats)) / 2},{FIELD_MIN_ZOOM + 3}",
-                "description": (f"Road-noise LAeq ({band.upper()})" if band != "q" else "24 h CNEL, roads + aircraft") + ", Terrarium raster-dem: elevation = dB; 150 = not modeled"}
+                "description": {"q": "24 h CNEL, roads + aircraft", "r": "24 h CNEL, roads only"}.get(band, f"Road-noise LAeq ({band.upper()})") + ", Terrarium raster-dem: elevation = dB; 150 = not modeled"}
         db.executemany("INSERT INTO metadata VALUES (?, ?)", meta.items())
         db.commit()
         db.close()
@@ -433,14 +438,24 @@ def main() -> int:
     for path in sorted(CONTEXT.glob("*.geojson")):
         shutil.copy2(path, out / "context" / path.name)
         extra.append(f"context/{path.name}")
+    # The estimated aircraft contours beyond the official lines (aircraft.py), drawn dashed on the map.
+    estimated = []
+    for airport in airports:
+        for level in airport.levels:
+            if level in airport.official:
+                continue
+            line = shp_transform(lambda x, y, z=None: TO_LONLAT.transform(x, y), airport.contour[level].boundary.simplify(5.0))
+            estimated.append({"type": "Feature", "properties": {"AIRPORT_NAME": airport.name, "CLASS": level, "estimated": True}, "geometry": mapping(line)})
+    (out / "context" / "airport_noise_estimated.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": estimated}, separators=(",", ":")) + "\n")
+    extra.append("context/airport_noise_estimated.geojson")
     layers = {
         "schema": "quiet_la_county_layers_v1", "built_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "tiles": sorted(tiles), "receiver_count": n_receivers, "building_count": n_buildings, "road_segments": n_roads, "field_tiles": n_field,
-        "field_encoding": {"type": "terrarium", "files": {"D": "field_d.pmtiles", "E": "field_e.pmtiles", "N": "field_n.pmtiles"}, "db": "elevation (0.1 dB steps)", "nodata": NOT_MODELED_DB, "edge_padding_px": 1,
+        "field_encoding": {"type": "terrarium", "files": {"D": "field_d.pmtiles", "E": "field_e.pmtiles", "N": "field_n.pmtiles", "Q": "field_q.pmtiles", "R": "field_r.pmtiles"}, "db": "elevation (0.1 dB steps)", "nodata": NOT_MODELED_DB, "edge_padding_px": 1,
                            "cell_m": CELL, "sigma_m": SIGMA, "fill_sigma_m": SIGMA_FILL, "glow_sigma_m": SIGMA_GLOW, "zooms": [FIELD_MIN_ZOOM, FIELD_MAX_ZOOM]},
         "files": {name: {"sha256": sha(out / name), "bytes": (out / name).stat().st_size}
                   for name in ("receivers.pmtiles", "buildings.pmtiles", "roads.pmtiles", *(f"{k}_{b}.pmtiles" for k in ("field", "glow") for b in BANDS), "coverage.geojson", *extra)},
-        "building_percentiles": {"what": "percentiles 0..100 of the loudest facade level per building, per period (d/e/n LAeq, q 24 h CNEL)", **BUILDING_PERCENTILES},
+        "building_percentiles": {"what": "percentiles 0..100 of the loudest facade level per building, per period (d/e/n LAeq, q 24 h CNEL, r roads-only CNEL)", **BUILDING_PERCENTILES},
         "aircraft": {"method": "official airport CNEL contours, extended to 55 dB by each airport's contour area ratio (aircraft.py)",
                      "floor_db": FLOOR_DB, "min_source_year": MIN_YEAR,
                      "airports": [{"name": a.name, "official_levels": sorted(a.official), "area_ratio": round(a.ratio, 2), "source": a.source} for a in airports]},

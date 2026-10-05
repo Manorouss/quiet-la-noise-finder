@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Map as MapLibreMap, MapGeoJSONFeature } from 'maplibre-gl';
-import { buildStyle, terrainFor, type ContextId, type Period, type StyleOptions } from '@/lib/county-map-style';
+import { buildStyle, isHospitalPad, terrainFor, type ContextId, type Period, type StyleOptions } from '@/lib/county-map-style';
+import { drawIcon } from '@/lib/map-icons';
 import { createSplatLayer } from '@/lib/splat-layer';
 
 export type Values = Record<Period, number | null>;
@@ -49,14 +50,31 @@ function footprintCentre(geometry: GeoJSON.Geometry, fallback: [number, number])
   return best;
 }
 
+/** "4957 MELROSE AVE." -> "4957 Melrose Ave."; mixed-case text is left alone. */
+function titleCase(text: string) {
+  if (text !== text.toUpperCase()) return text.trim();
+  return text.trim().toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase());
+}
+
 function contextTitle(layer: ContextId, p: Record<string, unknown>): { title: string; detail: string } {
   if (layer === 'airport-contours') {
     const level = Number(p.CLASS);
     const band = Number.isFinite(level) ? `${level}–${level + 5} dB CNEL` : 'CNEL contour';
     return { title: `${String(p.AIRPORT_NAME || 'Airport')} · ${band}`, detail: `Official airport noise contour (${String(p.SOURCE || 'LA County Airport Land Use Plan')}). CNEL is a 24-hour average with evening and night noise weighted up; it is not yet added into the road-noise values.` };
   }
-  if (layer === 'heliports') return { title: String(p.name || 'Heliport'), detail: 'Heliport location. Helicopter activity is not yet modeled.' };
-  return { title: p.station ? `Fire station ${String(p.station)}` : 'Fire station', detail: `${layer === 'city-fire' ? 'City of Los Angeles' : 'LA County'} fire station. Sirens are not modeled.` };
+  if (layer === 'heliports') {
+    const where = titleCase(String(p.city || ''));
+    const hospital = isHospitalPad(p.name);
+    return { title: titleCase(String(p.name || 'Heliport')), detail: [
+      hospital ? 'Hospital helipad: medical helicopters may land here at any hour.' : 'Heliport or helistop. Many rooftop pads in LA are for emergencies and see few flights.',
+      where ? `In ${where}.` : '', 'Helicopter noise is not in the map values.',
+    ].filter(Boolean).join(' ') };
+  }
+  const address = [titleCase(String(p.address || '')), titleCase(String(p.city || ''))].filter(Boolean).join(', ');
+  return { title: p.station ? `Fire station ${String(p.station)}` : 'Fire station', detail: [
+    `${layer === 'city-fire' ? 'LA City Fire Department' : 'LA County Fire Department'}${address ? `, ${address}` : ''}.`,
+    'Engines leave with sirens, mostly along the main streets nearby. Sirens are not in the map values.',
+  ].join(' ') };
 }
 
 /** Select the building at or nearest to a point (within ~25 m), e.g. a searched address or a shared link. */
@@ -89,7 +107,7 @@ export default function CountyMap(props: Props) {
   // effects that attach things to the map (selection highlight, Photo 3D layer).
   const [mapVersion, setMapVersion] = useState(0);
   const lastCameraRef = useRef<Camera | null>(null);
-  const styleKey = JSON.stringify([props.layersUrl, props.period, props.noise, props.mode3d, props.roads, props.context, props.theme, props.photo3d]);
+  const styleKey = JSON.stringify([props.layersUrl, props.period, props.noise, props.mode3d, props.roads, props.context, props.theme, props.photo3d, props.roadField]);
 
   useEffect(() => {
     let cancelled = false;
@@ -119,6 +137,10 @@ export default function CountyMap(props: Props) {
       // that keeps streaming in) do not bring the notice back.
       let settled = false;
       const settle = () => { settled = true; report(false); };
+      map.on('styleimagemissing', (event) => {
+        const icon = map && !map.hasImage(event.id) ? drawIcon(event.id) : null;
+        if (icon) map?.addImage(event.id, icon, { pixelRatio: 2 });
+      });
       map.on('dataloading', () => { if (!settled) report(true); });
       map.on('idle', settle);
       map.once('load', settle);  // first complete render; in 3D, idle can take long while terrain streams

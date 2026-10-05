@@ -83,6 +83,8 @@ async function searchAddress(page, typed, pick) {
   check('search: compares with mapped buildings', /than \d+% of mapped buildings/.test(await text(page, '.compare-line') ?? ''), await text(page, '.compare-line'));
   check('search: says which model computed it', /Computed with the (upgraded|earlier) model/.test(await text(page, '.model-line') ?? ''), await text(page, '.model-line'));
   check('search: least exposed wall', /Least exposed wall/.test(await text(page, '.receiver-section') ?? ''));
+  const nearby = await page.waitForSelector('.nearby-item', { timeout: 15000 }).then(() => text(page, '.nearby')).catch(() => null);
+  check('search: nearby fire station', /Fire station \d+.*mi/.test(nearby ?? ''), nearby);
   await page.click('.save-place:has-text("Save to compare")');
   await page.waitForSelector('.saved-row', { timeout: 10000 }).catch(() => null);
   check('save to compare lists the house', /19305 Redwing/i.test(await text(page, '.saved-places') ?? ''), await text(page, '.saved-row'));
@@ -144,11 +146,34 @@ async function searchAddress(page, typed, pick) {
 
   await page.evaluate(() => window.__quietCountyMap.jumpTo({ center: [-118.4899, 34.2098], zoom: 13.5 }));
   await idle(page);
-  await page.click('.context-airport-contours input');
+  // Aircraft is on by default and part of the 24 h colors; switching it off gives the roads-only surface.
+  const fieldUrl = () => page.evaluate(() => window.__quietCountyMap.getStyle().sources.field.url);
+  await page.click('.quick-controls button:has-text("24 h")');
+  await idle(page);
+  check('aircraft on by default', await page.evaluate(() => document.querySelector('.context-airport-contours input')?.checked === true));
+  check('aircraft contours drawn', await page.evaluate(() => window.__quietCountyMap.queryRenderedFeatures({ layers: ['context-airport-contours-line'] }).length > 0));
+  check('24 h field includes aircraft', /_q\.pmtiles$/.test(await fieldUrl()), await fieldUrl());
+  await page.screenshot({ path: `${out}/desktop_aircraft.png` });
+  await page.click('.context-airport-contours .layer-main');
+  await idle(page);
+  check('aircraft off: roads-only 24 h field', /_r\.pmtiles$/.test(await fieldUrl()), await fieldUrl());
+  check('aircraft off: contours hidden', await page.evaluate(() => window.__quietCountyMap.getLayoutProperty('context-airport-contours-line', 'visibility') === 'none'));
+  check('aircraft off: legend says roads only', /Roads only/.test(await text(page, '.county-legend') ?? ''));
+  await page.screenshot({ path: `${out}/desktop_aircraft_off.png` });
+  await page.click('.quick-controls button:has-text("Day")');
+  await page.click('.context-airport-contours .layer-main');
   await idle(page);
   check('aircraft toggle switches to 24 h', /24 h/.test(await text(page, '.quick-controls [aria-checked="true"]') ?? ''));
-  check('aircraft contours drawn', await page.evaluate(() => window.__quietCountyMap.queryRenderedFeatures({ layers: ['context-airport-contours-line'] }).length > 0));
-  await page.screenshot({ path: `${out}/desktop_aircraft.png` });
+  // Heliports and fire stations draw as icons (Van Nuys Airport has both nearby).
+  await page.click('.context-heliports .layer-main');
+  await page.click('.context-fire .layer-main');
+  await idle(page);
+  const icons = await page.evaluate(() => {
+    const map = window.__quietCountyMap;
+    return { heli: map.queryRenderedFeatures({ layers: ['context-heliports'] }).length, fire: map.queryRenderedFeatures({ layers: ['context-county-fire', 'context-city-fire'] }).length, images: ['ql-heliport', 'ql-fire'].every((id) => map.hasImage(id)) };
+  });
+  check('heliport and fire station icons', icons.heli > 0 && icons.fire > 0 && icons.images, JSON.stringify(icons));
+  await page.screenshot({ path: `${out}/desktop_layers.png` });
 
   await page.evaluate(() => window.__quietCountyMap.jumpTo({ center: [-118.45, 34.17], zoom: 10.3 }));
   await idle(page);
@@ -164,7 +189,9 @@ async function searchAddress(page, typed, pick) {
     style: [...document.querySelectorAll('.guide-section [aria-checked="true"]')].map((b) => b.textContent),
     airport: document.querySelector('.context-airport-contours input')?.checked,
     roads: window.__quietCountyMap.getLayoutProperty('roads-modeled', 'visibility'),
+    roadLabels: Boolean(window.__quietCountyMap.getLayer('roads-modeled-label')),
   }));
+  check('road lines labelled with traffic', state.roadLabels);
   check('link restores period, style, base, roads, aircraft', state.period === '24 h' && state.style.includes('Bands') && state.style.includes('Dark') && state.airport && state.roads === 'visible', JSON.stringify(state));
   await page.screenshot({ path: `${out}/link_restore.png` });
   await page.close();

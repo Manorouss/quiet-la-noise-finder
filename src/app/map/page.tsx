@@ -2,17 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import CountyMap, { type Camera, type MapStatus, type Selection, type Values } from '@/components/CountyMap';
-import { BAND_COLORS, BAND_EDGES, type BaseTheme, type ContextId, type NoiseStyle, type Period } from '@/lib/county-map-style';
+import { BAND_COLORS, BAND_EDGES, roadCnel, type BaseTheme, type ContextId, type NoiseStyle, type Period } from '@/lib/county-map-style';
 import { addressAt, findAddress, suggestAddresses, type Address, type Suggestion } from '@/lib/address';
+import { LayerPanel, Nearby, usePlaces, type Place, type Places } from '@/components/MapLayers';
 
 const LAYERS_URL = process.env.NEXT_PUBLIC_QUIET_LA_LAYERS_URL || '/county-layers/';
 // Photo 3D showcase (lidar + aerial imagery as Gaussian splats): Studio City, Ventura Blvd and US-101.
 const SPLAT_SCENE = `${LAYERS_URL}splats/showcase_101_ventura`;
 const SPLAT_VIEW = { lng: -118.3721, lat: 34.1474, zoom: 17.3, pitch: 62, bearing: -35 };
 const PERIOD_NAME: Record<Period, string> = { D: 'Day', E: 'Evening', N: 'Night', Q: '24 h' };
-const UNIT = (period: Period) => (period === 'Q' ? 'dB CNEL · 24 h, roads + aircraft' : `dB LAeq · ${PERIOD_NAME[period].toLowerCase()}`);
-const CONTEXT_DEFAULTS: Record<ContextId, boolean> = { 'airport-contours': false, heliports: false, 'county-fire': false, 'city-fire': false };
-const CONTEXT_LABELS: Record<ContextId, string> = { 'airport-contours': 'Aircraft noise (official contours, CNEL)', heliports: 'Heliports', 'county-fire': 'LA County fire stations', 'city-fire': 'City of LA fire stations' };
+const UNIT = (period: Period, aircraft = true) => (period === 'Q' ? `dB CNEL · 24 h, ${aircraft ? 'roads + aircraft' : 'roads only'}` : `dB LAeq · ${PERIOD_NAME[period].toLowerCase()}`);
+// Aircraft is on by default: it is part of the 24 h noise (switching it off takes it out of the colors too).
+const CONTEXT_DEFAULTS: Record<ContextId, boolean> = { 'airport-contours': true, heliports: false, 'county-fire': false, 'city-fire': false };
 const STYLE_HELP: Record<NoiseStyle, string> = {
   field: 'A smooth surface interpolated from the modeled points, 5 m detail.',
   bands: 'The same surface in 5 dB steps, like an official noise map.',
@@ -20,7 +21,16 @@ const STYLE_HELP: Record<NoiseStyle, string> = {
   dots: 'Every modeled point: building walls (larger) and open ground.',
 };
 const PLACES: Record<string, [number, number]> = { tarzana: [-118.553, 34.172], reseda: [-118.536, 34.201], 'van nuys': [-118.449, 34.186], northridge: [-118.536, 34.228], encino: [-118.501, 34.159], 'lake balboa': [-118.497, 34.197] };
-type Layers = { tiles: string[]; receiver_count: number; building_count: number; built_at_utc: string; building_percentiles?: Partial<Record<'d' | 'e' | 'n' | 'q', number[]>> };
+type Layers = { tiles: string[]; receiver_count: number; building_count: number; built_at_utc: string; files?: Record<string, unknown>; building_percentiles?: Partial<Record<'d' | 'e' | 'n' | 'q' | 'r', number[]>> };
+
+/** With aircraft switched off, the 24 h value is road traffic only, from the day/evening/night levels. */
+const withoutAircraft = (values: Values): Values => ({ ...values, Q: roadCnel(values.D, values.E, values.N) });
+function shownSelection(selection: Selection | null, aircraft: boolean): Selection | null {
+  if (aircraft || !selection) return selection;
+  if (selection.kind === 'receiver') return { ...selection, values: withoutAircraft(selection.values) };
+  if (selection.kind === 'building') return { ...selection, values: withoutAircraft(selection.values), lowest: withoutAircraft(selection.lowest) };
+  return selection;
+}
 
 function band(value: number | null) {
   if (value === null) return null;
@@ -80,8 +90,8 @@ function LevelWords({ value, period }: { value: number | null; period: Period })
 }
 
 // Where a building's loudest wall falls among all mapped buildings (percentiles from layers.json).
-function Compare({ value, period, percentiles }: { value: number | null; period: Period; percentiles?: Layers['building_percentiles'] }) {
-  const table = percentiles?.[({ D: 'd', E: 'e', N: 'n', Q: 'q' } as const)[period]];
+function Compare({ value, period, percentiles, aircraft }: { value: number | null; period: Period; percentiles?: Layers['building_percentiles']; aircraft: boolean }) {
+  const table = percentiles?.[({ D: 'd', E: 'e', N: 'n', Q: aircraft ? 'q' : 'r' } as const)[period]];
   if (value === null || !table || table.length !== 101) return null;
   let below = table.findIndex((p) => p >= value);
   below = below < 0 ? 100 : below;
@@ -89,9 +99,9 @@ function Compare({ value, period, percentiles }: { value: number | null; period:
   return <p className="receiver-meta compare-line">{text} ({period === 'Q' ? '24 h' : PERIOD_NAME[period].toLowerCase()}, loudest wall).</p>;
 }
 
-function Aircraft({ value }: { value: number | null }) {
+function Aircraft({ value, included }: { value: number | null; included: boolean }) {
   if (value === null) return null;
-  return <p className="receiver-meta">Aircraft here: about {value.toFixed(0)} dB CNEL, estimated from the official airport contours; included in the 24 h value.</p>;
+  return <p className="receiver-meta">Aircraft here: about {value.toFixed(0)} dB CNEL, estimated from the official airport contours; {included ? 'included in the 24 h value.' : 'switched off, so not in the 24 h value.'}</p>;
 }
 
 type Ring = [number, number][];
@@ -128,30 +138,32 @@ function ModelNote({ model }: { model: string | null }) {
     : 'Computed with the earlier model (no sound walls, coarser terrain); this area is being recomputed.'}</p>;
 }
 
-function Inspector({ selection, period, onClose, covered, percentiles, modelAt, mappedKm2, saved, onSave, onShare }: { selection: Selection | null; period: Period; onClose: () => void; covered: (lng: number, lat: number) => boolean | null; percentiles?: Layers['building_percentiles']; modelAt: (lng: number, lat: number) => string | null; mappedKm2?: number; saved: Saved[]; onSave: (selection: Selection) => void; onShare: () => void }) {
+function Inspector({ selection, period, aircraft, onClose, covered, percentiles, modelAt, mappedKm2, saved, onSave, onShare, places, onShowPlace }: { selection: Selection | null; period: Period; aircraft: boolean; onClose: () => void; covered: (lng: number, lat: number) => boolean | null; percentiles?: Layers['building_percentiles']; modelAt: (lng: number, lat: number) => string | null; mappedKm2?: number; saved: Saved[]; onSave: (selection: Selection) => void; onShare: () => void; places: Places | null; onShowPlace: (place: Place, from: [number, number]) => void }) {
   if (!selection) return <div className="inspection-empty"><strong>Select a place on the map</strong><p>Search an address above, or click any building, spot or road to see its day, evening, night and 24 h levels.{mappedKm2 ? ` About ${mappedKm2.toLocaleString()} km² are mapped so far, growing outward from Tarzana.` : ''}</p></div>;
   const close = <button type="button" className="plain-icon" aria-label="Close" onClick={onClose}>×</button>;
   if (selection.kind === 'receiver') {
     const value = selection.values[period];
     return <><div className="receiver-heading"><span>{selection.facade ? 'Building wall · 4 m up, 2 m out' : 'Open ground · 1.5 m up'}</span>{close}</div>
       <AddressLine at={selection.at} near={!selection.facade} />
-      <div className="receiver-result"><strong>{selection.masked || value === null ? 'Unavailable' : value.toFixed(1)}</strong><span>{selection.masked || value === null ? '' : UNIT(period)}</span></div>
+      <div className="receiver-result"><strong>{selection.masked || value === null ? 'Unavailable' : value.toFixed(1)}</strong><span>{selection.masked || value === null ? '' : UNIT(period, aircraft)}</span></div>
       {!selection.masked && <LevelWords value={value} period={period} />}
       {selection.masked ? <p className="receiver-meta">This point failed the physical plausibility check and is not shown as a value.</p> : <ValueRows values={selection.values} period={period} />}
-      <Aircraft value={selection.aircraft} />
+      <Aircraft value={selection.aircraft} included={aircraft} />
       {selection.onRoad && <p className="receiver-meta">Within 3 m of a road centerline: this is on the road, not a living location.</p>}
+      <Nearby at={selection.at} places={places} onShow={(place) => onShowPlace(place, selection.at)} />
       <ModelNote model={modelAt(selection.at[0], selection.at[1])} />
       <SaveButton selection={selection} saved={saved} onSave={onSave} onShare={onShare} /></>;
   }
   if (selection.kind === 'building') {
     return <><div className="receiver-heading"><span>Building · about {selection.height.toFixed(0)} m tall</span>{close}</div>
       <AddressLine at={selection.at} known={selection.address} />
-      <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? 'dB CNEL, loudest wall · 24 h' : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
+      <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? `dB CNEL, loudest wall · 24 h${aircraft ? '' : ', roads only'}` : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
       <LevelWords value={selection.values[period]} period={period} />
-      <Compare value={selection.values[period]} period={period} percentiles={percentiles} />
-      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta wall-note">{selection.lowest[period] !== null && selection.values[period] !== null
+      <Compare value={selection.values[period]} period={period} percentiles={percentiles} aircraft={aircraft} />
+      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} included={aircraft} /><p className="receiver-meta wall-note">{selection.lowest[period] !== null && selection.values[period] !== null
         ? `Least exposed wall: ${selection.lowest[period]!.toFixed(1)} dB, ${(selection.values[period]! - selection.lowest[period]!).toFixed(0)} dB below the loudest (${selection.count} modeled points around the walls). Bedrooms on the quiet side hear less.`
         : `Loudest of ${selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side.`} Switch to Dots to see each wall.</p>
+      <Nearby at={selection.at} places={places} onShow={(place) => onShowPlace(place, selection.at)} />
       <ModelNote model={modelAt(selection.at[0], selection.at[1])} />
       <SaveButton selection={selection} saved={saved} onSave={onSave} onShare={onShare} /></>;
   }
@@ -198,6 +210,16 @@ export default function CountyMapPage() {
   const [expanded, setExpanded] = useState(false);
   const [notice, setNotice] = useState('');
   const cameraRef = useRef<Camera | null>(null);
+  const places = usePlaces(LAYERS_URL);
+  // Show a nearby station or helipad together with the selected place: turn its layer on and fit both in view.
+  const showPlace = useCallback((place: Place, from: [number, number]) => {
+    setContext((current) => (place.layer === 'heliports' ? { ...current, heliports: true } : { ...current, 'county-fire': true, 'city-fire': true }));
+    const lng = (place.at[0] + from[0]) / 2, lat = (place.at[1] + from[1]) / 2;
+    const metres = Math.max(150, Math.hypot((place.at[0] - from[0]) * 111320 * Math.cos((lat * Math.PI) / 180), (place.at[1] - from[1]) * 110540));
+    const width = Math.max(280, Math.min(window.innerWidth - (window.innerWidth > 760 ? 328 : 0), window.innerHeight - 120));
+    const zoom = Math.log2((40075016 * Math.cos((lat * Math.PI) / 180) * width) / (512 * metres * 1.8));
+    setTarget({ lng, lat, zoom: Math.min(17, Math.max(11, zoom)), nonce: Date.now() });
+  }, []);
 
   useEffect(() => {
     const hash = new URLSearchParams(window.location.hash.slice(1));
@@ -206,8 +228,10 @@ export default function CountyMapPage() {
     if (['light', 'dark', 'grayscale', 'satellite'].includes(hash.get('base') ?? '')) setTheme(hash.get('base') as BaseTheme);
     setMode3d(hash.get('mode') === '3d');
     setRoads(hash.get('roads') === '1');
-    const on = new Set((hash.get('context') ?? '').split(',').filter(Boolean));
-    setContext(Object.fromEntries(Object.keys(CONTEXT_DEFAULTS).map((id) => [id, on.has(id)])) as Record<ContextId, boolean>);
+    if (hash.has('context')) {
+      const on = new Set((hash.get('context') ?? '').split(',').filter(Boolean));
+      setContext(Object.fromEntries(Object.keys(CONTEXT_DEFAULTS).map((id) => [id, on.has(id)])) as Record<ContextId, boolean>);
+    }
     const n = (k: string) => Number(hash.get(k));
     if (hash.has('lat') && hash.has('lng') && Math.abs(n('lat')) <= 85 && Math.abs(n('lng')) <= 180) {
       setInitialCamera({ lat: n('lat'), lng: n('lng'), zoom: Math.min(19, Math.max(9, n('z') || 14)), pitch: Math.min(78, Math.max(0, n('pitch') || 0)), bearing: n('bearing') || 0 });
@@ -351,7 +375,7 @@ export default function CountyMapPage() {
       <div className="workspace-scope">Los Angeles County <span>· road and aircraft noise · modeled preview</span></div>
       <Choice label="Map dimension" value={mode3d ? '3d' : '2d'} options={[['2d', '2D'], ['3d', '3D']]} onChange={(m) => setMode3d(m === '3d')} />
     </header>
-    <CountyMap layersUrl={LAYERS_URL} period={period} noise={noise} mode3d={mode3d} roads={roads} context={context} theme={theme} photo3d={photo3d && mode3d} splatSceneUrl={SPLAT_SCENE} onSplatStatus={setSplatStatus} target={target} initialCamera={initialCamera} selectedKey={selectedKey} selectedAt={selection && 'at' in selection && selection.kind !== 'empty' ? selection.at : null} onSelect={setSelection} onStatus={setStatus} onCamera={onCamera} />
+    <CountyMap layersUrl={LAYERS_URL} roadField={Boolean(layers?.files?.['field_r.pmtiles'])} period={period} noise={noise} mode3d={mode3d} roads={roads} context={context} theme={theme} photo3d={photo3d && mode3d} splatSceneUrl={SPLAT_SCENE} onSplatStatus={setSplatStatus} target={target} initialCamera={initialCamera} selectedKey={selectedKey} selectedAt={selection && 'at' in selection && selection.kind !== 'empty' ? selection.at : null} onSelect={setSelection} onStatus={setStatus} onCamera={onCamera} />
     <aside className="map-guide" aria-label="Map controls and inspection">
       <div className="guide-heading"><h1>How loud is it here?</h1><button type="button" className="sheet-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? 'Less' : 'Controls'}</button></div>
       <p className="guide-intro">Modeled noise outside every home, from freeways down to residential streets. The 24 h view adds aircraft; helicopters and sirens are not included yet.</p>
@@ -366,13 +390,13 @@ export default function CountyMapPage() {
         <p role="status">{message}</p>
       </form>
       <div className="quick-controls"><Choice label="Time of day" value={period} options={[['D', 'Day'], ['E', 'Evening'], ['N', 'Night'], ['Q', '24 h']]} onChange={setPeriod} /></div>
-      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} covered={covered} percentiles={layers?.building_percentiles} modelAt={modelAt} mappedKm2={layers?.tiles.length} saved={saved} onSave={savePlace} onShare={copyView} /></section>
+      <section className="receiver-section" aria-live="polite"><Inspector selection={shownSelection(selection, context['airport-contours'])} period={period} aircraft={context['airport-contours']} onClose={() => setSelection(null)} covered={covered} percentiles={layers?.building_percentiles} modelAt={modelAt} mappedKm2={layers?.tiles.length} saved={saved} onSave={savePlace} onShare={copyView} places={places} onShowPlace={showPlace} /></section>
       {notice && <p className="workspace-notice share-notice" role="status">{notice}</p>}
       {saved.length > 0 && <section className="saved-places" aria-label="Saved places">
-        <h2>Compare saved places <span>{PERIOD_NAME[period].toLowerCase()}{period === 'Q' ? ' CNEL' : ''}</span></h2>
+        <h2>Compare saved places <span>{PERIOD_NAME[period].toLowerCase()}{period === 'Q' ? (context['airport-contours'] ? ' CNEL' : ' CNEL, roads only') : ''}</span></h2>
         {saved.map((place) => <div className="saved-row" key={place.id}>
           <button type="button" className="saved-go" onClick={() => setTarget({ lng: place.at[0], lat: place.at[1], zoom: 18, nonce: Date.now(), select: true, label: place.label.startsWith('Near ') || place.label.startsWith('Place at') ? undefined : place.label })}>
-            <i style={{ background: band(place.values[period]) ?? '#9ea3a8' }} /><span>{place.label}</span><strong>{place.values[period] === null ? '—' : `${place.values[period]!.toFixed(1)} dB`}</strong></button>
+            {(() => { const v = (context['airport-contours'] ? place.values : withoutAircraft(place.values))[period]; return <><i style={{ background: band(v) ?? '#9ea3a8' }} /><span>{place.label}</span><strong>{v === null ? '—' : `${v.toFixed(1)} dB`}</strong></>; })()}</button>
           <button type="button" className="plain-icon" aria-label={`Remove ${place.label}`} onClick={() => setSaved((list) => list.filter((s) => s.id !== place.id))}>×</button>
         </div>)}
         <p className="control-help">Loudest wall for buildings. Saved in this browser only.</p>
@@ -384,11 +408,7 @@ export default function CountyMapPage() {
           <label className="source-toggle"><input type="checkbox" checked={photo3d} onChange={(e) => { const on = e.target.checked; setPhoto3d(on); if (on) { setMode3d(true); setTarget({ ...SPLAT_VIEW, nonce: Date.now() }); } }} />Photo-real 3D showcase: Ventura Blvd and the 101</label>
           <p className="control-help">{splatStatus === 'loading' ? 'Loading about 20 MB of 3D scan…' : splatStatus === 'error' ? 'The 3D scan could not load.' : 'Built from the 2023 USGS laser scan and 2022 aerial photos. Rooftops and trees are sharp; building sides are soft because aerial scans see little of walls.'}</p>
         </section>
-        <section className="guide-section"><h2>Layers</h2>
-          <label className="source-toggle"><input type="checkbox" checked={roads} onChange={(e) => setRoads(e.target.checked)} />Roads in the model, by traffic</label>
-          <div className="context-options">{(Object.keys(CONTEXT_LABELS) as ContextId[]).map((id) => <label key={id} className={`context-toggle context-${id}`}><input type="checkbox" checked={context[id]} onChange={(e) => { setContext({ ...context, [id]: e.target.checked }); if (id === 'airport-contours' && e.target.checked) setPeriod('Q'); }} />{CONTEXT_LABELS[id]}</label>)}</div>
-          {context['airport-contours'] && <p className="control-help">Lines are the official airport contours of CNEL, a 24-hour average that counts evening noise 5 dB and night noise 10 dB louder. The 24 h view adds aircraft to the road noise: levels between the lines are interpolated, and because official maps stop at 65 CNEL, each airport&rsquo;s contours are extended to 55 CNEL as an estimate. Contours older than 2000 (Compton, El Monte, Torrance, Palmdale, Agua Dulce, Catalina) are drawn but not counted.</p>}
-        </section>
+        <LayerPanel roads={roads} setRoads={setRoads} context={context} setContext={setContext} period={period} setPeriod={setPeriod} places={places} />
         <div className="guide-actions"><button type="button" onClick={copyView}>{selectedAt ? 'Copy link to this place' : 'Copy link to this view'}</button></div>
       </div>
       <div className="guide-secondary">
@@ -401,7 +421,7 @@ export default function CountyMapPage() {
       </div>
     </aside>
     <div className="workspace-legend county-legend" aria-label="Map legend">
-      <div><span>{period === 'Q' ? 'Roads + aircraft · 24 h · dB CNEL' : `Road noise · ${PERIOD_NAME[period]} · dB LAeq`}</span></div>
+      <div><span>{period === 'Q' ? `${context['airport-contours'] ? 'Roads + aircraft' : 'Roads only'} · 24 h · dB CNEL` : `Road noise · ${PERIOD_NAME[period]} · dB LAeq`}</span></div>
       <div className="county-legend-bar" aria-hidden="true">{BAND_COLORS.map((c) => <i key={c} style={{ background: c }} />)}</div>
       <div className="county-legend-ticks" aria-hidden="true">{BAND_EDGES.map((e) => <span key={e}>{e}</span>)}</div>
       <div className="county-legend-words" aria-hidden="true"><span>quieter</span><span>louder</span></div>

@@ -1,11 +1,13 @@
 import { layers as basemapLayers, namedFlavor } from '@protomaps/basemaps';
 import type { ExpressionSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl';
 
-export type Period = 'D' | 'E' | 'N' | 'Q';  // Q: 24 h CNEL, roads + aircraft
+export type Period = 'D' | 'E' | 'N' | 'Q';  // Q: 24 h CNEL, roads + aircraft (roads only with aircraft switched off)
 export type NoiseStyle = 'field' | 'bands' | 'glow' | 'dots';
 export type BaseTheme = 'light' | 'dark' | 'grayscale' | 'satellite';
 export type ContextId = 'airport-contours' | 'heliports' | 'county-fire' | 'city-fire';
-export type StyleOptions = { layersUrl: string; period: Period; noise: NoiseStyle; mode3d: boolean; roads: boolean; context: Record<ContextId, boolean>; theme: BaseTheme; photo3d?: boolean };
+// context['airport-contours'] is the aircraft switch: it draws the contours and adds aircraft to the 24 h colors.
+// roadField: the build has field_r/glow_r (24 h roads only); older builds keep aircraft in the 24 h surface.
+export type StyleOptions = { layersUrl: string; period: Period; noise: NoiseStyle; mode3d: boolean; roads: boolean; context: Record<ContextId, boolean>; theme: BaseTheme; photo3d?: boolean; roadField?: boolean };
 
 // Absolute 5 dB bands, the same scale as the pilot page. The WHO road-traffic guideline
 // (53 dB Lden, 45 dB Lnight) falls in the yellow band.
@@ -18,7 +20,25 @@ export const CONTEXT_FILES: Record<ContextId, string> = {
   'county-fire': 'context/la_county_fire_stations.geojson',
   'city-fire': 'context/la_city_fire_stations.geojson',
 };
+export const AIRPORT_ESTIMATED_FILE = 'context/airport_noise_estimated.geojson';
+// Modeled roads: line width (px at z16) by traffic, vehicles a day. One neutral ink so the lines sit on top of
+// the noise colors instead of competing with them.
+export const ROAD_CLASSES: [number, string, number][] = [[0, '<2k', 0.8], [2000, '2–10k', 1.4], [10000, '10–30k', 2.2], [30000, '30–100k', 3.2], [100000, '100k+', 4.6]];
+export const ROAD_INK = { light: '#1d2733', dark: '#f3f5f8' };
 export const PERIOD_KEY: Record<Period, 'd' | 'e' | 'n' | 'q'> = { D: 'd', E: 'e', N: 'n', Q: 'q' };
+/** 24 h CNEL of road traffic from the day/evening/night levels (12/3/9 hours, +5 and +10 dB), as the pipeline computes it. */
+export function roadCnel(d: number | null, e: number | null, n: number | null) {
+  if (d === null || e === null || n === null) return null;
+  return Math.round(100 * Math.log10((12 * 10 ** (d / 10) + 3 * 10 ** ((e + 5) / 10) + 9 * 10 ** ((n + 10) / 10)) / 24)) / 10;
+}
+/** The same formula as a style expression on features with d/e/n (prefix '' for the loudest wall, 'l' for the least exposed). */
+const roadCnelExpr = (suffix = '') => ['*', 10, ['log10', ['/', ['+',
+  ['*', 12, ['^', 10, ['/', ['get', `d${suffix}`], 10]]],
+  ['*', 3, ['^', 10, ['/', ['+', ['get', `e${suffix}`], 5], 10]]],
+  ['*', 9, ['^', 10, ['/', ['+', ['get', `n${suffix}`], 10], 10]]]], 24]]];
+const hasDen = ['all', ['has', 'd'], ['has', 'e'], ['has', 'n']] as unknown as ExpressionSpecification;
+/** Whether the 24 h colors are roads only: aircraft switched off. */
+export const roadsOnly24h = (o: Pick<StyleOptions, 'period' | 'context'>) => o.period === 'Q' && !o.context['airport-contours'];
 // field_{d,e,n,q}.pmtiles: Terrarium raster-dem whose elevation is the level in dB. Not modeled is
 // encoded as 150 dB (older builds: 0), so smooth (linear) sampling at the coverage edge blends towards
 // a louder value, never a quieter one; both sentinels render clear.
@@ -32,6 +52,10 @@ const GRAY = '#9ea3a8';
 const expr = (value: unknown) => value as ExpressionSpecification;
 const bandStep = (input: unknown) => expr(['step', input, BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]])]);
 const AIRPORT_CLASS = expr(['to-number', ['get', 'CLASS'], 0]);
+const HELI_NAME = ['downcase', ['coalesce', ['get', 'name'], '']];
+const IS_HOSPITAL_PAD = expr(['any', ['in', 'hospital', HELI_NAME], ['in', 'medic', HELI_NAME]]);
+/** Same test as IS_HOSPITAL_PAD, for code outside the style (panel text, nearby search). */
+export const isHospitalPad = (name: unknown) => /hospital|medic/i.test(String(name ?? ''));
 
 function fieldColor(noise: NoiseStyle) {
   // Bands: 5 dB steps written as an interpolate ramp with stops 0.01 dB apart (MapLibre 6.9's color-relief
@@ -50,7 +74,8 @@ function fieldColor(noise: NoiseStyle) {
     ...BAND_COLORS.slice(1).flatMap((color, i) => [47.5 + 5 * i, color]), NOT_MODELED_ABOVE - 0.1, BAND_COLORS[BAND_COLORS.length - 1], NOT_MODELED_ABOVE, CLEAR]);
 }
 
-export function receiverColor(period: Period) {
+export function receiverColor(period: Period, roadsOnly = false) {
+  if (roadsOnly) return expr(['case', ['any', ['has', 'm'], ['!', hasDen]], GRAY, bandStep(roadCnelExpr())]);
   const key = PERIOD_KEY[period];
   return expr(['case', ['any', ['has', 'm'], ['!', ['has', key]]], GRAY, bandStep(['get', key])]);
 }
@@ -83,18 +108,23 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
   const labels = base.layers.slice(firstLabel);
   const showField = o.noise !== 'dots';
   const key = PERIOD_KEY[o.period];
+  const roadsOnly = roadsOnly24h(o);
+  const fieldBand = roadsOnly && o.roadField ? 'r' : key;
+  const ink = dark ? ROAD_INK.dark : ROAD_INK.light;
+  const roadWidth = (scale: number) => expr(['step', ['get', 'a'], ...ROAD_CLASSES.flatMap(([min, , width], i) => (i === 0 ? [width * scale] : [min, width * scale]))]);
   const visible = (on: boolean) => ({ visibility: on ? 'visible' as const : 'none' as const });
   const sources: StyleSpecification['sources'] = {
     ...base.sources,
     'terrain-dem': { type: 'raster-dem', tiles: [TERRAIN_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15, attribution: 'Terrain: Mapzen / AWS Open Data' },
     'hillshade-dem': { type: 'raster-dem', tiles: [TERRAIN_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15 },
-    field: { type: 'raster-dem', url: `pmtiles://${o.layersUrl}${o.noise === 'glow' ? 'glow' : 'field'}_${PERIOD_KEY[o.period]}.pmtiles`, encoding: 'terrarium', tileSize: 256 },
+    field: { type: 'raster-dem', url: `pmtiles://${o.layersUrl}${o.noise === 'glow' ? 'glow' : 'field'}_${fieldBand}.pmtiles`, encoding: 'terrarium', tileSize: 256 },
     receivers: { type: 'vector', url: `pmtiles://${o.layersUrl}receivers.pmtiles` },
     buildings: { type: 'vector', url: `pmtiles://${o.layersUrl}buildings.pmtiles` },
     roads: { type: 'vector', url: `pmtiles://${o.layersUrl}roads.pmtiles` },
     coverage: { type: 'geojson', data: `${o.layersUrl}coverage_outline.geojson` },
   };
   for (const id of Object.keys(CONTEXT_FILES) as ContextId[]) sources[`context-${id}`] = { type: 'geojson', data: `${o.layersUrl}${CONTEXT_FILES[id]}` };
+  sources['context-airport-estimated'] = { type: 'geojson', data: `${o.layersUrl}${AIRPORT_ESTIMATED_FILE}` };
   const noiseLayers: LayerSpecification[] = [
     { id: 'hillshade', type: 'hillshade', source: 'hillshade-dem', paint: { 'hillshade-exaggeration': dark ? 0.25 : 0.18, 'hillshade-shadow-color': dark ? '#000000' : '#5b5f66', 'hillshade-highlight-color': '#ffffff' } },
     { id: 'building-footprints', type: 'fill', source: 'buildings', 'source-layer': 'buildings', minzoom: 14, layout: visible(!o.mode3d), paint: { 'fill-color': dark ? '#d9dde3' : '#ffffff', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.12, 17, 0.32], 'fill-outline-color': dark ? 'rgba(255,255,255,0.35)' : 'rgba(60,64,72,0.35)' } },
@@ -104,30 +134,57 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
   const field: LayerSpecification = { id: 'noise-field', type: 'color-relief', source: 'field', layout: visible(showField),
     paint: { 'color-relief-color': fieldColor(o.noise), 'color-relief-opacity': o.noise === 'glow' ? 1 : 0.86, resampling: 'linear' } as never };
   const overlay: LayerSpecification[] = [
-    { id: 'roads-modeled-casing', type: 'line', source: 'roads', 'source-layer': 'roads', layout: { ...visible(o.roads), 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#0d1017' : '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 1.5, 16, 7] } },
+    // Modeled roads: thin ink lines over the noise, wider for more traffic, dashed where the traffic is a typical
+    // value (no count); fainter when zoomed out. From z15 each road is labelled with its traffic.
     { id: 'roads-modeled', type: 'line', source: 'roads', 'source-layer': 'roads', layout: { ...visible(o.roads), 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': ['step', ['get', 'a'], '#a6b8cc', 2000, '#7f97b5', 10000, '#5b6fa3', 30000, '#463f8e', 100000, '#2a1660'], 'line-width': ['interpolate', ['linear'], ['zoom'], 11, ['step', ['get', 'a'], 0.4, 10000, 0.9, 100000, 1.6], 16, ['step', ['get', 'a'], 2, 10000, 3.5, 100000, 5]], 'line-dasharray': ['case', ['==', ['get', 't'], 'default'], ['literal', [2, 1.2]], ['literal', [1, 0]]] } },
+      paint: { 'line-color': ink, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, roadWidth(0.35), 16, roadWidth(1), 19, roadWidth(1.8)],
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0.35, 14, 0.5, 17, 0.62], 'line-blur': 0.4,
+        'line-dasharray': ['case', ['==', ['get', 't'], 'default'], ['literal', [2.2, 1.6]], ['literal', [1, 0]]] } },
+    { id: 'roads-modeled-label', type: 'symbol', source: 'roads', 'source-layer': 'roads', minzoom: 15, layout: { ...visible(o.roads), 'symbol-placement': 'line', 'symbol-spacing': 360,
+        'text-field': ['concat', ['case', ['==', ['get', 't'], 'default'], '~', ''], ['case', ['>=', ['get', 'a'], 1000],
+          ['concat', ['number-format', ['/', ['get', 'a'], 1000], { 'max-fraction-digits': ['case', ['<', ['get', 'a'], 10000], 1, 0] }], 'k'], ['to-string', ['get', 'a']]], ' / day'],
+        'text-font': ['Noto Sans Medium'], 'text-size': 10, 'text-keep-upright': true, 'text-padding': 8 },
+      paint: { 'text-color': ink, 'text-opacity': 0.8, 'text-halo-color': dark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.85)', 'text-halo-width': 1.2 } },
     { id: 'buildings-3d', type: 'fill-extrusion', source: 'buildings', 'source-layer': 'buildings', minzoom: 13, layout: visible(o.mode3d && !o.photo3d),
-      paint: { 'fill-extrusion-color': ['case', ['has', key], bandStep(['get', key]), dark ? '#5a606b' : '#c9c4b8'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.94, 'fill-extrusion-vertical-gradient': true } },
+      paint: { 'fill-extrusion-color': roadsOnly ? ['case', hasDen, bandStep(roadCnelExpr()), dark ? '#5a606b' : '#c9c4b8'] : ['case', ['has', key], bandStep(['get', key]), dark ? '#5a606b' : '#c9c4b8'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.94, 'fill-extrusion-vertical-gradient': true } },
     { id: 'receivers-dots', type: 'circle', source: 'receivers', 'source-layer': 'receivers', minzoom: 12, layout: visible(o.noise === 'dots'),
-      paint: { 'circle-color': receiverColor(o.period), 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 1.2, 15, ['case', ['==', ['get', 'f'], 1], 2.8, 2.2], 18, ['case', ['==', ['get', 'f'], 1], 6, 4.5]], 'circle-opacity': 0.9,
+      paint: { 'circle-color': receiverColor(o.period, roadsOnly), 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 1.2, 15, ['case', ['==', ['get', 'f'], 1], 2.8, 2.2], 18, ['case', ['==', ['get', 'f'], 1], 6, 4.5]], 'circle-opacity': 0.9,
         'circle-stroke-color': dark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)', 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 14, 0, 16, 0.6], 'circle-pitch-alignment': 'map' } },
     // Invisible but rendered, so a click in Field/Bands/Glow still finds the nearest modeled point.
     { id: 'receivers-hit', type: 'circle', source: 'receivers', 'source-layer': 'receivers', minzoom: 14, layout: visible(o.noise !== 'dots'), paint: { 'circle-radius': 7, 'circle-opacity': 0 } },
     { id: 'coverage-outline', type: 'line', source: 'coverage', paint: { 'line-color': dark ? '#e6e9ee' : '#3b4656', 'line-width': 1.4, 'line-opacity': 0.75, 'line-dasharray': [2, 2] } },
     // Official airport CNEL contours: each polygon is the band from CLASS to CLASS + 5 dB, drawn in the
-    // same 5 dB colours as the road bands (a different metric; the panel note says so). Louder bands on top.
+    // same 5 dB colours as the noise. In the 24 h view the noise colors already include aircraft, so the fill
+    // is invisible (still clickable); in day/evening/night views it tints the aircraft areas.
     { id: 'context-airport-contours', type: 'fill', source: 'context-airport-contours', layout: { ...visible(o.context['airport-contours']), 'fill-sort-key': AIRPORT_CLASS },
-      paint: { 'fill-color': bandStep(['+', AIRPORT_CLASS, 0.1]), 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.22, 15, 0.1] } },
+      paint: { 'fill-color': bandStep(['+', AIRPORT_CLASS, 0.1]), 'fill-opacity': o.period === 'Q' ? 0 : ['interpolate', ['linear'], ['zoom'], 9, 0.22, 15, 0.1] } },
     { id: 'context-airport-contours-line', type: 'line', source: 'context-airport-contours', layout: { ...visible(o.context['airport-contours']), 'line-sort-key': AIRPORT_CLASS },
       paint: { 'line-color': bandStep(['+', AIRPORT_CLASS, 0.1]), 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 15, 1.8] } },
     { id: 'context-airport-contours-label', type: 'symbol', source: 'context-airport-contours', minzoom: 11,
       layout: { ...visible(o.context['airport-contours']), 'symbol-placement': 'line', 'symbol-spacing': 420, 'text-field': ['concat', ['to-string', AIRPORT_CLASS], ' CNEL'],
         'text-font': ['Noto Sans Medium'], 'text-size': 11, 'text-keep-upright': true },
       paint: { 'text-color': dark ? '#f4f1ea' : '#2b2340', 'text-halo-color': dark ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.9)', 'text-halo-width': 1.4 } },
-    ...(['heliports', 'county-fire', 'city-fire'] as const).map((id): LayerSpecification => ({
-      id: `context-${id}`, type: 'circle', source: `context-${id}`, layout: visible(o.context[id]),
-      paint: { 'circle-color': id === 'heliports' ? '#2b6cb0' : '#c53030', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 7], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 },
+    // Estimated contours beyond the official lines (the 24 h view uses them): dashed, same band colours.
+    { id: 'context-airport-estimated', type: 'line', source: 'context-airport-estimated', layout: visible(o.context['airport-contours']),
+      paint: { 'line-color': bandStep(['+', AIRPORT_CLASS, 0.1]), 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 15, 1.6], 'line-dasharray': [3, 2.2], 'line-opacity': 0.9 } },
+    { id: 'context-airport-estimated-label', type: 'symbol', source: 'context-airport-estimated', minzoom: 11,
+      layout: { ...visible(o.context['airport-contours']), 'symbol-placement': 'line', 'symbol-spacing': 420, 'text-field': ['concat', ['to-string', AIRPORT_CLASS], ' CNEL (est.)'],
+        'text-font': ['Noto Sans Medium'], 'text-size': 10.5, 'text-keep-upright': true },
+      paint: { 'text-color': dark ? '#d9d4e6' : '#4b4560', 'text-halo-color': dark ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.9)', 'text-halo-width': 1.4 } },
+    // Heliports (an H; red for hospital helipads, where medical helicopters land) and fire stations (sirens),
+    // drawn as icons (map-icons.ts) with names from street zoom.
+    { id: 'context-heliports', type: 'symbol', source: 'context-heliports', layout: { ...visible(o.context.heliports),
+        'icon-image': ['case', IS_HOSPITAL_PAD, 'ql-heliport-hospital', 'ql-heliport'],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.55, 15, 1], 'icon-allow-overlap': true,
+        'text-field': ['step', ['zoom'], '', 14, ['coalesce', ['get', 'name'], '']], 'text-font': ['Noto Sans Medium'], 'text-size': 11,
+        'text-anchor': 'top', 'text-offset': [0, 1.2], 'text-optional': true, 'text-max-width': 9 },
+      paint: { 'text-color': dark ? '#dfe7f5' : '#1f3d6b', 'text-halo-color': dark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.92)', 'text-halo-width': 1.4 } },
+    ...(['county-fire', 'city-fire'] as const).map((id): LayerSpecification => ({
+      id: `context-${id}`, type: 'symbol', source: `context-${id}`, layout: { ...visible(o.context[id]),
+        'icon-image': 'ql-fire', 'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.5, 15, 0.95], 'icon-allow-overlap': true,
+        'text-field': ['step', ['zoom'], '', 14, ['concat', 'Station ', ['to-string', ['coalesce', ['get', 'station'], '']]]], 'text-font': ['Noto Sans Medium'], 'text-size': 11,
+        'text-anchor': 'top', 'text-offset': [0, 1.2], 'text-optional': true },
+      paint: { 'text-color': dark ? '#f6dede' : '#7d1f1f', 'text-halo-color': dark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.92)', 'text-halo-width': 1.4 },
     })),
     { id: 'selected-point', type: 'circle', source: 'receivers', 'source-layer': 'receivers', filter: ['==', ['to-string', ['get', 'k']], ''], paint: { 'circle-radius': 9, 'circle-color': CLEAR, 'circle-stroke-color': dark ? '#ffffff' : '#171b22', 'circle-stroke-width': 2.4 } },
     { id: 'selected-building', type: 'line', source: 'buildings', 'source-layer': 'buildings', filter: ['==', ['to-string', ['get', 'k']], ''], paint: { 'line-color': dark ? '#ffffff' : '#171b22', 'line-width': 3 } },
