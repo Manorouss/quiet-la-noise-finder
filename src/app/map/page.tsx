@@ -81,7 +81,7 @@ function Inspector({ selection, period, onClose }: { selection: Selection | null
     return <><div className="receiver-heading"><span>Building · about {selection.height.toFixed(0)} m tall</span>{close}</div>
       <AddressLine at={selection.at} />
       <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? 'dB CNEL, loudest wall · 24 h' : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
-      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">Loudest of {selection.count} modeled points around the walls. The quietest side of a building is often 10 dB or more below its loudest side. Switch to Dots to see each wall.</p></>;
+      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">Loudest of {selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side. Switch to Dots to see each wall.</p></>;
   }
   if (selection.kind === 'road') {
     return <><div className="receiver-heading"><span>Road in the model</span>{close}</div>
