@@ -21,6 +21,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import horns  # noqa: E402
 import rail_vehicles  # noqa: E402
 
 PROJECT = HERE.parents[4]
@@ -38,12 +39,50 @@ def fc(features):
     return {"type": "FeatureCollection", "crs": {"type": "name", "properties": {"name": "EPSG:26911"}}, "features": features}
 
 
+def calibrate_horn(args) -> int:
+    """One train per hour sounding its horn at a crossing; receiver 50 ft from the track at the crossing."""
+    from shapely.geometry import LineString, Point
+    attempt = ROOT / f"calibration-horn-g{int(args.ground * 100):03d}-{time.strftime('%Y%m%d%H%M%S')}"
+    inp = attempt / "input"
+    inp.mkdir(parents=True)
+    rail_vehicles.write(attempt / "data", args.traction)
+    track = LineString([(X0 - 1500, Y0), (X0 + 1500, Y0)])
+    sec = {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [list(c) for c in track.coords]},
+           "properties": {"PK": 1, "IDSECTION": 1, "NTRACK": 1, "TRACKSPD": 160.0, "TRANSFER": "EU5", "ROUGHNESS": "EU4", "IMPACT": "", "CURVATURE": 0,
+                          "BRIDGE": "", "COMSPD": 160.0, "ISTUNNEL": 0, "TRACKSPC": 2.0}}
+    (inp / "rail_sections.geojson").write_text(json.dumps(fc([sec])))
+    with (inp / "rail_traffic.csv").open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["IDTRAFFIC", "IDSECTION", "TRAINTYPE", "TRAINSPD", "TDAY", "TEVENING", "TNIGHT"])
+        w.writeheader()
+        w.writerow({"IDTRAFFIC": 1, "IDSECTION": 1, "TRAINTYPE": "US_METROLINK", "TRAINSPD": MPH50, "TDAY": 0.0, "TEVENING": 0.0, "TNIGHT": 0.0})
+    line = horns.horn_line(track, Point(X0, Y0), MPH50)
+    (inp / "horn_sources.geojson").write_text(json.dumps(fc([horns.feature(line, 1, {"D": 1.0, "E": 0.0, "N": 0.0}, MPH50)])))
+    (inp / "receivers.geojson").write_text(json.dumps(fc([{"type": "Feature", "geometry": {"type": "Point", "coordinates": [X0, Y0 + FT50, 1.5]}, "properties": {"PK": 1}}])))
+    b = X0 + 20000
+    (inp / "buildings.geojson").write_text(json.dumps(fc([{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[b, Y0], [b + 10, Y0], [b + 10, Y0 + 10], [b, Y0 + 10], [b, Y0]]]}, "properties": {"PK": 1, "HEIGHT": 5.0}}])))
+    g = [[X0 - 30000, Y0 - 30000], [X0 + 30000, Y0 - 30000], [X0 + 30000, Y0 + 30000], [X0 - 30000, Y0 + 30000], [X0 - 30000, Y0 - 30000]]
+    (inp / "ground.geojson").write_text(json.dumps(fc([{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [g]}, "properties": {"PK": 1, "G": args.ground}}])))
+    (attempt / "rail_manifest.json").write_text(json.dumps({"table_prefix": "HORNCAL", "purpose": "FTA horn reference calibration"}))
+    subprocess.run([sys.executable, str(HERE / "run_rail_attempt.py"), str(attempt), "--port", str(args.port)], check=True)
+    with (attempt / "export/receivers_level_rail.csv").open() as f:
+        level = next(float(r["LAEQ"]) for r in csv.DictReader(f) if r["PERIOD"] == "D")
+    sel = level + 10 * math.log10(3600)
+    calibrated = horns.HORN_LW_DBA + (110.0 - sel)
+    print(f"\nhorn (W = {horns.HORN_LW_DBA} dBA, line {line.length:.0f} m at 50 mph): SEL at 50 ft = {sel:.1f} dBA (FTA 110); "
+          f"calibrated HORN_LW_DBA = {calibrated:.1f}")
+    (attempt / "calibration.json").write_text(json.dumps({"horn_lw_dba": horns.HORN_LW_DBA, "sel_dba": round(sel, 1), "calibrated_lw_dba": round(calibrated, 1)}, indent=1))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--traction", default=rail_vehicles.TRACTION)
     parser.add_argument("--ground", type=float, default=0.5)
     parser.add_argument("--port", type=int, default=9140)
+    parser.add_argument("--horn", action="store_true", help="calibrate the horn source instead (FTA: SEL 110 dBA at 50 ft)")
     args = parser.parse_args()
+    if args.horn:
+        return calibrate_horn(args)
     attempt = ROOT / f"calibration-{args.traction.lower()}-g{int(args.ground * 100):03d}-{time.strftime('%Y%m%d%H%M%S')}"
     inp = attempt / "input"
     inp.mkdir(parents=True)

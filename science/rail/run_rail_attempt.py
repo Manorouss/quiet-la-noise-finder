@@ -7,7 +7,8 @@ rail_manifest.json ({"table_prefix": ...}). Steps, all through the engine's WPS 
 run_attempt.py):
 
   1. import the tables; Railway_Emission_from_Traffic -> LW_RAILWAY (CNOSSOS-EU, third octaves, D/E/N)
-  2. export LW_RAILWAY and correct the source heights: NoiseModelling 6.0 writes the rolling-noise source
+  2. export LW_RAILWAY and correct the source heights (and add the horn sources of input/horn_sources.geojson,
+     horns.py): NoiseModelling 6.0 writes the rolling-noise source
      at 4 m (EmissionTableGenerator, "heightSource = 4" for ROLLING); CNOSSOS-EU puts it on the low source
      A with traction A and aerodynamic A, which NoiseModelling places at 0.5 m. Re-import as the sources.
   3. Noise_level_from_source with the road propagation contract (run_attempt.py: vertical diffraction off,
@@ -56,6 +57,21 @@ def fix_heights(exported: Path, out: Path) -> dict:
     doc.setdefault("crs", {"type": "name", "properties": {"name": "EPSG:26911"}})
     out.write_text(json.dumps(doc))
     return {"sources": len(doc["features"]), "rolling_sources_lowered": changed}
+
+
+def add_horns(horns: Path, sources: Path) -> int:
+    """Append the horn line sources (horns.py; prepared with the inputs) to the corrected rail sources."""
+    if not horns.exists():
+        return 0
+    doc = json.loads(sources.read_text())
+    extra = json.loads(horns.read_text())["features"]
+    pk = max((int(f["properties"]["PK"]) for f in doc["features"]), default=0)
+    for f in extra:
+        pk += 1
+        f["properties"]["PK"] = pk
+        doc["features"].append(f)
+    sources.write_text(json.dumps(doc))
+    return len(extra)
 
 
 def main() -> int:
@@ -121,6 +137,7 @@ def main() -> int:
             server.shutdown()
         wps("export_emission", "Import_and_Export:Export_Table", {"tableToExport": "LW_RAILWAY", "exportPath": str(export / "lw_railway_engine.geojson")})
         heights = fix_heights(export / "lw_railway_engine.geojson", inp / "rail_sources.geojson")
+        heights["horn_sources"] = add_horns(inp / "horn_sources.geojson", inp / "rail_sources.geojson")
         wps("import_sources", "Import_and_Export:Import_File",
             {"pathFile": str(inp / "rail_sources.geojson"), "tableName": f"{prefix}_RAILSRC", "inputSRID": "26911", "ifTableExists": "Overwrite"})
         params = dict(runner.propagation(prefix))
@@ -128,7 +145,17 @@ def main() -> int:
         params.update(tableSources=f"{prefix}_RAILSRC", confThreadNumber=str(args.threads), confMaxError="0.0", confDiffVertical="false")
         if not has_dem:
             params.pop("tableDEM", None)
-        wps("propagation", "NoiseModelling:Noise_level_from_source", params)
+        # NoiseModelling 6.0 can write a receiver twice when it lies exactly on the edge of two of its computation
+        # cells ("Unique index or primary key violation" on RECEIVERS_LEVEL); the cells follow the source extent and
+        # the maximum distance, so a retry with 1499.7 / 1500.3 m moves the edges (no visible change in levels).
+        for attempt_no, reach in enumerate(("1500", "1499.7", "1500.3")):
+            params["confMaxSrcDist"] = reach
+            try:
+                wps("propagation" if attempt_no == 0 else f"propagation_retry{attempt_no}", "NoiseModelling:Noise_level_from_source", params)
+                break
+            except RuntimeError:
+                if attempt_no == 2 or "Unique index or primary key violation" not in (provenance / "engine.log").read_text(errors="replace"):
+                    raise
         wps("export_levels", "Import_and_Export:Export_Table",
             {"tableToExport": "(SELECT * FROM RECEIVERS_LEVEL ORDER BY IDRECEIVER, PERIOD)", "exportPath": str(export / "receivers_level_rail.csv")})
         (attempt / "rail_run.json").write_text(json.dumps({"status": "completed", "seconds": round(time.time() - started), "heights": heights,

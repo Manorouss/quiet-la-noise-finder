@@ -1,6 +1,8 @@
 {
  "about": "San Fernando Valley main lines (OSM usage=main): Ventura Subdivision (Metrolink VC Line, Amtrak, UP) and Valley Subdivision (Metrolink AV Line, UP). Passenger counts: weekly GTFS averages, week of 2026-10-05 (gtfs_counts.py), trains per hour by CNEL period, both directions. Freight: FRA crossing inventory (2025 counts) thru trains minus passenger trains per day, spread evenly over 24 h.",
  "osm": "implementation/work/source_cache/rail/osm_rail_sfv_main.json",
+ "crossings": "implementation/work/source_cache/rail/fra_crossings_valley_ventura.json",
+ "version": 2,
  "stations": {
   "Chatsworth": [-118.599411, 34.253197], "Northridge": [-118.545097, 34.230614], "Van Nuys": [-118.448219, 34.211559],
   "Burbank Airport South": [-118.3526, 34.192795], "Burbank Airport North": [-118.35, 34.206389], "Sun Valley": [-118.373398, 34.222401],

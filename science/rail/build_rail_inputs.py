@@ -28,6 +28,7 @@ from shapely.geometry import LineString, Point, box
 from shapely.ops import substring
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import horns  # noqa: E402
 import rail_vehicles  # noqa: E402
 
 PROJECT = Path(__file__).resolve().parents[5]
@@ -74,6 +75,50 @@ def tracks(cfg: dict) -> list[tuple[dict, LineString, dict, int]]:
     return out
 
 
+def load_crossings(cfg: dict) -> list[dict]:
+    """At-grade crossings where horns sound (FRA inventory; whistle ban "24 hr" = quiet zone; "Partial" = no horns at night).
+
+    Private crossings are not covered by the federal Train Horn Rule; horns are assumed there from 7 to 22 h only:
+    at Metro site 66 (15018 Marson St, ~70 m from the private "All Aboard" crossing) the measured night hours stay
+    at 36-48 dBA while one horn would give ~64, and day / evening match the model with horns within 2 dB."""
+    if not cfg.get("crossings"):
+        return []
+    out = []
+    for r in json.loads((PROJECT / cfg["crossings"]).read_text()):
+        ban = str(r.get("whistleban") or "").lower()
+        if "24" in ban or not r.get("latitude"):
+            continue
+        private = str(r.get("crossingtype", "")).lower().startswith("priv")
+        out.append({"id": r.get("crossingid", ""), "street": r.get("street", ""), "night": "partial" not in ban and not private,
+                    "point": Point(TO_UTM.transform(float(r["longitude"]), float(r["latitude"])))})
+    return out
+
+
+def service_speed(s: dict, track: float, at: Point, stations: dict) -> float:
+    if s["stops"]:
+        d = min(at.distance(stations[name]) for name in s["stops"])
+        return min(track, math.sqrt(2 * ACCEL * max(d, 30.0)) * 3.6)
+    return min(track, s["speed_kmh"])
+
+
+def horn_lines(line: LineString, cls: dict, ntracks: int, cfg: dict, stations: dict, crossings: list[dict], way: dict, reach) -> list[dict]:
+    """Horn line sources on this track at every crossing it passes (horns.py)."""
+    out = []
+    track = speed_kmh(way["tags"].get("maxspeed"), cfg.get("default_track_kmh", 113.0))
+    for c in crossings:
+        if line.distance(c["point"]) > horns.SNAP_M:
+            continue
+        rates = {p: sum(cfg["services"][k][p] for k in cls["services"]) / ntracks for p in "DEN"}
+        if not c["night"]:
+            rates["N"] = 0.0
+        total = sum(cfg["services"][k]["D"] for k in cls["services"])
+        speed = sum(cfg["services"][k]["D"] * service_speed(cfg["services"][k], track, c["point"], stations) for k in cls["services"]) / total
+        horn = horns.horn_line(line, c["point"], speed)
+        if horn is not None and horn.intersects(reach):
+            out.append(horns.feature(horn, 0, rates, speed, crossing=f'{c["id"]} {c["street"]}'.strip()))
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--road-attempt", type=Path, required=True)
@@ -87,7 +132,11 @@ def main() -> int:
     reach = box(min(xs) - REACH_M, min(ys) - REACH_M, max(xs) + REACH_M, max(ys) + REACH_M)
     stations = {name: Point(TO_UTM.transform(*lonlat)) for name, lonlat in cfg["stations"].items()}
     features, traffic, pk = [], [], 0
+    crossings = load_crossings(cfg)
+    horn_features = []
     for w, line, cls, ntracks in tracks(cfg):
+        if line.intersects(reach.buffer(horns.HORN_MAX_M)):
+            horn_features += horn_lines(line, cls, ntracks, cfg, stations, crossings, w, reach)
         if not line.intersects(reach):
             continue
         track = speed_kmh(w["tags"].get("maxspeed"), cfg.get("default_track_kmh", 113.0))
@@ -124,6 +173,10 @@ def main() -> int:
     for name in ("buildings.geojson", "receivers.geojson", "ground.geojson", "terrain.asc"):
         shutil.copy2(args.road_attempt / "input" / name, out / "input" / name)
     rail_vehicles.write(out / "data")
+    if horn_features:
+        for i, f in enumerate(horn_features, 1):
+            f["properties"]["PK"] = i
+        (out / "input/horn_sources.geojson").write_text(json.dumps({"type": "FeatureCollection", "crs": {"type": "name", "properties": {"name": "EPSG:26911"}}, "features": horn_features}))
     (out / "input/rail_sections.geojson").write_text(json.dumps({"type": "FeatureCollection", "crs": {"type": "name", "properties": {"name": "EPSG:26911"}}, "features": features}))
     with (out / "input/rail_traffic.csv").open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(traffic[0]))
@@ -131,8 +184,9 @@ def main() -> int:
         writer.writerows(traffic)
     cell = args.road_attempt.name.split("county-la-")[-1].split("-g")[0]
     (out / "rail_manifest.json").write_text(json.dumps({"table_prefix": "RAIL_" + cell.upper().replace("-", "_"), "cell": cell, "road_attempt": args.road_attempt.name,
-                                                        "config": args.config.name, "sections": len(features), "traffic_rows": len(traffic)}, indent=1))
-    print(json.dumps({"out": str(out), "sections": len(features), "traffic_rows": len(traffic)}))
+                                                        "config": args.config.name, "config_version": cfg.get("version", 1), "sections": len(features), "traffic_rows": len(traffic),
+                                                        "horn_lines": len(horn_features)}, indent=1))
+    print(json.dumps({"out": str(out), "sections": len(features), "traffic_rows": len(traffic), "horn_lines": len(horn_features)}))
     return 0
 
 

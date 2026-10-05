@@ -5,7 +5,7 @@ For each tile whose newest road run (release_county_tiles.completed_runs) has re
 track in the line config, and no rail result for that road run yet: prepare a rail attempt from the road run
 (build_rail_inputs.py), run it (run_rail_attempt.py, Mac engine on its own port, few threads), and write
 work/rail/results/<tile>.json = {"road_attempt", "config", "levels": {source_receiver_key: [D, E, N] LAeq}}.
-A new road run for a tile (e.g. a newer model) makes its rail result stale, and the tile is redone.
+A new road run for a tile (e.g. a newer model) or a new line-config version makes its rail result stale, and the tile is redone.
 Waits while implementation/work/pipeline_control/pause-mac exists (the owner's pause); stops when
 implementation/work/pipeline_control/STOP-rail exists. When the queue first runs empty it writes
 work/rail/RELEASE: from then on the map build adds trains (before, a half-done line would show seams), and
@@ -55,8 +55,10 @@ def todo(config: Path) -> list[tuple[str, Path]]:
         if not box(x - 1500, y - 1500, x + 2500, y + 2500).intersects(net):
             continue
         result = RAIL / "results" / f"{tile}.json"
-        if result.exists() and json.loads(result.read_text()).get("road_attempt") == run.name:
-            continue
+        if result.exists():
+            done = json.loads(result.read_text())
+            if done.get("road_attempt") == run.name and done.get("config_version", 1) == cfg.get("version", 1):
+                continue
         out.append((tile, run))
     return out
 
@@ -68,7 +70,8 @@ def collect(attempt: Path, tile: str, run: Path, config: Path) -> dict:
         for r in csv.DictReader(f):
             if r["PERIOD"] in ("D", "E", "N"):
                 levels.setdefault(keys[int(r["IDRECEIVER"])], [None, None, None])["DEN".index(r["PERIOD"])] = round(float(r["LAEQ"]), 2)
-    return {"tile": tile, "road_attempt": run.name, "rail_attempt": attempt.name, "config": config.name,
+    version = json.loads(config.read_text()).get("version", 1)
+    return {"tile": tile, "road_attempt": run.name, "rail_attempt": attempt.name, "config": config.name, "config_version": version,
             "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "levels": levels}
 
 
@@ -102,7 +105,8 @@ def main() -> int:
         built = subprocess.run([str(GEO_PYTHON), str(HERE / "build_rail_inputs.py"), "--road-attempt", str(run), "--config", str(args.config), "--out", str(attempt)],
                                capture_output=True, text=True)
         if built.returncode == 3:
-            (RAIL / "results" / f"{tile}.json").write_text(json.dumps({"tile": tile, "road_attempt": run.name, "config": args.config.name, "levels": {}, "note": "no track in range"}))
+            (RAIL / "results" / f"{tile}.json").write_text(json.dumps({"tile": tile, "road_attempt": run.name, "config": args.config.name,
+                                                                       "config_version": json.loads(args.config.read_text()).get("version", 1), "levels": {}, "note": "no track in range"}))
             log(f"skip {tile}: no track in range")
             continue
         if built.returncode != 0:
