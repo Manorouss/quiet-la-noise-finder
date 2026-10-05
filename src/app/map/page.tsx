@@ -123,8 +123,8 @@ function Inspector({ selection, period, onClose, covered, percentiles }: { selec
       <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? 'dB CNEL, loudest wall · 24 h' : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
       <LevelWords value={selection.values[period]} period={period} />
       <Compare value={selection.values[period]} period={period} percentiles={percentiles} />
-      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">{selection.quietest[period] !== null && selection.values[period] !== null
-        ? `Least exposed wall: ${selection.quietest[period]!.toFixed(1)} dB, ${(selection.values[period]! - selection.quietest[period]!).toFixed(0)} dB below the loudest (${selection.count} modeled points around the walls). Bedrooms on the quiet side hear less.`
+      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">{selection.lowest[period] !== null && selection.values[period] !== null
+        ? `Least exposed wall: ${selection.lowest[period]!.toFixed(1)} dB, ${(selection.values[period]! - selection.lowest[period]!).toFixed(0)} dB below the loudest (${selection.count} modeled points around the walls). Bedrooms on the quiet side hear less.`
         : `Loudest of ${selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side.`} Switch to Dots to see each wall.</p></>;
   }
   if (selection.kind === 'empty') {
