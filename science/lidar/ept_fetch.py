@@ -41,7 +41,7 @@ CACHE_DEPTH = 9  # nodes at or above this level are shared by many requests; cac
 def get(url: str, cache: Path | None = None) -> bytes:
     if cache is not None and cache.exists():
         return cache.read_bytes()
-    data = subprocess.run(["curl", "-s", "-f", "--retry", "4", "--retry-delay", "3", "--max-time", "300", url],
+    data = subprocess.run(["curl", "-s", "-f", "--retry", "6", "--retry-delay", "5", "--retry-all-errors", "--max-time", "300", url],
                           capture_output=True, check=True).stdout
     if cache is not None:
         cache.parent.mkdir(parents=True, exist_ok=True)

@@ -302,7 +302,7 @@ def main() -> int:
     corridor_buildings(out, freeways)
     todo = [k for k in (args.blocks or plan["blocks"]) if not (out / "blocks" / k / "done.json").exists()]
     print(f"{stamp()} {len(todo)} blocks to build", file=log, flush=True)
-    failures = 0
+    failures, tries = 0, {}
     with ProcessPoolExecutor(args.jobs, initializer=init_worker, initargs=(str(out),)) as pool:
         pending = {}
         queue = list(todo)
@@ -325,9 +325,14 @@ def main() -> int:
                 s = done.result()
                 print(f"{stamp()} done {key}: {s['wall_km']} km walls, {s['bridges_with_deck']}/{s['bridges']} bridge decks, "
                       f"{s['points_walls'] + s['points_bridges']:,} points, {s['seconds']} s", file=log, flush=True)
-            except Exception as exc:  # keep going; the block stays without done.json and is retried on the next run
-                failures += 1
-                print(f"{stamp()} FAILED {key}: {exc!r}"[:600], file=log, flush=True)
+            except Exception as exc:  # keep going: retry the block later in this run, then on the next run
+                tries[key] = tries.get(key, 0) + 1
+                if tries[key] < 3:
+                    queue.append(key)
+                    print(f"{stamp()} RETRY {key} later (try {tries[key]}): {exc!r}"[:600], file=log, flush=True)
+                else:
+                    failures += 1
+                    print(f"{stamp()} FAILED {key}: {exc!r}"[:600], file=log, flush=True)
     print(f"{stamp()} stopped: {failures} failures", file=log, flush=True)
     return 1 if failures else 0
 
