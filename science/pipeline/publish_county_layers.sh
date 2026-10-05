@@ -1,7 +1,8 @@
 #!/bin/bash
 # Keep the public county map current: every INTERVAL seconds (default 2 h) build assets for
 # newly computed tiles (release_county_tiles.py, which runs the ceiling QA), rebuild the PMTiles
-# layers, and upload changed files to the R2 bucket that /map reads. Stops when
+# layers, and upload the files whose checksum differs from the published layers.json to the R2 bucket
+# that /map reads. Stops when
 # implementation/work/pipeline_control/STOP-publish exists. Never publishes a failed release.
 #
 #   publish_county_layers.sh            # loop
@@ -13,6 +14,7 @@ LAYERS=$ROOT/implementation/work/county_layers/current
 CONTROL=$ROOT/implementation/work/pipeline_control
 LOG=$CONTROL/publish.log
 BUCKET=quiet-la-data/county
+PUBLIC=https://pub-11d80fa8a6864ca29d637d47515be7cc.r2.dev/county
 INTERVAL=${INTERVAL:-7200}
 mkdir -p "$CONTROL"
 cd "$ROOT/implementation/apps/quiet-la-web"
@@ -32,19 +34,37 @@ upload() {  # upload <relative path> <cache seconds>
   fi
 }
 
+changed_files() {  # files whose sha256 differs from the layers.json now on R2 (all data files if it cannot be read)
+  curl -s -f --max-time 60 "$PUBLIC/layers.json" -o "$CONTROL/published_layers.json" || rm -f "$CONTROL/published_layers.json"
+  python3 - "$LAYERS/layers.json" "$CONTROL/published_layers.json" <<'PY'
+import json, sys
+new = json.load(open(sys.argv[1]))["files"]
+try:
+    old = json.load(open(sys.argv[2]))["files"]
+except (OSError, ValueError, KeyError):
+    old = {name: {} for name in new if name.startswith(("basemap/", "context/"))}  # uploaded once by hand
+for name, meta in new.items():
+    prev = old.get(name)
+    if prev is not None and (prev.get("sha256") == meta["sha256"] or (not prev and name.startswith(("basemap/", "context/")))):
+        continue
+    print(name)
+PY
+}
+
 publish_once() {
-  local before after
-  before=$(python3 -c "import json; print(len(json.load(open('$LAYERS/layers.json'))['tiles']))" 2>/dev/null || echo 0)
+  local changed tiles
   if ! python3 "$HERE/release_county_tiles.py" --jobs 2 >> "$LOG" 2>&1; then
     echo "$(date -u +%FT%TZ) release FAILED; nothing published" >> "$LOG"; return 1
   fi
-  after=$(python3 -c "import json; print(len(json.load(open('$LAYERS/layers.json'))['tiles']))")
-  if [ "$after" = "$before" ]; then echo "$(date -u +%FT%TZ) no new tiles ($after)" >> "$LOG"; return 0; fi
+  tiles=$(python3 -c "import json; print(len(json.load(open('$LAYERS/layers.json'))['tiles']))")
+  # Replaced tiles (a newer model for the same cell) change files without changing the tile count.
+  changed=$(changed_files)
+  if [ -z "$changed" ]; then echo "$(date -u +%FT%TZ) no changes ($tiles tiles)" >> "$LOG"; return 0; fi
   # Data files first, layers.json last, so a reader never sees a manifest ahead of its data.
-  for f in receivers.pmtiles buildings.pmtiles roads.pmtiles field_d.pmtiles field_e.pmtiles field_n.pmtiles glow_d.pmtiles glow_e.pmtiles glow_n.pmtiles coverage.geojson coverage_outline.geojson; do
+  for f in $changed; do
     upload "$f" 300 || { echo "$(date -u +%FT%TZ) upload FAILED: $f" >> "$LOG"; return 1; }
   done
-  upload layers.json 60 && echo "$(date -u +%FT%TZ) published $after tiles (was $before)" >> "$LOG"
+  upload layers.json 60 && echo "$(date -u +%FT%TZ) published $tiles tiles (changed: $(echo $changed | tr '\n' ' '))" >> "$LOG"
 }
 
 if [ "${1:-}" = "--once" ]; then publish_once; exit $?; fi
