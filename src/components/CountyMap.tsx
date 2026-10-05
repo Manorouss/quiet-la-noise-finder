@@ -8,8 +8,8 @@ import { createSplatLayer } from '@/lib/splat-layer';
 
 export type Values = Record<Period, number | null>;
 export type Selection =
-  | { kind: 'receiver'; key: string; facade: boolean; onRoad: boolean; masked: boolean; values: Values; aircraft: number | null; building: string | null; at: [number, number] }
-  | { kind: 'building'; key: string; height: number; values: Values; lowest: Values; aircraft: number | null; count: number; at: [number, number]; address?: string }
+  | { kind: 'receiver'; key: string; facade: boolean; onRoad: boolean; masked: boolean; values: Values; aircraft: number | null; rail: number | null; building: string | null; at: [number, number] }
+  | { kind: 'building'; key: string; height: number; values: Values; lowest: Values; aircraft: number | null; rail: number | null; count: number; at: [number, number]; address?: string }
   | { kind: 'road'; name: string; aadt: number; mtfcc: string; basis: string }
   | { kind: 'context'; layer: ContextId; title: string; detail: string }
   | { kind: 'empty'; at: [number, number] };  // nothing modeled under the click or search
@@ -94,7 +94,7 @@ function selectNear(map: MapLibreMap, lng: number, lat: number, onSelect: (selec
   if (!best) { onSelect({ kind: 'empty', at: [lng, lat] }); return; }
   const p = best.properties as Record<string, unknown>;
   // Keep the building's own centre (a shared link then finds its parcel); show the searched address if any.
-  onSelect({ kind: 'building', key: String(p.k), height: Number(p.h), values: valuesOf(p), lowest: lowestOf(p), aircraft: num(p.a), count: Number(p.c ?? 0), at: footprintCentre(best.geometry, [lng, lat]), address });
+  onSelect({ kind: 'building', key: String(p.k), height: Number(p.h), values: valuesOf(p), lowest: lowestOf(p), aircraft: num(p.a), rail: num(p.t), count: Number(p.c ?? 0), at: footprintCentre(best.geometry, [lng, lat]), address });
 }
 
 export default function CountyMap(props: Props) {
@@ -172,14 +172,14 @@ export default function CountyMap(props: Props) {
         const p = (f: MapGeoJSONFeature) => f.properties as Record<string, unknown>;
         const clicked: [number, number] = [event.lngLat.lng, event.lngLat.lat];
         const selectBuilding = (f: MapGeoJSONFeature) => propsRef.current.onSelect({
-          kind: 'building', key: String(p(f).k), height: Number(p(f).h), values: valuesOf(p(f)), lowest: lowestOf(p(f)), aircraft: num(p(f).a), count: Number(p(f).c ?? 0), at: footprintCentre(f.geometry, clicked),
+          kind: 'building', key: String(p(f).k), height: Number(p(f).h), values: valuesOf(p(f)), lowest: lowestOf(p(f)), aircraft: num(p(f).a), rail: num(p(f).t), count: Number(p(f).c ?? 0), at: footprintCentre(f.geometry, clicked),
         });
         if (propsRef.current.mode3d && building) {
           selectBuilding(building);
         } else if (receiver) {
           const r = p(receiver);
           const at = (receiver.geometry as GeoJSON.Point).coordinates as [number, number];
-          propsRef.current.onSelect({ kind: 'receiver', key: String(r.k), facade: r.f === 1, onRoad: r.o === 1, masked: r.m === 1, values: valuesOf(r), aircraft: num(r.a), building: r.b ? String(r.b) : null, at: [at[0], at[1]] });
+          propsRef.current.onSelect({ kind: 'receiver', key: String(r.k), facade: r.f === 1, onRoad: r.o === 1, masked: r.m === 1, values: valuesOf(r), aircraft: num(r.a), rail: num(r.t), building: r.b ? String(r.b) : null, at: [at[0], at[1]] });
         } else if (building) {
           selectBuilding(building);
         } else if (road) {

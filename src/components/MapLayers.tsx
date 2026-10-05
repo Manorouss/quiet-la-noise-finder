@@ -163,6 +163,11 @@ function TrafficGlyph() {
     <path d="M3 21h22" stroke="#1d2733" strokeOpacity=".55" strokeWidth="1.6" strokeLinecap="round" />
   </svg>;
 }
+function TrainGlyph() {
+  return <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><g fill="none" stroke="#4d5a66" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="7.5" y="4" width="13" height="15" rx="3.5" /><path d="M7.5 12h13M11 23l-2.5 2.5M17 23l2.5 2.5" /><circle cx="11" cy="16" r=".9" fill="#4d5a66" /><circle cx="17" cy="16" r=".9" fill="#4d5a66" /><path d="M10 19.5l-1 3.5h10l-1-3.5" />
+  </g></svg>;
+}
 function HelicopterGlyph() {
   return <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><g fill="none" stroke="#7b8590" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 7h18M14 7v3" /><path d="M9.5 15.5c0-3 2.2-5.5 5.4-5.5 3 0 5.1 2.4 5.1 5.4V18h-7.6c-1.6 0-2.9-1.1-2.9-2.5z" /><path d="M9.6 15H4M2.5 12.5l1.5 2.5M11 21h9M13 18v3M18 18v3" />
@@ -203,6 +208,9 @@ export function LayerPanel({ roads, setRoads, context, setContext, period, setPe
       <div className="legend-chips">{[55, 60, 65, 70, 75].map((level) => <span key={level} style={{ background: bandColor(level + 0.1), color: level >= 65 ? '#fff' : '#2b2340' }}>{level}</span>)}<em>dB CNEL</em></div>
       <div className="legend-key"><span><i className="key-line" />Official</span><span><i className="key-line is-dashed" />Estimated</span></div>
       <p>{period === 'Q' ? 'Added to the 24 h colors. Off: road traffic alone.' : 'Counts in the 24 h view only; day, evening and night are roads.'}</p>
+    </Row>
+    <Row icon={<TrainGlyph />} title="Trains" status="Included" anchor={anchor}>
+      <p>Metrolink, Amtrak and freight on the Valley main lines (Ventura and Antelope Valley), in every view. Horns at crossings and other lines are not in yet.</p>
     </Row>
     <Row icon={<HelicopterGlyph />} title="Helicopters" status="Not yet" anchor={anchor}>
       <p>Not modeled yet: LA has no official helicopter contours or routes. It needs flight tracks (ADS-B).</p>

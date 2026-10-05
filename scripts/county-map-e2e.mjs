@@ -174,6 +174,7 @@ async function searchAddress(page, typed, pick) {
   await page.hover('.context-heliports .ml-main');
   const card = await page.waitForSelector('.context-heliports .ml-card.is-open', { timeout: 3000 }).then((el) => el.boundingBox()).catch(() => null);
   check('hover card opens beside the panel', card && card.x >= 328, JSON.stringify(card));
+  check('trains listed as a noise source', /Trains\s*Included/.test(await text(page, '.ml-panel') ?? ''));
   // Heliports and fire stations draw as icons (Van Nuys Airport has both nearby).
   const heliTop = await switchTop('.context-heliports .ml-switch');
   await page.click('.context-heliports .ml-main');

@@ -99,6 +99,11 @@ function Compare({ value, period, percentiles, aircraft }: { value: number | nul
   return <p className="receiver-meta compare-line">{text} ({period === 'Q' ? '24 h' : PERIOD_NAME[period].toLowerCase()}, loudest wall).</p>;
 }
 
+function Trains({ value }: { value: number | null }) {
+  if (value === null) return null;
+  return <p className="receiver-meta">Trains here: about {value.toFixed(0)} dB CNEL on their own; included in every value. Horns at crossings are not modeled yet.</p>;
+}
+
 function Aircraft({ value, included }: { value: number | null; included: boolean }) {
   if (value === null) return null;
   return <p className="receiver-meta">Aircraft here: about {value.toFixed(0)} dB CNEL, estimated from the official airport contours; {included ? 'included in the 24 h value.' : 'switched off, so not in the 24 h value.'}</p>;
@@ -152,6 +157,7 @@ function Inspector({ selection, period, aircraft, onClose, covered, percentiles,
       {!selection.masked && <LevelWords value={value} period={period} />}
       {selection.masked ? <p className="receiver-meta">This point failed the physical plausibility check and is not shown as a value.</p> : <ValueRows values={selection.values} period={period} />}
       <Aircraft value={selection.aircraft} included={aircraft} />
+      <Trains value={selection.rail} />
       {selection.onRoad && <p className="receiver-meta">Within 3 m of a road centerline: this is on the road, not a living location.</p>}
       <Nearby at={selection.at} places={places} onShow={(place) => onShowPlace(place, selection.at)} />
       <ModelNote model={modelAt(selection.at[0], selection.at[1])} />
@@ -163,7 +169,7 @@ function Inspector({ selection, period, aircraft, onClose, covered, percentiles,
       <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? `dB CNEL, loudest wall · 24 h${aircraft ? '' : ', roads only'}` : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
       <LevelWords value={selection.values[period]} period={period} />
       <Compare value={selection.values[period]} period={period} percentiles={percentiles} aircraft={aircraft} />
-      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} included={aircraft} /><p className="receiver-meta wall-note">{selection.lowest[period] !== null && selection.values[period] !== null
+      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} included={aircraft} /><Trains value={selection.rail} /><p className="receiver-meta wall-note">{selection.lowest[period] !== null && selection.values[period] !== null
         ? `Least exposed wall: ${selection.lowest[period]!.toFixed(1)} dB, ${(selection.values[period]! - selection.lowest[period]!).toFixed(0)} dB below the loudest (${selection.count} modeled points around the walls). Bedrooms on the quiet side hear less.`
         : `Loudest of ${selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side.`} Switch to Dots to see each wall.</p>
       <Nearby at={selection.at} places={places} onShow={(place) => onShowPlace(place, selection.at)} />
@@ -381,7 +387,7 @@ export default function CountyMapPage() {
     <CountyMap layersUrl={LAYERS_URL} roadField={Boolean(layers?.files?.['field_r.pmtiles'])} period={period} noise={noise} mode3d={mode3d} roads={roads} context={context} theme={theme} photo3d={photo3d && mode3d} splatSceneUrl={SPLAT_SCENE} onSplatStatus={setSplatStatus} target={target} initialCamera={initialCamera} selectedKey={selectedKey} selectedAt={selection && 'at' in selection && selection.kind !== 'empty' ? selection.at : null} onSelect={setSelection} onStatus={setStatus} onCamera={onCamera} />
     <aside className="map-guide" aria-label="Map controls and inspection">
       <div className="guide-heading"><h1>How loud is it here?</h1><button type="button" className="sheet-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? 'Less' : 'Controls'}</button></div>
-      <p className="guide-intro">Modeled noise outside every home, from freeways down to residential streets. The 24 h view adds aircraft; helicopters and sirens are not included yet.</p>
+      <p className="guide-intro">Modeled noise outside every home, from freeways down to residential streets, and trains on the Valley main lines. The 24 h view adds aircraft.</p>
       <form className="place-search" onSubmit={search} role="search">
         <label htmlFor="place-search">Look up an address</label>
         <div><input id="place-search" value={query} onChange={(e) => { pickedRef.current = ''; setQuery(e.target.value); }} onKeyDown={searchKeys}
@@ -417,7 +423,7 @@ export default function CountyMapPage() {
       <div className="guide-secondary">
         <details className="study-details"><summary>Coverage & method</summary>
           <p><strong>{layers ? `${layers.tiles.length} km² modeled, ${layers.receiver_count.toLocaleString()} points, ${layers.building_count.toLocaleString()} buildings.` : 'Coverage is loading.'}</strong> More of the county is added as the calculation runs. Dashed lines mark the modeled area; anything outside it is not modeled yet, not quiet.</p>
-          <p>CNOSSOS-EU road noise (NoiseModelling 6), every Census road with FHWA HPMS 2024 traffic counts where they exist and typical values elsewhere, LA County building footprints and heights. Tiles are being recomputed one by one with the 2023 USGS lidar terrain at 10 m, freeway sound walls found in the lidar, and roads on bridges at deck height; tiles not yet redone use 10 m USGS terrain without walls. Sound bends over roofs, hills and walls; reflections between buildings are not yet included. The 24 h view (CNEL) adds aircraft estimated from the official airport contours: most official maps stop at 65 CNEL, so each airport&rsquo;s contours are extended to 55 CNEL from the spacing of its official lines and levels between lines are interpolated; contours older than 2000 (Compton, El Monte, Torrance, Palmdale, Agua Dulce, Catalina) are drawn but not counted. Switch Aircraft off to see road traffic alone. Checked against 57 permanent airport noise monitors around LAX, Burbank, Van Nuys, Long Beach and Santa Monica (2025 aircraft levels), the aircraft estimate is within about 3 dB on average; it reads low far out along some approach paths. Evening traffic is 0.6× and night 0.2× the daytime hourly flow. Values are modeled and uncalibrated: not measurements and not indoor levels.</p>
+          <p>CNOSSOS-EU road noise (NoiseModelling 6), every Census road with FHWA HPMS 2024 traffic counts where they exist and typical values elsewhere, LA County building footprints and heights. Tiles are being recomputed one by one with the 2023 USGS lidar terrain at 10 m, freeway sound walls found in the lidar, and roads on bridges at deck height; tiles not yet redone use 10 m USGS terrain without walls. Sound bends over roofs, hills and walls; reflections between buildings are not yet included. Trains (Metrolink, Amtrak and Union Pacific freight on the Ventura and Valley main lines, from published schedules and federal crossing counts) are computed with the CNOSSOS-EU railway method, US locomotives and cars calibrated to the FTA reference levels, and added in every view; horns at grade crossings and other lines are not included yet. The 24 h view (CNEL) adds aircraft estimated from the official airport contours: most official maps stop at 65 CNEL, so each airport&rsquo;s contours are extended to 55 CNEL from the spacing of its official lines and levels between lines are interpolated; contours older than 2000 (Compton, El Monte, Torrance, Palmdale, Agua Dulce, Catalina) are drawn but not counted. Switch Aircraft off to see road traffic alone. Checked against 57 permanent airport noise monitors around LAX, Burbank, Van Nuys, Long Beach and Santa Monica (2025 aircraft levels), the aircraft estimate is within about 3 dB on average; it reads low far out along some approach paths. Evening traffic is 0.6× and night 0.2× the daytime hourly flow. Values are modeled and uncalibrated: not measurements and not indoor levels.</p>
           {layers && <p>Data built {layers.built_at_utc.replace('T', ' ').replace('Z', ' UTC')}.</p>}
         </details>
 
