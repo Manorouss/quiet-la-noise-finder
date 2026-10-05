@@ -146,7 +146,7 @@ function Inspector({ selection, period, onClose, covered, percentiles, modelAt, 
       <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? 'dB CNEL, loudest wall · 24 h' : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
       <LevelWords value={selection.values[period]} period={period} />
       <Compare value={selection.values[period]} period={period} percentiles={percentiles} />
-      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">{selection.lowest[period] !== null && selection.values[period] !== null
+      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta wall-note">{selection.lowest[period] !== null && selection.values[period] !== null
         ? `Least exposed wall: ${selection.lowest[period]!.toFixed(1)} dB, ${(selection.values[period]! - selection.lowest[period]!).toFixed(0)} dB below the loudest (${selection.count} modeled points around the walls). Bedrooms on the quiet side hear less.`
         : `Loudest of ${selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side.`} Switch to Dots to see each wall.</p>
       <ModelNote model={modelAt(selection.at[0], selection.at[1])} />
@@ -343,7 +343,7 @@ export default function CountyMapPage() {
       <div className="workspace-scope">Los Angeles County <span>· road and aircraft noise · modeled preview</span></div>
       <Choice label="Map dimension" value={mode3d ? '3d' : '2d'} options={[['2d', '2D'], ['3d', '3D']]} onChange={(m) => setMode3d(m === '3d')} />
     </header>
-    <CountyMap layersUrl={LAYERS_URL} period={period} noise={noise} mode3d={mode3d} roads={roads} context={context} theme={theme} photo3d={photo3d && mode3d} splatSceneUrl={SPLAT_SCENE} onSplatStatus={setSplatStatus} target={target} initialCamera={initialCamera} selectedKey={selectedKey} onSelect={setSelection} onStatus={setStatus} onCamera={onCamera} />
+    <CountyMap layersUrl={LAYERS_URL} period={period} noise={noise} mode3d={mode3d} roads={roads} context={context} theme={theme} photo3d={photo3d && mode3d} splatSceneUrl={SPLAT_SCENE} onSplatStatus={setSplatStatus} target={target} initialCamera={initialCamera} selectedKey={selectedKey} selectedAt={selection && 'at' in selection && selection.kind !== 'empty' ? selection.at : null} onSelect={setSelection} onStatus={setStatus} onCamera={onCamera} />
     <aside className="map-guide" aria-label="Map controls and inspection">
       <div className="guide-heading"><h1>How loud is it here?</h1><button type="button" className="sheet-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? 'Less' : 'Controls'}</button></div>
       <p className="guide-intro">Modeled noise outside every home, from freeways down to residential streets. The 24 h view adds aircraft; helicopters and sirens are not included yet.</p>

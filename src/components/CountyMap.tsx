@@ -21,6 +21,7 @@ type Props = StyleOptions & {
   onSplatStatus?: (status: 'loading' | 'ready' | 'error' | 'off') => void;
   initialCamera: Camera | null;
   selectedKey: string | null;
+  selectedAt?: [number, number] | null;  // phones: keep the selected place visible above the bottom sheet
   onSelect: (selection: Selection | null) => void;
   onStatus: (status: MapStatus) => void;
   onCamera: (camera: Camera) => void;
@@ -208,6 +209,24 @@ export default function CountyMap(props: Props) {
     };
     if (map.isStyleLoaded()) apply(); else map.once('idle', apply);
   }, [props.selectedKey, styleKey, mapVersion]);
+
+  // On phones the panel grows when a place is selected; if that hides the place, ease it above the sheet.
+  const revealKey = props.selectedAt ? `${props.selectedAt[0]},${props.selectedAt[1]}` : '';
+  useEffect(() => {
+    const map = mapRef.current;
+    const at = propsRef.current.selectedAt;
+    if (!map || !at || window.innerWidth > 720) return;
+    const frame = window.requestAnimationFrame(() => {
+      const panel = document.querySelector('.map-guide')?.getBoundingClientRect();
+      const host = hostRef.current?.getBoundingClientRect();
+      if (!panel || !host) return;
+      const y = map.project(at).y + host.top;
+      if (y > panel.top - 24 || y < host.top + 24) {
+        map.easeTo({ center: at, padding: { top: 0, left: 0, right: 0, bottom: Math.max(0, host.bottom - panel.top) }, duration: 600 });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [revealKey]);
 
   // A target set before the map exists (a shared link with a selected place) runs once the map loads;
   // each target runs once, so rebuilding the map for 2D/3D does not fly back to it.
