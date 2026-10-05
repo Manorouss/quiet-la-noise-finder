@@ -27,7 +27,7 @@ def load(run: Path) -> dict[str, dict]:
             feature = receivers.get(int(row["IDRECEIVER"]))
             if feature is None:
                 continue
-            key = feature["properties"]["RECEIVER_KEY"]
+            key = feature["properties"]["RECEIVER_KEY"].split(":", 1)[1]  # without the tile name, which reruns may change
             entry = rows.setdefault(key, {"family": feature["properties"]["RECEIVER_FAMILY"], "xy": feature["geometry"]["coordinates"][:2]})
             entry[row["PERIOD"]] = float(row["LAEQ"])
     return rows
