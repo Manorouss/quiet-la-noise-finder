@@ -1,7 +1,7 @@
 import { layers as basemapLayers, namedFlavor } from '@protomaps/basemaps';
 import type { ExpressionSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl';
 
-export type Period = 'D' | 'E' | 'N';
+export type Period = 'D' | 'E' | 'N' | 'Q';  // Q: 24 h CNEL, roads + aircraft
 export type NoiseStyle = 'field' | 'bands' | 'glow' | 'dots';
 export type BaseTheme = 'light' | 'dark' | 'grayscale' | 'satellite';
 export type ContextId = 'airport-contours' | 'heliports' | 'county-fire' | 'city-fire';
@@ -18,7 +18,7 @@ export const CONTEXT_FILES: Record<ContextId, string> = {
   'county-fire': 'context/la_county_fire_stations.geojson',
   'city-fire': 'context/la_city_fire_stations.geojson',
 };
-export const PERIOD_KEY: Record<Period, 'd' | 'e' | 'n'> = { D: 'd', E: 'e', N: 'n' };
+export const PERIOD_KEY: Record<Period, 'd' | 'e' | 'n' | 'q'> = { D: 'd', E: 'e', N: 'n', Q: 'q' };
 // field_{d,e,n}.pmtiles: Terrarium raster-dem whose elevation is the LAeq in dB; 0 = not modeled.
 const NODATA_DB = 20;
 const CLEAR = 'rgba(0,0,0,0)';
@@ -101,7 +101,7 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
     // Official airport CNEL contours: each polygon is the band from CLASS to CLASS + 5 dB, drawn in the
     // same 5 dB colours as the road bands (a different metric; the panel note says so). Louder bands on top.
     { id: 'context-airport-contours', type: 'fill', source: 'context-airport-contours', layout: { ...visible(o.context['airport-contours']), 'fill-sort-key': AIRPORT_CLASS },
-      paint: { 'fill-color': bandStep(['+', AIRPORT_CLASS, 0.1]), 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.45, 15, 0.28] } },
+      paint: { 'fill-color': bandStep(['+', AIRPORT_CLASS, 0.1]), 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.22, 15, 0.1] } },
     { id: 'context-airport-contours-line', type: 'line', source: 'context-airport-contours', layout: { ...visible(o.context['airport-contours']), 'line-sort-key': AIRPORT_CLASS },
       paint: { 'line-color': bandStep(['+', AIRPORT_CLASS, 0.1]), 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 15, 1.8] } },
     { id: 'context-airport-contours-label', type: 'symbol', source: 'context-airport-contours', minzoom: 11,

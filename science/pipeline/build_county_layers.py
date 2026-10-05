@@ -6,18 +6,20 @@ buildings.geojson, build-manifest.json), already QA-flagged (physical-ceiling ma
 on-road labels). Later roots win when a tile appears twice. Outputs, in --out:
 
   receivers.pmtiles  points: k integer id (selection only), d/e/n LAeq per period (absent when masked
-                     or unavailable), m masked, o on road, f facade (1) or open space (0).
-                     All points from z16; thinned below.
-  buildings.pmtiles  footprints: k integer id (selection only), h height (m), d/e/n highest facade LAeq, c count.
+                     or unavailable), q 24 h CNEL of roads plus aircraft, a aircraft CNEL (only
+                     inside the estimated 55 CNEL line; aircraft.py), m masked, o on road, f facade (1)
+                     or open space (0). All points from z16; thinned below.
+  buildings.pmtiles  footprints: k integer id (selection only), h height (m), d/e/n/q highest facade
+                     LAeq / CNEL, a highest facade aircraft CNEL, c count.
   roads.pmtiles      modeled road sources clipped to each tile core: a AADT, c MTFCC,
                      nm name, t traffic basis (hpms | default). Minor roads appear later.
-  field_{d,e,n}.pmtiles  raster-dem per period in Terrarium encoding with elevation = LAeq
+  field_{d,e,n,q}.pmtiles  raster-dem per period (q = 24 h CNEL, roads + aircraft) in Terrarium encoding with elevation = LAeq
                      (dB, 0.1 dB steps); elevation 0 means not modeled. Built by normalized
                      Gaussian convolution of the receiver values (dB) on a 5 m grid per
                      tile, using neighbours' receivers for seamless edges; gaps inside
                      large buildings are filled from a wider kernel within modeled tiles.
                      Web tiles sample that grid bilinearly.
-  glow_{d,e,n}.pmtiles the same surface with a 24 m kernel, for the soft Glow style.
+  glow_{d,e,n,q}.pmtiles the same surface with a 24 m kernel, for the soft Glow style.
   coverage.geojson   modeled 1 km tiles, plus coverage_outline.geojson (dissolved edge).
   basemap/           Protomaps LA County basemap (hard link to the downloaded extract).
   context/           fire stations, heliports and airport noise contours (GeoJSON).
@@ -47,6 +49,8 @@ from pyproj import Transformer
 from shapely.geometry import box, mapping, shape
 from shapely.ops import transform as shp_transform, unary_union
 
+from aircraft import MIN_YEAR, FLOOR_DB, aircraft_cnel, energy_sum, load_airports, road_cnel
+
 HERE = Path(__file__).resolve().parent
 PROJECT = HERE.parents[4]
 ATTEMPTS = PROJECT / "implementation/work/campaign/county_v1/attempts"
@@ -55,6 +59,8 @@ CONTEXT = PROJECT / "implementation/apps/quiet-la-web/public/_local-data/context
 TO_UTM = Transformer.from_crs("OGC:CRS84", "EPSG:26911", always_xy=True)
 TO_LONLAT = Transformer.from_crs("EPSG:26911", "OGC:CRS84", always_xy=True)
 PERIODS = ("D", "E", "N")
+BANDS = "denq"          # field rasters: the three periods and the 24 h CNEL (roads + aircraft)
+AIRPORT_CONTOURS = CONTEXT / "la_county_airport_noise_contours.geojson"
 CELL = 5.0              # field grid (m)
 MARGIN = 100.0          # neighbour receivers used around each tile (m)
 SIGMA, SIGMA_FILL, SIGMA_GLOW = 9.0, 30.0, 24.0
@@ -97,14 +103,17 @@ def tippecanoe(ndjson: Path, out: Path, layer: str, args: list[str]) -> None:
 
 # ---------------------------------------------------------------- vector layers
 
-def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray]):
+def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray], airports, building_loudest: dict):
     # k is a small integer id (unique within one build, used only to highlight the selection): the full
     # receiver keys were most of the file size.
     k = 0
     for tile_id, path in tiles.items():
         data = json.loads((path / "benchmark.geojson").read_text())
         rows = []
-        for feature in data["features"]:
+        lonlat = np.array([f["geometry"]["coordinates"][:2] for f in data["features"]] or np.zeros((0, 2)))
+        ux, uy = TO_UTM.transform(lonlat[:, 0], lonlat[:, 1]) if len(lonlat) else (np.zeros(0), np.zeros(0))
+        air = aircraft_cnel(airports, np.asarray(ux), np.asarray(uy)) if len(lonlat) else np.zeros(0)
+        for i, feature in enumerate(data["features"]):
             p = feature["properties"]
             lon, lat = feature["geometry"]["coordinates"][:2]
             k += 1
@@ -113,6 +122,19 @@ def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray]):
             for name, value in zip("den", values):
                 if value is not None:
                     out[name] = round(value, 1)
+            cnel = None
+            if all(v is not None for v in values):
+                cnel = road_cnel(*values)
+                if math.isfinite(air[i]):
+                    out["a"] = round(float(air[i]), 1)
+                    cnel = energy_sum(cnel, float(air[i]))
+                out["q"] = round(cnel, 1)
+                if p.get("building_key"):
+                    best = building_loudest.setdefault(p["building_key"], {})
+                    best["q"] = max(best.get("q", -1.0), out["q"])
+                    if "a" in out:
+                        best["a"] = max(best.get("a", -1.0), out["a"])
+            values.append(cnel)
             if p.get("masked"):
                 out["m"] = 1
             if p.get("on_road"):
@@ -120,14 +142,14 @@ def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray]):
             yield {"type": "Feature", "geometry": {"type": "Point", "coordinates": [round(lon, 7), round(lat, 7)]}, "properties": out}
             if not p.get("masked") and all(v is not None for v in values):
                 rows.append((lon, lat, *values))
-        array = np.array(rows, dtype=np.float64) if rows else np.zeros((0, 5))
+        array = np.array(rows, dtype=np.float64) if rows else np.zeros((0, 2 + len(BANDS)))
         if len(array):
             x, y = TO_UTM.transform(array[:, 0], array[:, 1])
             array[:, 0], array[:, 1] = x, y
         points[tile_id] = array
 
 
-def building_features(tiles: dict[str, Path]):
+def building_features(tiles: dict[str, Path], building_loudest: dict):
     merged: dict[str, dict] = {}
     for path in tiles.values():
         for feature in json.loads((path / "buildings.geojson").read_text())["features"]:
@@ -145,8 +167,9 @@ def building_features(tiles: dict[str, Path]):
                         out[name] = previous["properties"][name]
                 out["c"] += previous["properties"]["c"]
             merged[key] = {"type": "Feature", "geometry": feature["geometry"], "properties": out}
-    for k, feature in enumerate(merged.values(), 1):  # small integer ids, as for receivers
+    for k, (key, feature) in enumerate(merged.items(), 1):  # small integer ids, as for receivers
         feature["properties"]["k"] = k
+        feature["properties"].update(building_loudest.get(key, {}))
     return merged.values()
 
 
@@ -179,20 +202,20 @@ def smooth(array: np.ndarray, sigma_px: float) -> np.ndarray:
 
 
 def tile_field(origin: tuple[int, int], pts: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """(field, glow): values (3, H, W) on the 5 m grid of the 1 km tile core, NaN where unknown."""
+    """(field, glow): values (bands, H, W) on the 5 m grid of the 1 km tile core, NaN where unknown."""
     x0, y0 = origin
     lo_x, lo_y = x0 - MARGIN, y0 - MARGIN
     size = int((1000 + 2 * MARGIN) / CELL)
     ix = np.floor((pts[:, 0] - lo_x) / CELL).astype(int)
     iy = np.floor((pts[:, 1] - lo_y) / CELL).astype(int)
     inside = (ix >= 0) & (ix < size) & (iy >= 0) & (iy < size)
-    ix, iy, values = ix[inside], iy[inside], pts[inside, 2:5]
+    ix, iy, values = ix[inside], iy[inside], pts[inside, 2:2 + len(BANDS)]
     count = np.zeros((size, size))
     np.add.at(count, (iy, ix), 1.0)
-    result = np.full((3, size, size), np.nan)
-    glow = np.full((3, size, size), np.nan)
+    result = np.full((len(BANDS), size, size), np.nan)
+    glow = np.full((len(BANDS), size, size), np.nan)
     den_small, den_fill, den_glow = smooth(count, SIGMA / CELL), smooth(count, SIGMA_FILL / CELL), smooth(count, SIGMA_GLOW / CELL)
-    for band in range(3):
+    for band in range(len(BANDS)):
         total = np.zeros((size, size))
         np.add.at(total, (iy, ix), values[:, band])
         small, fill, wide = smooth(total, SIGMA / CELL), smooth(total, SIGMA_FILL / CELL), smooth(total, SIGMA_GLOW / CELL)
@@ -236,10 +259,11 @@ def encode(values: np.ndarray) -> bytes:
 
 
 def downsample(children: dict[tuple[int, int], np.ndarray]) -> np.ndarray:
-    big = np.full((3, 512, 512), np.nan)
+    bands = next(iter(children.values())).shape[0]
+    big = np.full((bands, 512, 512), np.nan)
     for (dx, dy), values in children.items():
         big[:, dy * 256:(dy + 1) * 256, dx * 256:(dx + 1) * 256] = values
-    blocks = big.reshape(3, 256, 2, 256, 2)
+    blocks = big.reshape(bands, 256, 2, 256, 2)
     with np.errstate(invalid="ignore"):
         return np.nanmean(blocks, axis=(2, 4))
 
@@ -265,7 +289,7 @@ def build_field(fields: dict[tuple[int, int], np.ndarray], mbtiles: dict[str, Pa
     for tx, ty in wanted:
         lon, lat = lonlat_of_pixels(z, tx, ty)
         x, y = TO_UTM.transform(lon, lat)
-        values = np.full((3, 256, 256), np.nan)
+        values = np.full((len(mbtiles), 256, 256), np.nan)
         cx, cy = np.floor(x / 1000).astype(int), np.floor(y / 1000).astype(int)
         for cell in set(zip(cx.ravel().tolist(), cy.ravel().tolist())):
             if cell not in fields:
@@ -301,7 +325,7 @@ def build_field(fields: dict[tuple[int, int], np.ndarray], mbtiles: dict[str, Pa
     for band, db in dbs.items():
         meta = {"name": f"quiet-la-field-{band}", "format": "png", "type": "overlay", "minzoom": str(FIELD_MIN_ZOOM), "maxzoom": str(FIELD_MAX_ZOOM),
                 "bounds": f"{min(lons)},{min(lats)},{max(lons)},{max(lats)}", "center": f"{(min(lons) + max(lons)) / 2},{(min(lats) + max(lats)) / 2},{FIELD_MIN_ZOOM + 3}",
-                "description": f"Road-noise LAeq ({band.upper()}), Terrarium raster-dem: elevation = dB; 0 = not modeled"}
+                "description": (f"Road-noise LAeq ({band.upper()})" if band != "q" else "24 h CNEL, roads + aircraft") + ", Terrarium raster-dem: elevation = dB; 0 = not modeled"}
         db.executemany("INSERT INTO metadata VALUES (?, ?)", meta.items())
         db.commit()
         db.close()
@@ -328,9 +352,10 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as tmp_name:
         tmp = Path(tmp_name)
         points: dict[str, np.ndarray] = {}
-        n_receivers = write_ndjson(tmp / "receivers.ndjson", receiver_features(tiles, points))
+        airports, building_loudest = load_airports(AIRPORT_CONTOURS), {}
+        n_receivers = write_ndjson(tmp / "receivers.ndjson", receiver_features(tiles, points, airports, building_loudest))
         tippecanoe(tmp / "receivers.ndjson", out / "receivers.pmtiles", "receivers", ["-Z11", "-z16", "-B16", "-r2", "--no-tile-size-limit"])
-        n_buildings = write_ndjson(tmp / "buildings.ndjson", building_features(tiles))
+        n_buildings = write_ndjson(tmp / "buildings.ndjson", building_features(tiles, building_loudest))
         tippecanoe(tmp / "buildings.ndjson", out / "buildings.pmtiles", "buildings", ["-Z13", "-z16", "--no-tile-size-limit", "--no-feature-limit", "--no-tiny-polygon-reduction", "--no-simplification-of-shared-nodes", "--simplification=1"])
         n_roads = write_ndjson(tmp / "roads.ndjson", road_features(tiles))
         tippecanoe(tmp / "roads.ndjson", out / "roads.pmtiles", "roads", ["-Z10", "-z16", "--no-tile-size-limit"])
@@ -339,10 +364,10 @@ def main() -> int:
         for (cx, cy), tile_id in by_cell.items():
             nearby = [points[by_cell[(cx + dx, cy + dy)]] for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (cx + dx, cy + dy) in by_cell]
             fields[(cx, cy)], glows[(cx, cy)] = tile_field(origins[tile_id], np.vstack(nearby))
-        n_field = build_field(fields, {band: tmp / f"field_{band}.mbtiles" for band in "den"})
-        build_field(glows, {band: tmp / f"glow_{band}.mbtiles" for band in "den"})
+        n_field = build_field(fields, {band: tmp / f"field_{band}.mbtiles" for band in BANDS})
+        build_field(glows, {band: tmp / f"glow_{band}.mbtiles" for band in BANDS})
         for kind in ("field", "glow"):
-            for band in "den":
+            for band in BANDS:
                 subprocess.run(["pmtiles", "convert", str(tmp / f"{kind}_{band}.mbtiles"), str(out / f"{kind}_{band}.pmtiles")], check=True, capture_output=True)
         (out / "field.pmtiles").unlink(missing_ok=True)
     coverage = {"type": "FeatureCollection", "features": [
@@ -374,7 +399,10 @@ def main() -> int:
         "field_encoding": {"type": "terrarium", "files": {"D": "field_d.pmtiles", "E": "field_e.pmtiles", "N": "field_n.pmtiles"}, "db": "elevation (0.1 dB steps)", "nodata": 0,
                            "cell_m": CELL, "sigma_m": SIGMA, "fill_sigma_m": SIGMA_FILL, "glow_sigma_m": SIGMA_GLOW, "zooms": [FIELD_MIN_ZOOM, FIELD_MAX_ZOOM]},
         "files": {name: {"sha256": sha(out / name), "bytes": (out / name).stat().st_size}
-                  for name in ("receivers.pmtiles", "buildings.pmtiles", "roads.pmtiles", *(f"{k}_{b}.pmtiles" for k in ("field", "glow") for b in "den"), "coverage.geojson", *extra)},
+                  for name in ("receivers.pmtiles", "buildings.pmtiles", "roads.pmtiles", *(f"{k}_{b}.pmtiles" for k in ("field", "glow") for b in BANDS), "coverage.geojson", *extra)},
+        "aircraft": {"method": "official airport CNEL contours, extended to 55 dB by each airport's contour area ratio (aircraft.py)",
+                     "floor_db": FLOOR_DB, "min_source_year": MIN_YEAR,
+                     "airports": [{"name": a.name, "official_levels": sorted(a.official), "area_ratio": round(a.ratio, 2), "source": a.source} for a in airports]},
         "builder": "science/pipeline/build_county_layers.py", "seconds": round(time.time() - started, 1),
     }
     (out / "layers.json").write_text(json.dumps(layers, indent=1) + "\n")

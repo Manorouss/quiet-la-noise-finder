@@ -7,8 +7,8 @@ import { createSplatLayer } from '@/lib/splat-layer';
 
 export type Values = Record<Period, number | null>;
 export type Selection =
-  | { kind: 'receiver'; key: string; facade: boolean; onRoad: boolean; masked: boolean; values: Values; building: string | null; at: [number, number] }
-  | { kind: 'building'; key: string; height: number; values: Values; count: number; at: [number, number] }
+  | { kind: 'receiver'; key: string; facade: boolean; onRoad: boolean; masked: boolean; values: Values; aircraft: number | null; building: string | null; at: [number, number] }
+  | { kind: 'building'; key: string; height: number; values: Values; aircraft: number | null; count: number; at: [number, number] }
   | { kind: 'road'; name: string; aadt: number; mtfcc: string; basis: string }
   | { kind: 'context'; layer: ContextId; title: string; detail: string };
 export type Camera = { lng: number; lat: number; zoom: number; pitch: number; bearing: number };
@@ -26,7 +26,7 @@ type Props = StyleOptions & {
 
 const HOME: Camera = { lng: -118.53, lat: 34.19, zoom: 13.2, pitch: 0, bearing: 0 };
 const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
-const valuesOf = (p: Record<string, unknown>): Values => ({ D: num(p.d), E: num(p.e), N: num(p.n) });
+const valuesOf = (p: Record<string, unknown>): Values => ({ D: num(p.d), E: num(p.e), N: num(p.n), Q: num(p.q) });
 
 /** Area centroid of a footprint's largest ring (lng/lat), where its address point most likely sits. */
 function footprintCentre(geometry: GeoJSON.Geometry, fallback: [number, number]): [number, number] {
@@ -111,14 +111,14 @@ export default function CountyMap(props: Props) {
         const p = (f: MapGeoJSONFeature) => f.properties as Record<string, unknown>;
         const clicked: [number, number] = [event.lngLat.lng, event.lngLat.lat];
         const selectBuilding = (f: MapGeoJSONFeature) => propsRef.current.onSelect({
-          kind: 'building', key: String(p(f).k), height: Number(p(f).h), values: valuesOf(p(f)), count: Number(p(f).c ?? 0), at: footprintCentre(f.geometry, clicked),
+          kind: 'building', key: String(p(f).k), height: Number(p(f).h), values: valuesOf(p(f)), aircraft: num(p(f).a), count: Number(p(f).c ?? 0), at: footprintCentre(f.geometry, clicked),
         });
         if (propsRef.current.mode3d && building) {
           selectBuilding(building);
         } else if (receiver) {
           const r = p(receiver);
           const at = (receiver.geometry as GeoJSON.Point).coordinates as [number, number];
-          propsRef.current.onSelect({ kind: 'receiver', key: String(r.k), facade: r.f === 1, onRoad: r.o === 1, masked: r.m === 1, values: valuesOf(r), building: r.b ? String(r.b) : null, at: [at[0], at[1]] });
+          propsRef.current.onSelect({ kind: 'receiver', key: String(r.k), facade: r.f === 1, onRoad: r.o === 1, masked: r.m === 1, values: valuesOf(r), aircraft: num(r.a), building: r.b ? String(r.b) : null, at: [at[0], at[1]] });
         } else if (building) {
           selectBuilding(building);
         } else if (road) {

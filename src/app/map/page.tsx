@@ -9,7 +9,8 @@ const LAYERS_URL = process.env.NEXT_PUBLIC_QUIET_LA_LAYERS_URL || '/county-layer
 // Photo 3D showcase (lidar + aerial imagery as Gaussian splats): Studio City, Ventura Blvd and US-101.
 const SPLAT_SCENE = `${LAYERS_URL}splats/showcase_101_ventura`;
 const SPLAT_VIEW = { lng: -118.3721, lat: 34.1474, zoom: 17.3, pitch: 62, bearing: -35 };
-const PERIOD_NAME: Record<Period, string> = { D: 'Day', E: 'Evening', N: 'Night' };
+const PERIOD_NAME: Record<Period, string> = { D: 'Day', E: 'Evening', N: 'Night', Q: '24 h' };
+const UNIT = (period: Period) => (period === 'Q' ? 'dB CNEL · 24 h, roads + aircraft' : `dB LAeq · ${PERIOD_NAME[period].toLowerCase()}`);
 const CONTEXT_DEFAULTS: Record<ContextId, boolean> = { 'airport-contours': false, heliports: false, 'county-fire': false, 'city-fire': false };
 const CONTEXT_LABELS: Record<ContextId, string> = { 'airport-contours': 'Aircraft noise (official contours, CNEL)', heliports: 'Heliports', 'county-fire': 'LA County fire stations', 'city-fire': 'City of LA fire stations' };
 const STYLE_HELP: Record<NoiseStyle, string> = {
@@ -40,7 +41,7 @@ function Choice<T extends string>({ label, value, options, onChange }: { label: 
 }
 
 function ValueRows({ values, period }: { values: Values; period: Period }) {
-  return <div className="county-values">{(['D', 'E', 'N'] as Period[]).map((p) => <div key={p} className={p === period ? 'is-active' : ''}><span>{PERIOD_NAME[p]}</span><i style={{ background: band(values[p]) ?? '#9ea3a8' }} /><strong>{values[p] === null ? '—' : `${values[p]!.toFixed(1)} dB`}</strong></div>)}</div>;
+  return <div className="county-values">{(['D', 'E', 'N', 'Q'] as Period[]).map((p) => <div key={p} className={p === period ? 'is-active' : ''}><span>{p === 'Q' ? '24 h CNEL' : PERIOD_NAME[p]}</span><i style={{ background: band(values[p]) ?? '#9ea3a8' }} /><strong>{values[p] === null ? '—' : `${values[p]!.toFixed(1)} dB`}</strong></div>)}</div>;
 }
 
 function AddressLine({ at, near }: { at: [number, number]; near?: boolean }) {
@@ -59,6 +60,11 @@ function AddressLine({ at, near }: { at: [number, number]; near?: boolean }) {
   return <p className="selection-address">{near || current.address.near ? <span>Near </span> : null}{current.address.text}</p>;
 }
 
+function Aircraft({ value }: { value: number | null }) {
+  if (value === null) return null;
+  return <p className="receiver-meta">Aircraft here: about {value.toFixed(0)} dB CNEL, estimated from the official airport contours; included in the 24 h value.</p>;
+}
+
 function Inspector({ selection, period, onClose }: { selection: Selection | null; period: Period; onClose: () => void }) {
   if (!selection) return <div className="inspection-empty"><strong>Select a place on the map</strong><p>Click any modeled spot, building or road to see its modeled day, evening and night levels.</p></div>;
   const close = <button type="button" className="plain-icon" aria-label="Close" onClick={onClose}>×</button>;
@@ -66,15 +72,16 @@ function Inspector({ selection, period, onClose }: { selection: Selection | null
     const value = selection.values[period];
     return <><div className="receiver-heading"><span>{selection.facade ? 'Building wall · 4 m up, 2 m out' : 'Open ground · 1.5 m up'}</span>{close}</div>
       <AddressLine at={selection.at} near={!selection.facade} />
-      <div className="receiver-result"><strong>{selection.masked || value === null ? 'Unavailable' : value.toFixed(1)}</strong><span>{selection.masked || value === null ? '' : `dB LAeq · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
+      <div className="receiver-result"><strong>{selection.masked || value === null ? 'Unavailable' : value.toFixed(1)}</strong><span>{selection.masked || value === null ? '' : UNIT(period)}</span></div>
       {selection.masked ? <p className="receiver-meta">This point failed the physical plausibility check and is not shown as a value.</p> : <ValueRows values={selection.values} period={period} />}
+      <Aircraft value={selection.aircraft} />
       {selection.onRoad && <p className="receiver-meta">Within 3 m of a road centerline: this is on the road, not a living location.</p>}</>;
   }
   if (selection.kind === 'building') {
     return <><div className="receiver-heading"><span>Building · about {selection.height.toFixed(0)} m tall</span>{close}</div>
       <AddressLine at={selection.at} />
-      <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>dB, loudest wall · {PERIOD_NAME[period].toLowerCase()}</span></div>
-      <ValueRows values={selection.values} period={period} /><p className="receiver-meta">Loudest of {selection.count} modeled points around the walls. The quietest side of a building is often 10 dB or more below its loudest side. Switch to Dots to see each wall.</p></>;
+      <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? 'dB CNEL, loudest wall · 24 h' : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
+      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">Loudest of {selection.count} modeled points around the walls. The quietest side of a building is often 10 dB or more below its loudest side. Switch to Dots to see each wall.</p></>;
   }
   if (selection.kind === 'road') {
     return <><div className="receiver-heading"><span>Road in the model</span>{close}</div>
@@ -106,7 +113,7 @@ export default function CountyMapPage() {
 
   useEffect(() => {
     const hash = new URLSearchParams(window.location.hash.slice(1));
-    if (['D', 'E', 'N'].includes(hash.get('period') ?? '')) setPeriod(hash.get('period') as Period);
+    if (['D', 'E', 'N', 'Q'].includes(hash.get('period') ?? '')) setPeriod(hash.get('period') as Period);
     if (['field', 'bands', 'glow', 'dots'].includes(hash.get('style') ?? '')) setNoise(hash.get('style') as NoiseStyle);
     if (['light', 'dark', 'grayscale', 'satellite'].includes(hash.get('base') ?? '')) setTheme(hash.get('base') as BaseTheme);
     setMode3d(hash.get('mode') === '3d');
@@ -164,7 +171,7 @@ export default function CountyMapPage() {
     <aside className="map-guide" aria-label="Map controls and inspection">
       <div className="guide-heading"><h1>How loud is it here?</h1><button type="button" className="sheet-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? 'Less' : 'Controls'}</button></div>
       <p className="guide-intro">Modeled road noise outside homes, from freeways down to residential streets. Aircraft, helicopters and sirens are not included yet.</p>
-      <div className="quick-controls"><Choice label="Time of day" value={period} options={[['D', 'Day'], ['E', 'Evening'], ['N', 'Night']]} onChange={setPeriod} /></div>
+      <div className="quick-controls"><Choice label="Time of day" value={period} options={[['D', 'Day'], ['E', 'Evening'], ['N', 'Night'], ['Q', '24 h']]} onChange={setPeriod} /></div>
       <div className="guide-body">
         <form className="place-search" onSubmit={search}><label htmlFor="place-search">Go to an address or place</label><div><input id="place-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Street address, Reseda, or lat, lng" autoComplete="off" /><button type="submit" aria-label="Find place">→</button></div><p role="status">{message}</p></form>
         <section className="guide-section"><h2>Noise display</h2><Choice label="Noise display style" value={noise} options={[['field', 'Field'], ['bands', 'Bands'], ['glow', 'Glow'], ['dots', 'Dots']]} onChange={setNoise} /><p className="control-help">{STYLE_HELP[noise]}{mode3d ? ' In 3D, buildings are colored by their loudest wall.' : ''}</p></section>
@@ -175,8 +182,8 @@ export default function CountyMapPage() {
         </section>
         <section className="guide-section"><h2>Layers</h2>
           <label className="source-toggle"><input type="checkbox" checked={roads} onChange={(e) => setRoads(e.target.checked)} />Roads in the model, by traffic</label>
-          <div className="context-options">{(Object.keys(CONTEXT_LABELS) as ContextId[]).map((id) => <label key={id} className={`context-toggle context-${id}`}><input type="checkbox" checked={context[id]} onChange={(e) => setContext({ ...context, [id]: e.target.checked })} />{CONTEXT_LABELS[id]}</label>)}</div>
-          {context['airport-contours'] && <p className="control-help">Official airport contours of CNEL, a 24-hour average that counts evening noise 5 dB and night noise 10 dB louder. Shown in the same 5 dB colours, but not yet added into the road values. Outside the 65 CNEL line aircraft are still heard. Source: LA County Airport Land Use Plan; some contours date from 1991.</p>}
+          <div className="context-options">{(Object.keys(CONTEXT_LABELS) as ContextId[]).map((id) => <label key={id} className={`context-toggle context-${id}`}><input type="checkbox" checked={context[id]} onChange={(e) => { setContext({ ...context, [id]: e.target.checked }); if (id === 'airport-contours' && e.target.checked) setPeriod('Q'); }} />{CONTEXT_LABELS[id]}</label>)}</div>
+          {context['airport-contours'] && <p className="control-help">Lines are the official airport contours of CNEL, a 24-hour average that counts evening noise 5 dB and night noise 10 dB louder. The 24 h view adds aircraft to the road noise: levels between the lines are interpolated, and because official maps stop at 65 CNEL, each airport&rsquo;s contours are extended to 55 CNEL as an estimate. Contours older than 2000 (Compton, El Monte, Torrance, Palmdale, Agua Dulce, Catalina) are drawn but not counted.</p>}
         </section>
         <div className="guide-actions"><button type="button" onClick={copyView}>Copy view link</button></div>
       </div>
@@ -184,14 +191,14 @@ export default function CountyMapPage() {
       <div className="guide-secondary">
         <details className="study-details"><summary>Coverage & method</summary>
           <p><strong>{layers ? `${layers.tiles.length} km² modeled, ${layers.receiver_count.toLocaleString()} points, ${layers.building_count.toLocaleString()} buildings.` : 'Coverage is loading.'}</strong> More of the county is added as the calculation runs. Dashed lines mark the modeled area; anything outside it is not modeled yet, not quiet.</p>
-          <p>CNOSSOS-EU road noise (NoiseModelling 6), every Census road with FHWA HPMS 2024 traffic counts where they exist and typical values elsewhere, LA County building footprints and heights. Tiles are being recomputed one by one with the 2023 USGS lidar terrain at 10 m, freeway sound walls found in the lidar, and roads on bridges at deck height; tiles not yet redone use 10 m USGS terrain without walls. Sound bends over roofs, hills and walls; reflections between buildings are not yet included. Evening traffic is 0.6× and night 0.2× the daytime hourly flow. Values are modeled and uncalibrated: not measurements and not indoor levels.</p>
+          <p>CNOSSOS-EU road noise (NoiseModelling 6), every Census road with FHWA HPMS 2024 traffic counts where they exist and typical values elsewhere, LA County building footprints and heights. Tiles are being recomputed one by one with the 2023 USGS lidar terrain at 10 m, freeway sound walls found in the lidar, and roads on bridges at deck height; tiles not yet redone use 10 m USGS terrain without walls. Sound bends over roofs, hills and walls; reflections between buildings are not yet included. The 24 h view (CNEL) adds aircraft estimated from the official airport contours. Evening traffic is 0.6× and night 0.2× the daytime hourly flow. Values are modeled and uncalibrated: not measurements and not indoor levels.</p>
           {layers && <p>Data built {layers.built_at_utc.replace('T', ' ').replace('Z', ' UTC')}.</p>}
         </details>
         <p className="workspace-notice" role="status">{notice}</p>
       </div>
     </aside>
     <div className="workspace-legend county-legend" aria-label="Map legend">
-      <div><span>Road noise · {PERIOD_NAME[period]} · dB LAeq</span></div>
+      <div><span>{period === 'Q' ? 'Roads + aircraft · 24 h · dB CNEL' : `Road noise · ${PERIOD_NAME[period]} · dB LAeq`}</span></div>
       <div className="county-legend-bar" aria-hidden="true">{BAND_COLORS.map((c) => <i key={c} style={{ background: c }} />)}</div>
       <div className="county-legend-ticks" aria-hidden="true">{BAND_EDGES.map((e) => <span key={e}>{e}</span>)}</div>
       <p>WHO guideline for road traffic: 53 dB Lden, 45 dB at night. Blank areas are not modeled yet, not quiet.</p>
