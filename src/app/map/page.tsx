@@ -104,6 +104,20 @@ function insideRing(lng: number, lat: number, ring: Ring) {
   return inside;
 }
 
+// Saved places to compare (kept in this browser only).
+type Saved = { id: string; at: [number, number]; label: string; values: Values };
+const SAVED_KEY = 'quiet-la-map-saved-v1';
+const SAVED_MAX = 5;
+const savedId = (at: [number, number]) => `${at[0].toFixed(5)},${at[1].toFixed(5)}`;
+
+function SaveButton({ selection, saved, onSave }: { selection: Selection; saved: Saved[]; onSave: (selection: Selection) => void }) {
+  if (selection.kind !== 'building' && selection.kind !== 'receiver') return null;
+  const isSaved = saved.some((s) => s.id === savedId(selection.at));
+  const full = saved.length >= SAVED_MAX;
+  return <button type="button" className="save-place" disabled={isSaved || full} onClick={() => onSave(selection)}>
+    {isSaved ? 'Saved to compare ✓' : full ? `Compare list is full (${SAVED_MAX})` : 'Save to compare'}</button>;
+}
+
 function ModelNote({ model }: { model: string | null }) {
   if (!model) return null;
   return <p className="receiver-meta model-line">{model === 'county-v2'
@@ -111,7 +125,7 @@ function ModelNote({ model }: { model: string | null }) {
     : 'Computed with the earlier model (no sound walls, coarser terrain); this area is being recomputed.'}</p>;
 }
 
-function Inspector({ selection, period, onClose, covered, percentiles, modelAt, mappedKm2 }: { selection: Selection | null; period: Period; onClose: () => void; covered: (lng: number, lat: number) => boolean | null; percentiles?: Layers['building_percentiles']; modelAt: (lng: number, lat: number) => string | null; mappedKm2?: number }) {
+function Inspector({ selection, period, onClose, covered, percentiles, modelAt, mappedKm2, saved, onSave }: { selection: Selection | null; period: Period; onClose: () => void; covered: (lng: number, lat: number) => boolean | null; percentiles?: Layers['building_percentiles']; modelAt: (lng: number, lat: number) => string | null; mappedKm2?: number; saved: Saved[]; onSave: (selection: Selection) => void }) {
   if (!selection) return <div className="inspection-empty"><strong>Select a place on the map</strong><p>Search an address above, or click any building, spot or road to see its day, evening, night and 24 h levels.{mappedKm2 ? ` About ${mappedKm2.toLocaleString()} km² are mapped so far, growing outward from Tarzana.` : ''}</p></div>;
   const close = <button type="button" className="plain-icon" aria-label="Close" onClick={onClose}>×</button>;
   if (selection.kind === 'receiver') {
@@ -123,7 +137,8 @@ function Inspector({ selection, period, onClose, covered, percentiles, modelAt, 
       {selection.masked ? <p className="receiver-meta">This point failed the physical plausibility check and is not shown as a value.</p> : <ValueRows values={selection.values} period={period} />}
       <Aircraft value={selection.aircraft} />
       {selection.onRoad && <p className="receiver-meta">Within 3 m of a road centerline: this is on the road, not a living location.</p>}
-      <ModelNote model={modelAt(selection.at[0], selection.at[1])} /></>;
+      <ModelNote model={modelAt(selection.at[0], selection.at[1])} />
+      <SaveButton selection={selection} saved={saved} onSave={onSave} /></>;
   }
   if (selection.kind === 'building') {
     return <><div className="receiver-heading"><span>Building · about {selection.height.toFixed(0)} m tall</span>{close}</div>
@@ -134,7 +149,8 @@ function Inspector({ selection, period, onClose, covered, percentiles, modelAt, 
       <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">{selection.lowest[period] !== null && selection.values[period] !== null
         ? `Least exposed wall: ${selection.lowest[period]!.toFixed(1)} dB, ${(selection.values[period]! - selection.lowest[period]!).toFixed(0)} dB below the loudest (${selection.count} modeled points around the walls). Bedrooms on the quiet side hear less.`
         : `Loudest of ${selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side.`} Switch to Dots to see each wall.</p>
-      <ModelNote model={modelAt(selection.at[0], selection.at[1])} /></>;
+      <ModelNote model={modelAt(selection.at[0], selection.at[1])} />
+      <SaveButton selection={selection} saved={saved} onSave={onSave} /></>;
   }
   if (selection.kind === 'empty') {
     const inside = covered(selection.at[0], selection.at[1]);
@@ -161,6 +177,8 @@ export default function CountyMapPage() {
   const [splatStatus, setSplatStatus] = useState<'loading' | 'ready' | 'error' | 'off'>('off');
   const [context, setContext] = useState(CONTEXT_DEFAULTS);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [saved, setSaved] = useState<Saved[]>([]);
+  const savedReady = useRef(false);
   const [status, setStatus] = useState<MapStatus>({ loading: true, error: null, zoom: 13 });
   const [layers, setLayers] = useState<Layers | null>(null);
   const [coverage, setCoverage] = useState<{ ring: Ring; model: string }[] | null>(null);
@@ -196,6 +214,12 @@ export default function CountyMapPage() {
     if (sel.length === 2 && sel.every(Number.isFinite) && Math.abs(sel[0]) <= 180 && Math.abs(sel[1]) <= 85) {
       setTarget({ lng: sel[0], lat: sel[1], zoom: Math.min(19, Math.max(15, n('z') || 17)), nonce: Date.now(), select: true });
     }
+    try {
+      const raw = window.localStorage.getItem(SAVED_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(list)) setSaved(list.filter((s) => s && Array.isArray(s.at) && typeof s.label === 'string').slice(0, SAVED_MAX));
+    } catch { /* storage blocked: the list just starts empty */ }
+    savedReady.current = true;
     fetch(`${LAYERS_URL}layers.json`).then((r) => (r.ok ? r.json() : null)).then(setLayers).catch(() => setLayers(null));
     fetch(`${LAYERS_URL}coverage.geojson`).then((r) => (r.ok ? r.json() : null))
       .then((doc: { features?: { properties?: { model?: string }; geometry: { coordinates: Ring[] } }[] } | null) => setCoverage(doc?.features?.map((f) => ({ ring: f.geometry.coordinates[0], model: f.properties?.model ?? 'county-v1' })) ?? null))
@@ -211,6 +235,18 @@ export default function CountyMapPage() {
     if (selectedAt) hash.set('sel', selectedAt);
     window.history.replaceState(null, '', `${window.location.pathname}#${hash}`);
   }, [period, noise, mode3d, theme, roads, context, selectedAt]);
+  useEffect(() => {
+    if (!savedReady.current) return;
+    try { window.localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch { /* storage blocked */ }
+  }, [saved]);
+  const savePlace = useCallback(async (place: Selection) => {
+    if (place.kind !== 'building' && place.kind !== 'receiver') return;
+    const known = place.kind === 'building' ? place.address : undefined;
+    let label = known ?? '';
+    if (!label) { try { const found = await addressAt(place.at[0], place.at[1]); label = found ? `${found.near ? 'Near ' : ''}${found.text}` : ''; } catch { /* lookup failed */ } }
+    if (!label) label = `Place at ${place.at[1].toFixed(4)}, ${place.at[0].toFixed(4)}`;
+    setSaved((list) => (list.some((s) => s.id === savedId(place.at)) || list.length >= SAVED_MAX ? list : [...list, { id: savedId(place.at), at: place.at, label, values: place.values }]));
+  }, []);
   // Escape closes the selected place (unless typing in the search box).
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape' && !(event.target instanceof HTMLInputElement)) setSelection(null); };
@@ -322,7 +358,16 @@ export default function CountyMapPage() {
         <p role="status">{message}</p>
       </form>
       <div className="quick-controls"><Choice label="Time of day" value={period} options={[['D', 'Day'], ['E', 'Evening'], ['N', 'Night'], ['Q', '24 h']]} onChange={setPeriod} /></div>
-      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} covered={covered} percentiles={layers?.building_percentiles} modelAt={modelAt} mappedKm2={layers?.tiles.length} /></section>
+      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} covered={covered} percentiles={layers?.building_percentiles} modelAt={modelAt} mappedKm2={layers?.tiles.length} saved={saved} onSave={savePlace} /></section>
+      {saved.length > 0 && <section className="saved-places" aria-label="Saved places">
+        <h2>Compare saved places <span>{PERIOD_NAME[period].toLowerCase()}{period === 'Q' ? ' CNEL' : ''}</span></h2>
+        {saved.map((place) => <div className="saved-row" key={place.id}>
+          <button type="button" className="saved-go" onClick={() => setTarget({ lng: place.at[0], lat: place.at[1], zoom: 18, nonce: Date.now(), select: true, label: place.label.startsWith('Near ') || place.label.startsWith('Place at') ? undefined : place.label })}>
+            <i style={{ background: band(place.values[period]) ?? '#9ea3a8' }} /><span>{place.label}</span><strong>{place.values[period] === null ? '—' : `${place.values[period]!.toFixed(1)} dB`}</strong></button>
+          <button type="button" className="plain-icon" aria-label={`Remove ${place.label}`} onClick={() => setSaved((list) => list.filter((s) => s.id !== place.id))}>×</button>
+        </div>)}
+        <p className="control-help">Loudest wall for buildings. Saved in this browser only.</p>
+      </section>}
       <div className="guide-body">
         <section className="guide-section"><h2>Noise display</h2><Choice label="Noise display style" value={noise} options={[['field', 'Field'], ['bands', 'Bands'], ['glow', 'Glow'], ['dots', 'Dots']]} onChange={setNoise} /><p className="control-help">{STYLE_HELP[noise]}{mode3d ? ' In 3D, buildings are colored by their loudest wall.' : ''}</p></section>
         <section className="guide-section"><h2>Base map</h2><Choice label="Base map" value={theme} options={[['light', 'Light'], ['grayscale', 'Gray'], ['dark', 'Dark'], ['satellite', 'Photo']]} onChange={setTheme} /></section>

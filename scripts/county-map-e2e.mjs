@@ -83,6 +83,16 @@ async function searchAddress(page, typed, pick) {
   check('search: compares with mapped buildings', /than \d+% of mapped buildings/.test(await text(page, '.compare-line') ?? ''), await text(page, '.compare-line'));
   check('search: says which model computed it', /Computed with the (upgraded|earlier) model/.test(await text(page, '.model-line') ?? ''), await text(page, '.model-line'));
   check('search: least exposed wall', /Least exposed wall/.test(await text(page, '.receiver-section') ?? ''));
+  await page.click('.save-place');
+  await page.waitForSelector('.saved-row', { timeout: 10000 }).catch(() => null);
+  check('save to compare lists the house', /19305 Redwing/i.test(await text(page, '.saved-places') ?? ''), await text(page, '.saved-row'));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__quietCountyMap?.loaded(), null, { timeout: 60000 });
+  check('saved places survive a reload', /19305 Redwing/i.test(await text(page, '.saved-places') ?? ''));
+  await page.click('.saved-go');
+  await page.waitForFunction(() => /19305 Redwing/i.test(document.querySelector('.selection-address')?.textContent ?? ''), null, { timeout: 30000 }).catch(() => null);
+  check('a saved place reopens', /19305 Redwing/i.test(await text(page, '.selection-address') ?? ''), await text(page, '.selection-address'));
+  await idle(page);
   await page.screenshot({ path: `${out}/desktop_search.png` });
 
   // Click a building near the map centre.
