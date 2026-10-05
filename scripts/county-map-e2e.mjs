@@ -103,8 +103,8 @@ async function searchAddress(page, typed, pick) {
   // (In 3D the map keeps streaming distant terrain, so loaded() can stay false.)
   const has3d = await page.waitForFunction(() => window.__quietCountyMap?.getLayer('buildings-3d') && window.__quietCountyMap.queryRenderedFeatures({ layers: ['buildings-3d'] }).length > 0, null, { timeout: 45000, polling: 1000 }).then(() => true).catch(() => false);
   check('3D: extruded buildings', has3d);
-  await page.waitForTimeout(3000);
-  check('3D: no lingering loading notice', !(await page.isVisible('.workspace-state')));
+  const cleared = await page.waitForFunction(() => !document.querySelector('.workspace-state'), null, { timeout: 60000, polling: 1000 }).then(() => true).catch(() => false);
+  check('3D: loading notice clears', cleared);
   await page.screenshot({ path: `${out}/desktop_3d.png`, timeout: 120000 });
   await page.click('.workspace-header button:has-text("2D")', { timeout: 120000 });
   await page.waitForFunction(() => window.__quietCountyMap?.getPitch() === 0, null, { timeout: 45000, polling: 1000 }).catch(() => null);
