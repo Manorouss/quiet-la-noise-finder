@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent, type MutableRefObject, type ReactNode } from 'react';
 import { BAND_COLORS, BAND_EDGES, CONTEXT_FILES, ROAD_CLASSES, ROAD_INK, isHospitalPad, type ContextId, type Period } from '@/lib/county-map-style';
-import { FIRE_RED, HELIPAD_BLUE, HOSPITAL_RED, flamePath } from '@/lib/map-icons';
+import { FIRE_RED, HELIPAD_BLUE, HOSPITAL_RED, stationPath } from '@/lib/map-icons';
 
 /** A heliport or fire station from the context layers, for counts and the "Nearby" line. */
 export type Place = { at: [number, number]; name: string; kind: 'heliport' | 'hospital' | 'fire'; layer: ContextId };
@@ -61,7 +61,7 @@ export function HeliGlyph({ color, size = 18 }: { color: string; size?: number }
   return <svg width={size} height={size} viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9.4" fill="#fff" stroke={color} strokeWidth="2.2" /><path d="M7.4 6.2h2.1v3.9h3V6.2h2.1v9.6h-2.1v-3.9h-3v3.9H7.4z" fill={color} /></svg>;
 }
 export function FireGlyph({ size = 18 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 22 22" aria-hidden="true"><rect x="1.5" y="1.5" width="19" height="19" rx="5" fill={FIRE_RED} stroke="#fff" strokeWidth="1.2" /><path d={flamePath(11, 11.5, 12.5)} fill="#fff" /></svg>;
+  return <svg width={size} height={size} viewBox="0 0 22 22" aria-hidden="true"><rect x="1.5" y="1.5" width="19" height="19" rx="5" fill={FIRE_RED} stroke="#fff" strokeWidth="1.2" /><path d={stationPath(11, 11.2, 13)} fill="#fff" fillRule="evenodd" /></svg>;
 }
 function RoadsGlyph() {
   return <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
@@ -80,26 +80,81 @@ function AircraftGlyph() {
   </svg>;
 }
 
-function LayerRow({ className, icon, title, meta, on, onChange, children }: { className: string; icon: ReactNode; title: string; meta: ReactNode; on: boolean; onChange: (on: boolean) => void; children?: ReactNode }) {
-  return <div className={`ml-row ${className} ${on ? 'is-on' : ''}`}>
-    <label className="ml-main">
-      <span className="ml-icon">{icon}</span>
-      <span className="ml-text"><strong>{title}</strong><small>{meta}</small></span>
-      <input type="checkbox" role="switch" className="ml-switch" checked={on} onChange={(e) => onChange(e.target.checked)} />
-    </label>
-    {on && children && <div className="ml-legend">{children}</div>}
+/* Hover cards: the panel shows one line per layer (icon, name, switch); the details and legend open in a card
+   beside the panel on hover or keyboard focus, and for a few seconds after a tap on touch screens (over the map,
+   below the header). The card is always in the DOM, hidden, so the control is described by it. */
+type HintPos = { top: number; left: number; right?: number };
+const touchOnly = () => typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
+
+function useHint() {
+  const ref = useRef<HTMLElement | null>(null);
+  const card = useRef<HTMLDivElement | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const [pos, setPos] = useState<HintPos | null>(null);
+  const place = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.innerWidth <= 720) { setPos({ top: 66, left: 10, right: 10 }); return; }
+    const guide = el.closest('.map-guide')?.getBoundingClientRect();
+    setPos({ top: el.getBoundingClientRect().top - 2, left: (guide?.right ?? el.getBoundingClientRect().right) + 10 });
+  }, []);
+  const show = useCallback((delay = 280) => { window.clearTimeout(timer.current); timer.current = window.setTimeout(place, delay); }, [place]);
+  const hide = useCallback(() => { window.clearTimeout(timer.current); setPos(null); }, []);
+  const flash = useCallback(() => { place(); window.clearTimeout(timer.current); timer.current = window.setTimeout(() => setPos(null), 4500); }, [place]);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  // Keep the card on screen: move it up when it would run past the bottom.
+  useLayoutEffect(() => {
+    if (!pos || !card.current || pos.right !== undefined) return;
+    const over = pos.top + card.current.offsetHeight - (window.innerHeight - 12);
+    if (over > 0.5) setPos({ ...pos, top: Math.max(64, pos.top - over) });
+  }, [pos]);
+  const handlers = {
+    onMouseEnter: () => { if (!touchOnly()) show(); },
+    onMouseLeave: hide,
+    onFocus: (e: FocusEvent<HTMLElement>) => { if (e.target.matches(':focus-visible')) show(0); },
+    onBlur: hide,
+  };
+  return { ref, card, pos, flash, hide, handlers };
+}
+
+function HintCard({ id, title, pos, cardRef, children }: { id: string; title: string; pos: HintPos | null; cardRef: MutableRefObject<HTMLDivElement | null>; children: ReactNode }) {
+  return <div ref={(el) => { cardRef.current = el; }} id={id} role="tooltip" className={`ml-card ${pos ? 'is-open' : ''}`} style={pos ? { top: pos.top, left: pos.left, right: pos.right } : undefined}>
+    <strong>{title}</strong>{children}
   </div>;
 }
 
-function SourceRow({ icon, title, meta, status, children }: { icon: ReactNode; title: string; meta: string; status: string; children: ReactNode }) {
-  return <details className="ml-row ml-source">
-    <summary className="ml-main">
-      <span className="ml-icon">{icon}</span>
-      <span className="ml-text"><strong>{title}</strong><small>{meta}</small></span>
-      <span className={`ml-status ${status === 'Included' ? 'is-in' : ''}`}>{status}</span>
-    </summary>
-    <div className="ml-legend">{children}</div>
-  </details>;
+/** One layer: icon, name, and a switch (or a status such as "Included"); details in the hover card.
+ * The whole row is the click target, and nothing opens under it, so it stays put when toggled. */
+function Row({ className = '', icon, title, on, onToggle, status, anchor, children }: {
+  className?: string; icon: ReactNode; title: string; on?: boolean; onToggle?: (on: boolean) => void; status?: string;
+  anchor: (el: HTMLElement | null) => void; children: ReactNode;
+}) {
+  const id = useId();
+  const hint = useHint();
+  const body = <>
+    <span className="ml-icon">{icon}</span>
+    <span className="ml-text">{title}</span>
+    {onToggle
+      ? <input type="checkbox" role="switch" className="ml-switch" checked={Boolean(on)} aria-describedby={id}
+          onChange={(e) => { anchor(hint.ref.current); onToggle(e.target.checked); if (e.target.checked && touchOnly()) hint.flash(); }} />
+      : <span className={`ml-status ${status === 'Included' ? 'is-in' : ''}`}>{status}</span>}
+  </>;
+  return <div ref={(el) => { hint.ref.current = el; }} className={`ml-row ${className} ${on ? 'is-on' : ''}`} {...hint.handlers}>
+    {onToggle
+      ? <label className="ml-main">{body}</label>
+      : <button type="button" className="ml-main" aria-describedby={id} onClick={() => (hint.pos ? hint.hide() : hint.flash())}>{body}</button>}
+    <HintCard id={id} title={title} pos={hint.pos} cardRef={hint.card}>{children}</HintCard>
+  </div>;
+}
+
+/** A small (i) that shows a hint card: for the help text of other sidebar sections. */
+export function InfoHint({ title, children }: { title: string; children: ReactNode }) {
+  const id = useId();
+  const hint = useHint();
+  return <span ref={(el) => { hint.ref.current = el; }} className="ml-info" {...hint.handlers}>
+    <button type="button" aria-label={`About ${title}`} aria-describedby={id} onClick={() => (hint.pos ? hint.hide() : hint.flash())}>i</button>
+    <HintCard id={id} title={title} pos={hint.pos} cardRef={hint.card}>{children}</HintCard>
+  </span>;
 }
 
 function TrafficGlyph() {
@@ -126,42 +181,49 @@ export function LayerPanel({ roads, setRoads, context, setContext, period, setPe
   const fireOn = context['county-fire'] || context['city-fire'];
   const aircraft = context['airport-contours'];
   const hospitals = places?.heliports.filter((p) => p.kind === 'hospital').length;
+  // Scroll anchoring: a toggle can change content above the panel (the aircraft switch changes the period and the
+  // values in the place panel), so after the update the clicked row is scrolled back to where it was.
+  const anchored = useRef<{ el: HTMLElement; top: number } | null>(null);
+  const anchor = useCallback((el: HTMLElement | null) => { anchored.current = el ? { el, top: el.getBoundingClientRect().top } : null; }, []);
+  useLayoutEffect(() => {
+    const a = anchored.current;
+    anchored.current = null;
+    if (!a) return;
+    const delta = a.el.getBoundingClientRect().top - a.top;
+    const scroller = a.el.closest('.map-guide');
+    if (scroller && Math.abs(delta) > 0.5) scroller.scrollTop += delta;
+  });
   return <section className="guide-section ml-panel">
     <h2>In the noise colors</h2>
-    <SourceRow icon={<TrafficGlyph />} title="Road traffic" meta="Every road, freeways to side streets" status="Included">
-      <p className="ml-note">Day, evening, night and 24 h levels from every modeled road. This is the base of the map, so it is always on.</p>
-    </SourceRow>
-    <LayerRow className="context-airport-contours" icon={<AircraftGlyph />} title="Aircraft" meta={aircraft ? 'Added to the 24 h colors' : 'Off: 24 h shows roads only'} on={aircraft}
-      onChange={(on) => { setContext({ ...context, 'airport-contours': on }); if (on) setPeriod('Q'); }}>
+    <Row icon={<TrafficGlyph />} title="Road traffic" status="Included" anchor={anchor}>
+      <p>Always in the colors: every modeled road, day, evening, night and 24 h.</p>
+    </Row>
+    <Row className="context-airport-contours" icon={<AircraftGlyph />} title="Aircraft" on={aircraft} anchor={anchor}
+      onToggle={(on) => { setContext({ ...context, 'airport-contours': on }); if (on) setPeriod('Q'); }}>
       <div className="legend-chips">{[55, 60, 65, 70, 75].map((level) => <span key={level} style={{ background: bandColor(level + 0.1), color: level >= 65 ? '#fff' : '#2b2340' }}>{level}</span>)}<em>dB CNEL</em></div>
-      <div className="legend-key"><span><i className="key-line" />Official contour</span><span><i className="key-line is-dashed" />Estimated, past the official lines</span></div>
-      {period === 'Q'
-        ? <p className="ml-note">The 24 h colors include aircraft. Switch off to see road traffic alone.</p>
-        : <p className="ml-note">Aircraft counts only in the 24 h view (CNEL); day, evening and night show roads. <button type="button" className="ml-link" onClick={() => setPeriod('Q')}>Show 24 h</button></p>}
-      <details className="ml-more"><summary>How the aircraft estimate works</summary>
-        <p>CNEL is a 24-hour average that counts evening noise 5 dB and night noise 10 dB louder. Most official airport maps stop at 65 CNEL, so each airport&rsquo;s contours are extended to 55 CNEL from the spacing of its official lines; levels between lines are interpolated. Contours older than 2000 (Compton, El Monte, Torrance, Palmdale, Agua Dulce, Catalina) are drawn but not counted.</p>
-      </details>
-    </LayerRow>
-    <SourceRow icon={<HelicopterGlyph />} title="Helicopters" meta="Police, news, medical and tour flights" status="Not yet">
-      <p className="ml-note">Not in the colors yet. Unlike airports, helicopters have no official noise contours or fixed routes in LA; computing them needs flight tracks (for example from ADS-B receivers). The Heliports layer below shows where they land.</p>
-    </SourceRow>
-    <SourceRow icon={<SirenGlyph />} title="Sirens" meta="Fire engines and ambulances" status="Not yet">
-      <p className="ml-note">Not in the colors yet. Sirens are short, very loud events; adding them needs how often each station&rsquo;s engines go out and which streets they take. The Fire stations layer below shows where they start.</p>
-    </SourceRow>
-    <h2 className="ml-subhead">On the map only <span>does not change the colors</span></h2>
-    <LayerRow className="ml-roads" icon={<RoadsGlyph />} title="Road lines" meta="Line width by traffic, vehicles a day" on={roads} onChange={setRoads}>
+      <div className="legend-key"><span><i className="key-line" />Official</span><span><i className="key-line is-dashed" />Estimated</span></div>
+      <p>{period === 'Q' ? 'Added to the 24 h colors. Off: road traffic alone.' : 'Counts in the 24 h view only; day, evening and night are roads.'}</p>
+    </Row>
+    <Row icon={<HelicopterGlyph />} title="Helicopters" status="Not yet" anchor={anchor}>
+      <p>Not modeled yet: LA has no official helicopter contours or routes. It needs flight tracks (ADS-B).</p>
+    </Row>
+    <Row icon={<SirenGlyph />} title="Sirens" status="Not yet" anchor={anchor}>
+      <p>Not modeled yet: it needs how often each station&rsquo;s engines go out, and their routes.</p>
+    </Row>
+    <h2 className="ml-subhead">On the map only</h2>
+    <Row className="ml-roads" icon={<RoadsGlyph />} title="Road lines" on={roads} onToggle={setRoads} anchor={anchor}>
       <div className="legend-roads">{ROAD_CLASSES.map(([min, label, width]) => <span key={min}><i style={{ height: `${width}px` }} />{label}</span>)}</div>
-      <p className="ml-note"><i className="key-dash" />Dashed: no traffic count on that street, so the model uses a typical value for its type. Counts show along the roads when you zoom in; click a road for details.</p>
-    </LayerRow>
-    <LayerRow className="context-heliports" icon={<HeliGlyph color={HELIPAD_BLUE} size={24} />} title="Heliports"
-      meta={places ? `${places.heliports.length} pads · ${hospitals} at hospitals` : 'Helipads and helistops'} on={context.heliports} onChange={(on) => setContext({ ...context, heliports: on })}>
-      <div className="legend-key"><span><HeliGlyph color={HELIPAD_BLUE} size={16} />Heliport or helistop</span><span><HeliGlyph color={HOSPITAL_RED} size={16} />Hospital helipad</span></div>
-      <p className="ml-note">Many rooftop pads are for emergencies only. Names appear when you zoom in.</p>
-    </LayerRow>
-    <LayerRow className="context-fire" icon={<FireGlyph size={24} />} title="Fire stations"
-      meta={places ? `${places.fire.length} stations · County and City of LA` : 'County and City of LA'} on={fireOn} onChange={(on) => setContext({ ...context, 'county-fire': on, 'city-fire': on })}>
-      <p className="ml-note">{places ? `${places.counts.county} LA County Fire and ${places.counts.city} LA City Fire stations` : 'LA County Fire and LA City Fire stations'} (two departments: the City of LA runs its own). Station numbers appear when you zoom in.</p>
-    </LayerRow>
+      <p><i className="key-dash" />No count, typical traffic. Vehicles a day; counts show when zoomed in.</p>
+    </Row>
+    <Row className="context-heliports" icon={<HeliGlyph color={HELIPAD_BLUE} size={24} />} title="Heliports" on={context.heliports} anchor={anchor}
+      onToggle={(on) => setContext({ ...context, heliports: on })}>
+      <div className="legend-key"><span><HeliGlyph color={HELIPAD_BLUE} size={16} />Helipad</span><span><HeliGlyph color={HOSPITAL_RED} size={16} />Hospital</span></div>
+      {places && <p>{places.heliports.length} pads, {hospitals} at hospitals.</p>}
+    </Row>
+    <Row className="context-fire" icon={<FireGlyph size={24} />} title="Fire stations" on={fireOn} anchor={anchor}
+      onToggle={(on) => setContext({ ...context, 'county-fire': on, 'city-fire': on })}>
+      <p>{places ? `${places.counts.county} LA County Fire and ${places.counts.city} LA City Fire stations.` : 'LA County Fire and LA City Fire stations.'}</p>
+    </Row>
   </section>;
 }
 

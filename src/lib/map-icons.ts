@@ -16,12 +16,15 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-/** Flame outline centred on (cx, cy), about `s` units tall, as an SVG path (shared by the map icon and the panel). */
-export function flamePath(cx: number, cy: number, s: number) {
-  const k = s / 26;
+/** Fire station: a firehouse (pitched roof) with a big engine door and two door panels, centred on (cx, cy),
+ * `s` units tall, as an SVG path with even-odd holes (shared by the map icon and the panel). */
+export function stationPath(cx: number, cy: number, s: number) {
+  const k = s / 24;
   const p = (x: number, y: number) => `${+(cx + x * k).toFixed(2)} ${+(cy + y * k).toFixed(2)}`;
-  return `M${p(0, -13)}C${p(9, -5)} ${p(11, 2)} ${p(8, 8)}C${p(5, 14)} ${p(-5, 14)} ${p(-8, 8)}C${p(-11, 2)} ${p(-6, -3)} ${p(-3, -7)}`
-    + `C${p(-2, -2)} ${p(0, 0)} ${p(1, 0)}C${p(2, -5)} ${p(-1, -9)} ${p(0, -13)}Z`;
+  const rect = (x0: number, y0: number, x1: number, y1: number) => `M${p(x0, y0)}L${p(x1, y0)}L${p(x1, y1)}L${p(x0, y1)}Z`;
+  return `M${p(0, -11.5)}L${p(11.5, -1.5)}L${p(8.5, -1.5)}L${p(8.5, 11)}L${p(-8.5, 11)}L${p(-8.5, -1.5)}L${p(-11.5, -1.5)}Z`
+    + `M${p(-5, 11)}L${p(-5, 3.2)}Q${p(-5, 1.4)} ${p(-3.2, 1.4)}L${p(3.2, 1.4)}Q${p(5, 1.4)} ${p(5, 3.2)}L${p(5, 11)}Z`
+    + rect(-5, 4.6, 5, 6) + rect(-5, 7.8, 5, 9.2);
 }
 
 export function drawIcon(id: string): IconImage | null {
@@ -55,7 +58,7 @@ export function drawIcon(id: string): IconImage | null {
     ctx.strokeStyle = '#ffffff';
     ctx.stroke();
     ctx.fillStyle = '#ffffff';
-    ctx.fill(new Path2D(flamePath(c, c + 1, 24)));
+    ctx.fill(new Path2D(stationPath(c, c + 0.5, 25)), 'evenodd');
   } else {
     return null;
   }

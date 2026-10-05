@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 import CountyMap, { type Camera, type MapStatus, type Selection, type Values } from '@/components/CountyMap';
 import { BAND_COLORS, BAND_EDGES, roadCnel, type BaseTheme, type ContextId, type NoiseStyle, type Period } from '@/lib/county-map-style';
 import { addressAt, findAddress, suggestAddresses, type Address, type Suggestion } from '@/lib/address';
-import { LayerPanel, Nearby, usePlaces, type Place, type Places } from '@/components/MapLayers';
+import { InfoHint, LayerPanel, Nearby, usePlaces, type Place, type Places } from '@/components/MapLayers';
 
 const LAYERS_URL = process.env.NEXT_PUBLIC_QUIET_LA_LAYERS_URL || '/county-layers/';
 // Photo 3D showcase (lidar + aerial imagery as Gaussian splats): Studio City, Ventura Blvd and US-101.
@@ -402,11 +402,11 @@ export default function CountyMapPage() {
         <p className="control-help">Loudest wall for buildings. Saved in this browser only.</p>
       </section>}
       <div className="guide-body">
-        <section className="guide-section"><h2>Noise display</h2><Choice label="Noise display style" value={noise} options={[['field', 'Field'], ['bands', 'Bands'], ['glow', 'Glow'], ['dots', 'Dots']]} onChange={setNoise} /><p className="control-help">{STYLE_HELP[noise]}{mode3d ? ' In 3D, buildings are colored by their loudest wall.' : ''}</p></section>
+        <section className="guide-section"><h2>Noise display<InfoHint title={`Noise display: ${noise[0].toUpperCase()}${noise.slice(1)}`}><p>{STYLE_HELP[noise]}{mode3d ? ' In 3D, buildings are colored by their loudest wall.' : ''}</p></InfoHint></h2><Choice label="Noise display style" value={noise} options={[['field', 'Field'], ['bands', 'Bands'], ['glow', 'Glow'], ['dots', 'Dots']]} onChange={setNoise} /></section>
         <section className="guide-section"><h2>Base map</h2><Choice label="Base map" value={theme} options={[['light', 'Light'], ['grayscale', 'Gray'], ['dark', 'Dark'], ['satellite', 'Photo']]} onChange={setTheme} /></section>
-        <section className="guide-section"><h2>Photo 3D <span className="county-beta">beta</span></h2>
+        <section className="guide-section"><h2>Photo 3D <span className="county-beta">beta</span><InfoHint title="Photo 3D"><p>Built from the 2023 USGS laser scan and 2022 aerial photos. Rooftops and trees are sharp; building sides are soft because aerial scans see little of walls.</p></InfoHint></h2>
           <label className="source-toggle"><input type="checkbox" checked={photo3d} onChange={(e) => { const on = e.target.checked; setPhoto3d(on); if (on) { setMode3d(true); setTarget({ ...SPLAT_VIEW, nonce: Date.now() }); } }} />Photo-real 3D showcase: Ventura Blvd and the 101</label>
-          <p className="control-help">{splatStatus === 'loading' ? 'Loading about 20 MB of 3D scan…' : splatStatus === 'error' ? 'The 3D scan could not load.' : 'Built from the 2023 USGS laser scan and 2022 aerial photos. Rooftops and trees are sharp; building sides are soft because aerial scans see little of walls.'}</p>
+          {(splatStatus === 'loading' || splatStatus === 'error') && <p className="control-help">{splatStatus === 'loading' ? 'Loading about 20 MB of 3D scan…' : 'The 3D scan could not load.'}</p>}
         </section>
         <LayerPanel roads={roads} setRoads={setRoads} context={context} setContext={setContext} period={period} setPeriod={setPeriod} places={places} />
         <div className="guide-actions"><button type="button" onClick={copyView}>{selectedAt ? 'Copy link to this place' : 'Copy link to this view'}</button></div>
@@ -414,7 +414,7 @@ export default function CountyMapPage() {
       <div className="guide-secondary">
         <details className="study-details"><summary>Coverage & method</summary>
           <p><strong>{layers ? `${layers.tiles.length} km² modeled, ${layers.receiver_count.toLocaleString()} points, ${layers.building_count.toLocaleString()} buildings.` : 'Coverage is loading.'}</strong> More of the county is added as the calculation runs. Dashed lines mark the modeled area; anything outside it is not modeled yet, not quiet.</p>
-          <p>CNOSSOS-EU road noise (NoiseModelling 6), every Census road with FHWA HPMS 2024 traffic counts where they exist and typical values elsewhere, LA County building footprints and heights. Tiles are being recomputed one by one with the 2023 USGS lidar terrain at 10 m, freeway sound walls found in the lidar, and roads on bridges at deck height; tiles not yet redone use 10 m USGS terrain without walls. Sound bends over roofs, hills and walls; reflections between buildings are not yet included. The 24 h view (CNEL) adds aircraft estimated from the official airport contours. Evening traffic is 0.6× and night 0.2× the daytime hourly flow. Values are modeled and uncalibrated: not measurements and not indoor levels.</p>
+          <p>CNOSSOS-EU road noise (NoiseModelling 6), every Census road with FHWA HPMS 2024 traffic counts where they exist and typical values elsewhere, LA County building footprints and heights. Tiles are being recomputed one by one with the 2023 USGS lidar terrain at 10 m, freeway sound walls found in the lidar, and roads on bridges at deck height; tiles not yet redone use 10 m USGS terrain without walls. Sound bends over roofs, hills and walls; reflections between buildings are not yet included. The 24 h view (CNEL) adds aircraft estimated from the official airport contours: most official maps stop at 65 CNEL, so each airport&rsquo;s contours are extended to 55 CNEL from the spacing of its official lines and levels between lines are interpolated; contours older than 2000 (Compton, El Monte, Torrance, Palmdale, Agua Dulce, Catalina) are drawn but not counted. Switch Aircraft off to see road traffic alone. Evening traffic is 0.6× and night 0.2× the daytime hourly flow. Values are modeled and uncalibrated: not measurements and not indoor levels.</p>
           {layers && <p>Data built {layers.built_at_utc.replace('T', ' ').replace('Z', ' UTC')}.</p>}
         </details>
 

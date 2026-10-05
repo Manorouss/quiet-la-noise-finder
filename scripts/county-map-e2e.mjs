@@ -154,8 +154,13 @@ async function searchAddress(page, typed, pick) {
   check('aircraft contours drawn', await page.evaluate(() => window.__quietCountyMap.queryRenderedFeatures({ layers: ['context-airport-contours-line'] }).length > 0));
   check('24 h field includes aircraft', /_q\.pmtiles$/.test(await fieldUrl()), await fieldUrl());
   await page.screenshot({ path: `${out}/desktop_aircraft.png` });
+  // Switches stay under the pointer: the row does not move when toggled (even though the period and panel change).
+  const switchTop = (sel) => page.evaluate((s) => document.querySelector(s).getBoundingClientRect().top, sel);
+  const before = await switchTop('.context-airport-contours .ml-switch');
   await page.click('.context-airport-contours .ml-main');
   await idle(page);
+  const moved = Math.abs(await switchTop('.context-airport-contours .ml-switch') - before);
+  check('aircraft switch stays in place', moved < 1, `moved ${moved.toFixed(1)} px`);
   check('aircraft off: roads-only 24 h field', /_r\.pmtiles$/.test(await fieldUrl()), await fieldUrl());
   check('aircraft off: contours hidden', await page.evaluate(() => window.__quietCountyMap.getLayoutProperty('context-airport-contours-line', 'visibility') === 'none'));
   check('aircraft off: legend says roads only', /Roads only/.test(await text(page, '.county-legend') ?? ''));
@@ -164,8 +169,14 @@ async function searchAddress(page, typed, pick) {
   await page.click('.context-airport-contours .ml-main');
   await idle(page);
   check('aircraft toggle switches to 24 h', /24 h/.test(await text(page, '.quick-controls [aria-checked="true"]') ?? ''));
+  // Details are in a hover card beside the panel, not in the panel.
+  await page.hover('.context-heliports .ml-main');
+  const card = await page.waitForSelector('.context-heliports .ml-card.is-open', { timeout: 3000 }).then((el) => el.boundingBox()).catch(() => null);
+  check('hover card opens beside the panel', card && card.x >= 328, JSON.stringify(card));
   // Heliports and fire stations draw as icons (Van Nuys Airport has both nearby).
+  const heliTop = await switchTop('.context-heliports .ml-switch');
   await page.click('.context-heliports .ml-main');
+  check('heliport switch stays in place', Math.abs(await switchTop('.context-heliports .ml-switch') - heliTop) < 1);
   await page.click('.context-fire .ml-main');
   await idle(page);
   const icons = await page.evaluate(() => {
