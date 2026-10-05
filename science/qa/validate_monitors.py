@@ -56,6 +56,30 @@ def open_ground(x: float, y: float, radius: float) -> list[tuple[float, list[flo
     return sorted(found)
 
 
+def parcel_points(rings: list, x: float, y: float) -> list[list[float]]:
+    """[D, E, N] LAeq of every facade and open-ground receiver (not on the road) inside the parcel."""
+    import shapely
+    poly = shapely.union_all([shapely.Polygon([TO_UTM.transform(lon, lat) for lon, lat in ring]) for ring in rings]).buffer(1.0)
+    minx, miny, maxx, maxy = poly.bounds
+    found = []
+    for tx in range(int(minx // 1000), int(maxx // 1000) + 1):
+        for ty in range(int(miny // 1000), int(maxy // 1000) + 1):
+            tile = ASSETS / f"cty-e{tx}-n{ty}" / "benchmark.geojson"
+            if not tile.exists():
+                continue
+            for f in json.loads(tile.read_text())["features"]:
+                p = f["properties"]
+                if p.get("on_road"):
+                    continue
+                values = [laeq(p, period) for period in "DEN"]
+                if any(v is None for v in values):
+                    continue
+                rx, ry = TO_UTM.transform(*f["geometry"]["coordinates"][:2])
+                if minx <= rx <= maxx and miny <= ry <= maxy and poly.contains(shapely.Point(rx, ry)):
+                    found.append(values)
+    return found
+
+
 def emean(values: list[float]) -> float:
     return 10 * math.log10(sum(10 ** (v / 10) for v in values) / len(values))
 
@@ -78,12 +102,21 @@ def main() -> int:
         air0 = float(air[0]) if math.isfinite(air[0]) else None
         near = open_ground(x, y, max(r_unc, ROAD_RADIUS_M))
         road = None
-        if near:
+        lot = parcel_points(s["parcel"]["rings"], x, y) if s.get("parcel") else []
+        if lot:
+            # Where on the lot the microphone stood is not known (near a building setback): the parcel's median point
+            # (by CNEL) is the central estimate and the parcel's spread the range.
+            ranked = sorted(lot, key=lambda v: road_cnel(*v))
+            mid = ranked[max(0, len(ranked) // 2 - 1): len(ranked) // 2 + 2]
+            periods = [emean([v[i] for v in mid]) for i in range(3)]
+            road = {"D": round(periods[0], 1), "E": round(periods[1], 1), "N": round(periods[2], 1), "CNEL": round(road_cnel(*periods), 1),
+                    "range_CNEL": [round(min(road_cnel(*v) for v in lot), 1), round(max(road_cnel(*v) for v in lot), 1)], "points": len(lot), "basis": "parcel"}
+        elif near:
             top = near[:NEAREST]
             periods = [emean([v[i] for _, v in top]) for i in range(3)]
             road = {"D": round(periods[0], 1), "E": round(periods[1], 1), "N": round(periods[2], 1), "CNEL": round(road_cnel(*periods), 1),
                     "range_CNEL": [round(min(road_cnel(*v) for d, v in near if d <= r_unc), 1), round(max(road_cnel(*v) for d, v in near if d <= r_unc), 1)]
-                    if any(d <= r_unc for d, _ in near) else None, "mean_distance_m": round(sum(d for d, _ in top) / len(top))}
+                    if any(d <= r_unc for d, _ in near) else None, "mean_distance_m": round(sum(d for d, _ in top) / len(top)), "basis": "nearest"}
         total = None if road is None else round(energy_sum(road["CNEL"], air0 if air0 is not None else -99), 1)
         if "CNEL" in s["measured"]:
             total_rows.append({"id": s["id"], "location": s["location"], "excluded": s.get("exclude"), "measured": s["measured"],
@@ -113,7 +146,7 @@ def main() -> int:
                 summary.setdefault("by_airport", {})[airport] = {"n": len(ea), "mean_error_db": round(float(ea.mean()), 1), "rms_error_db": round(float(np.sqrt((ea ** 2).mean())), 1)}
                 print(f"  {airport:26} n={len(ea):2}  mean {ea.mean():+.1f} dB  RMS {np.sqrt((ea ** 2).mean()):.1f} dB")
         print(f"  model - measured: mean {e.mean():+.1f} dB, RMS {np.sqrt((e ** 2).mean()):.1f} dB over {len(e)} monitors")
-    print("\n24-HOUR MEASUREMENTS (total noise; model = roads + aircraft at the nearest open-ground points)")
+    print("\n24-HOUR MEASUREMENTS (total noise; model = roads + aircraft: parcel median point (or nearest open-ground points))")
     print(f"{'site':7} {'meas CNEL':>9} {'model':>6} {'range':>11} {'error':>6}  {'D meas/model':>13} {'N meas/model':>13}  note")
     for r in total_rows:
         if r["model_road"] is None:
@@ -122,7 +155,7 @@ def main() -> int:
         err = r["model_total_cnel"] - m["CNEL"]
         rng = "" if not mod["range_CNEL"] else f"{mod['range_CNEL'][0]:.0f}-{mod['range_CNEL'][1]:.0f}"
         dn = lambda k: f"{fmt(m.get(k))}/{fmt(mod[k])}"
-        print(f"{r['id']:7} {m['CNEL']:9.1f} {r['model_total_cnel']:6.1f} {rng:>11} {err:+6.1f}  {dn('D'):>13} {dn('N'):>13}  {r['excluded'] or ''}")
+        print(f"{r['id']:7} {m['CNEL']:9.1f} {r['model_total_cnel']:6.1f} {rng:>11} {err:+6.1f}  {dn('D'):>13} {dn('N'):>13}  {mod['basis'][:6]:6} {r['excluded'] or ''}")
     used = [r for r in total_rows if r["model_road"] is not None and not r["excluded"]]
     if used:
         e = np.array([r["model_total_cnel"] - r["measured"]["CNEL"] for r in used])
