@@ -63,7 +63,7 @@ async function searchAddress(page, typed, pick) {
   check('search: selects the house with its address', /19305 Redwing St/i.test(address ?? '') && !/^Near/.test(address ?? ''), address);
   check('search: level in words', Boolean(await text(page, '.level-words')), await text(page, '.level-words'));
   check('search: compares with mapped buildings', /than \d+% of mapped buildings/.test(await text(page, '.compare-line') ?? ''), await text(page, '.compare-line'));
-  check('search: quietest wall', /Quietest wall/.test(await text(page, '.receiver-section') ?? ''));
+  check('search: least exposed wall', /Least exposed wall/.test(await text(page, '.receiver-section') ?? ''));
   await page.screenshot({ path: `${out}/desktop_search.png` });
 
   // Click a building near the map centre.

@@ -124,7 +124,7 @@ function Inspector({ selection, period, onClose, covered, percentiles }: { selec
       <LevelWords value={selection.values[period]} period={period} />
       <Compare value={selection.values[period]} period={period} percentiles={percentiles} />
       <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">{selection.quietest[period] !== null && selection.values[period] !== null
-        ? `Quietest wall: ${selection.quietest[period]!.toFixed(1)} dB, ${(selection.values[period]! - selection.quietest[period]!).toFixed(0)} dB below the loudest (${selection.count} modeled points around the walls). Bedrooms on the quiet side hear less.`
+        ? `Least exposed wall: ${selection.quietest[period]!.toFixed(1)} dB, ${(selection.values[period]! - selection.quietest[period]!).toFixed(0)} dB below the loudest (${selection.count} modeled points around the walls). Bedrooms on the quiet side hear less.`
         : `Loudest of ${selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side.`} Switch to Dots to see each wall.</p></>;
   }
   if (selection.kind === 'empty') {
