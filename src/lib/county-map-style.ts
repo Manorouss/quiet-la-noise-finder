@@ -112,8 +112,8 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
       id: `context-${id}`, type: 'circle', source: `context-${id}`, layout: visible(o.context[id]),
       paint: { 'circle-color': id === 'heliports' ? '#2b6cb0' : '#c53030', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 7], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 },
     })),
-    { id: 'selected-point', type: 'circle', source: 'receivers', 'source-layer': 'receivers', filter: ['==', ['get', 'k'], ''], paint: { 'circle-radius': 9, 'circle-color': CLEAR, 'circle-stroke-color': dark ? '#ffffff' : '#171b22', 'circle-stroke-width': 2.4 } },
-    { id: 'selected-building', type: 'line', source: 'buildings', 'source-layer': 'buildings', filter: ['==', ['get', 'k'], ''], paint: { 'line-color': dark ? '#ffffff' : '#171b22', 'line-width': 3 } },
+    { id: 'selected-point', type: 'circle', source: 'receivers', 'source-layer': 'receivers', filter: ['==', ['to-string', ['get', 'k']], ''], paint: { 'circle-radius': 9, 'circle-color': CLEAR, 'circle-stroke-color': dark ? '#ffffff' : '#171b22', 'circle-stroke-width': 2.4 } },
+    { id: 'selected-building', type: 'line', source: 'buildings', 'source-layer': 'buildings', filter: ['==', ['to-string', ['get', 'k']], ''], paint: { 'line-color': dark ? '#ffffff' : '#171b22', 'line-width': 3 } },
   ];
   return {
     version: 8,

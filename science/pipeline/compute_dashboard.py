@@ -237,6 +237,14 @@ def engine_rows(all_workers: list[dict]) -> list[dict]:
             attempt = max(candidates, key=lambda p: p.stat().st_birthtime)
             row["tile"] = attempt.name.split("phase1-county-", 1)[1].split(f"-{LAYOUT}", 1)[0]
             row["stage"] = read_json(attempt / "phase1_run_state.json").get("stage")
+            # The runner records stages only during the imports; later stages show as finished WPS jobs.
+            finished = {path.name.split("_job_")[0].removeprefix("final_") for path in (attempt / "phase1_provenance").glob("final_*_job_*.xml")}
+            if "propagation" in finished:
+                row["stage"] = "export"
+            elif "road_emissions" in finished:
+                row["stage"] = "propagation"
+            elif "import_terrain" in finished:
+                row["stage"] = "road_emissions"
             row["minutes"] = round((time.time() - attempt.stat().st_birthtime) / 60, 1)
             log = attempt / "phase1_provenance/engine.log"
             if row["stage"] == "propagation" and log.exists():

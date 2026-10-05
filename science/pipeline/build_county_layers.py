@@ -5,10 +5,10 @@ Inputs are portal tile directories written by build_tile_assets.py (benchmark.ge
 buildings.geojson, build-manifest.json), already QA-flagged (physical-ceiling masks,
 on-road labels). Later roots win when a tile appears twice. Outputs, in --out:
 
-  receivers.pmtiles  points: k receiver key, d/e/n LAeq per period (absent when masked
-                     or unavailable), m masked, o on road, f facade (1) or open space (0),
-                     b building key (facade only). All points from z16; thinned below.
-  buildings.pmtiles  footprints: k key, h height (m), d/e/n highest facade LAeq, c count.
+  receivers.pmtiles  points: k integer id (selection only), d/e/n LAeq per period (absent when masked
+                     or unavailable), m masked, o on road, f facade (1) or open space (0).
+                     All points from z16; thinned below.
+  buildings.pmtiles  footprints: k integer id (selection only), h height (m), d/e/n highest facade LAeq, c count.
   roads.pmtiles      modeled road sources clipped to each tile core: a AADT, c MTFCC,
                      nm name, t traffic basis (hpms | default). Minor roads appear later.
   field_{d,e,n}.pmtiles  raster-dem per period in Terrarium encoding with elevation = LAeq
@@ -98,13 +98,17 @@ def tippecanoe(ndjson: Path, out: Path, layer: str, args: list[str]) -> None:
 # ---------------------------------------------------------------- vector layers
 
 def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray]):
+    # k is a small integer id (unique within one build, used only to highlight the selection): the full
+    # receiver keys were most of the file size.
+    k = 0
     for tile_id, path in tiles.items():
         data = json.loads((path / "benchmark.geojson").read_text())
         rows = []
         for feature in data["features"]:
             p = feature["properties"]
             lon, lat = feature["geometry"]["coordinates"][:2]
-            out = {"k": p["receiver_key"], "f": 1 if p["receiver_family"] == "building_facade_exterior" else 0}
+            k += 1
+            out = {"k": k, "f": 1 if p["receiver_family"] == "building_facade_exterior" else 0}
             values = [laeq(p, period) for period in PERIODS]
             for name, value in zip("den", values):
                 if value is not None:
@@ -113,8 +117,6 @@ def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray]):
                 out["m"] = 1
             if p.get("on_road"):
                 out["o"] = 1
-            if p.get("building_key"):
-                out["b"] = p["building_key"]
             yield {"type": "Feature", "geometry": {"type": "Point", "coordinates": [round(lon, 7), round(lat, 7)]}, "properties": out}
             if not p.get("masked") and all(v is not None for v in values):
                 rows.append((lon, lat, *values))
@@ -143,6 +145,8 @@ def building_features(tiles: dict[str, Path]):
                         out[name] = previous["properties"][name]
                 out["c"] += previous["properties"]["c"]
             merged[key] = {"type": "Feature", "geometry": feature["geometry"], "properties": out}
+    for k, feature in enumerate(merged.values(), 1):  # small integer ids, as for receivers
+        feature["properties"]["k"] = k
     return merged.values()
 
 

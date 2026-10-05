@@ -154,8 +154,9 @@ export default function CountyMap(props: Props) {
     if (!map) return;
     const apply = () => {
       const key = props.selectedKey ?? '';
-      if (map.getLayer('selected-point')) map.setFilter('selected-point', ['==', ['get', 'k'], key]);
-      if (map.getLayer('selected-building')) map.setFilter('selected-building', ['==', ['get', 'k'], key]);
+      // Layer ids are integers (older builds used strings): compare as text.
+      if (map.getLayer('selected-point')) map.setFilter('selected-point', ['==', ['to-string', ['get', 'k']], key]);
+      if (map.getLayer('selected-building')) map.setFilter('selected-building', ['==', ['to-string', ['get', 'k']], key]);
     };
     if (map.isStyleLoaded()) apply(); else map.once('idle', apply);
   }, [props.selectedKey, styleKey]);
