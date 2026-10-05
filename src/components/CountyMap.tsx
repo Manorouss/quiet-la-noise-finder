@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { Map as MapLibreMap, MapGeoJSONFeature } from 'maplibre-gl';
-import { buildStyle, type ContextId, type Period, type StyleOptions } from '@/lib/county-map-style';
+import { buildStyle, skyFor, terrainFor, type ContextId, type Period, type StyleOptions } from '@/lib/county-map-style';
 import { createSplatLayer } from '@/lib/splat-layer';
 
 export type Values = Record<Period, number | null>;
@@ -156,10 +156,23 @@ export default function CountyMap(props: Props) {
     return () => { cancelled = true; map?.remove(); mapRef.current = null; };
   }, []);
 
-  // Every setting is part of one style; setStyle diffs it into minimal map updates.
+  // Every setting is part of one style; setStyle diffs it into minimal map updates. Terrain and sky are
+  // kept out of the diff and set directly (see terrainFor in county-map-style).
   useEffect(() => {
     const map = mapRef.current;
-    if (map) map.setStyle(buildStyle(propsRef.current), { diff: true });
+    if (!map) return;
+    const next = buildStyle(propsRef.current);
+    const current = map.getStyle();
+    next.terrain = current?.terrain;
+    next.sky = current?.sky;
+    map.setStyle(next, { diff: true });
+    const apply = () => {
+      const terrain = terrainFor(propsRef.current) ?? null;
+      if (JSON.stringify(map.getTerrain() ?? null) !== JSON.stringify(terrain)) map.setTerrain(terrain);
+      const sky = skyFor(propsRef.current);
+      if (sky && JSON.stringify(map.getSky?.() ?? null) !== JSON.stringify(sky)) map.setSky(sky);
+    };
+    try { apply(); } catch { map.once('styledata', () => { try { apply(); } catch { /* next style change retries */ } }); }
   }, [styleKey]);
 
   useEffect(() => {
@@ -199,7 +212,8 @@ export default function CountyMap(props: Props) {
     // After the flight, once its tiles are drawn (or after 6 s at the latest).
     const onEnd = () => { map.once('idle', pick); };
     map.once('moveend', onEnd);
-    const timer = window.setTimeout(pick, 6000);
+    // Fallback if idle never comes; a flight paused in a background tab keeps waiting for moveend.
+    const timer = window.setTimeout(() => { if (!map.isMoving()) pick(); }, 6000);
     return () => { done = true; window.clearTimeout(timer); map.off('moveend', onEnd); map.off('idle', pick); };
   }, [props.target]);
 

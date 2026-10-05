@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash, randomBytes } from 'node:crypto';
 import { hasCredentialLikeContent } from './preview-security-policy.mjs';
 
-export const exactFrameworkPaths = new Set(['404.html', '404/index.html', 'index.html', 'index.txt', 'robots.txt']);
+export const exactFrameworkPaths = new Set(['404.html', '404/index.html', 'index.html', 'index.txt', 'robots.txt', 'icon.svg']);
 export const exactMapRuntimePaths = new Set(['maplibre/maplibre-gl-worker.mjs', 'maplibre/maplibre-gl-shared.mjs']);
 export const frameworkPatterns = [
   /^_next\/static\/[A-Za-z0-9_-]+\/_buildManifest\.js$/,

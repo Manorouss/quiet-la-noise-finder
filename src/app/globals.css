@@ -36,6 +36,7 @@
 .place-search > p { min-height: 18px; margin: 8px 0 0; color: var(--secondary); font-size: 11px; line-height: 1.45; }
 .place-search { position: relative; }
 .place-search > p:empty { min-height: 0; margin: 0; }
+.county-workspace .place-search { margin-bottom: 12px; }
 .search-suggestions { position: absolute; z-index: 6; top: 70px; left: 0; right: 0; margin: 0; padding: 4px 0; list-style: none; background: white; border: 1px solid #bac4bc; border-radius: 6px; box-shadow: 0 8px 22px rgba(20, 30, 25, 0.14); }
 .search-suggestions li { padding: 9px 11px; font-size: 12px; line-height: 1.35; cursor: pointer; }
 .search-suggestions li[aria-selected='true'], .search-suggestions li:hover { background: #e8eee7; color: var(--active); }

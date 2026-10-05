@@ -59,6 +59,19 @@ function basemap(theme: BaseTheme, url: string): { sources: StyleSpecification['
   return { sources, layers: basemapLayers('protomaps', namedFlavor(theme), { lang: 'en' }) };
 }
 
+// Terrain and sky are also applied directly by the map component when they change: MapLibre 6.9's style
+// diff cannot change them (it rebuilds the whole style, blanking the map and cutting the 3D camera move).
+export function terrainFor(o: StyleOptions): StyleSpecification['terrain'] {
+  return o.mode3d ? { source: 'terrain-dem', exaggeration: 1.25 } : undefined;
+}
+
+export function skyFor(o: StyleOptions): StyleSpecification['sky'] {
+  if (!o.mode3d) return undefined;
+  return o.theme === 'dark' || o.theme === 'satellite'
+    ? { 'sky-color': '#0b1a33', 'horizon-color': '#27354d', 'fog-color': '#1a2231', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.5, 'atmosphere-blend': 0.6 }
+    : { 'sky-color': '#9cc3eb', 'horizon-color': '#e9eef4', 'fog-color': '#eef1f3', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.45, 'atmosphere-blend': 0.5 };
+}
+
 export function buildStyle(o: StyleOptions): StyleSpecification {
   const base = basemap(o.theme, o.layersUrl);
   const dark = o.theme === 'dark' || o.theme === 'satellite';
@@ -124,10 +137,8 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
     sprite: `https://protomaps.github.io/basemaps-assets/sprites/v4/${dark ? 'dark' : o.theme === 'grayscale' ? 'grayscale' : 'light'}`,
     sources,
     layers: [...below, ...noiseLayers.slice(0, 1), ...middle, field, ...noiseLayers.slice(1), ...overlay, ...labels],
-    terrain: o.mode3d ? { source: 'terrain-dem', exaggeration: 1.25 } : undefined,
-    sky: o.mode3d ? (dark
-      ? { 'sky-color': '#0b1a33', 'horizon-color': '#27354d', 'fog-color': '#1a2231', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.5, 'atmosphere-blend': 0.6 }
-      : { 'sky-color': '#9cc3eb', 'horizon-color': '#e9eef4', 'fog-color': '#eef1f3', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.45, 'atmosphere-blend': 0.5 }) : undefined,
+    terrain: terrainFor(o),
+    sky: skyFor(o),
     light: { anchor: 'viewport', color: '#ffffff', intensity: 0.35, position: [1.5, 200, 35] },
   };
 }
