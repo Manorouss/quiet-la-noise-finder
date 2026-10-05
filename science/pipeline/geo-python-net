@@ -1,0 +1,8 @@
+#!/bin/bash
+# geo-python with HTTPS trust from the macOS system roots (python.org/codex Python ship without
+# them, so remote GeoTIFF reads failed certificate checks). Verification stays on.
+PROJECT=$(cd "$(dirname "$0")/../../../../.." && pwd)
+CERTS="$PROJECT/implementation/work/.certs/macos-roots.pem"
+[ -s "$CERTS" ] || security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain /Library/Keychains/System.keychain > "$CERTS"
+export SSL_CERT_FILE="$CERTS" CURL_CA_BUNDLE="$CERTS" GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR
+exec "$(dirname "$0")/geo-python" "$@"
