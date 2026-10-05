@@ -44,16 +44,18 @@ function ValueRows({ values, period }: { values: Values; period: Period }) {
   return <div className="county-values">{(['D', 'E', 'N', 'Q'] as Period[]).map((p) => <div key={p} className={p === period ? 'is-active' : ''}><span>{p === 'Q' ? '24 h CNEL' : PERIOD_NAME[p]}</span><i style={{ background: band(values[p]) ?? '#9ea3a8' }} /><strong>{values[p] === null ? '—' : `${values[p]!.toFixed(1)} dB`}</strong></div>)}</div>;
 }
 
-function AddressLine({ at, near }: { at: [number, number]; near?: boolean }) {
+function AddressLine({ at, near, known }: { at: [number, number]; near?: boolean; known?: string }) {
   const key = `${at[0]},${at[1]}`;
   const [result, setResult] = useState<{ key: string; address: Address | null; failed: boolean } | null>(null);
   useEffect(() => {
+    if (known) return;
     const controller = new AbortController();
     addressAt(at[0], at[1], controller.signal)
       .then((address) => setResult({ key, address, failed: false }))
       .catch(() => { if (!controller.signal.aborted) setResult({ key, address: null, failed: true }); });
     return () => controller.abort();
-  }, [key, at]);
+  }, [key, at, known]);
+  if (known) return <p className="selection-address">{known}</p>;
   const current = result?.key === key ? result : null;
   if (!current) return <p className="selection-address is-pending">Finding the address…</p>;
   if (!current.address) return <p className="selection-address is-pending">{current.failed ? 'Address lookup is unavailable right now.' : 'No street address on record here.'}</p>;
@@ -97,7 +99,7 @@ function Inspector({ selection, period, onClose }: { selection: Selection | null
   }
   if (selection.kind === 'building') {
     return <><div className="receiver-heading"><span>Building · about {selection.height.toFixed(0)} m tall</span>{close}</div>
-      <AddressLine at={selection.at} />
+      <AddressLine at={selection.at} known={selection.address} />
       <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? 'dB CNEL, loudest wall · 24 h' : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
       <LevelWords value={selection.values[period]} period={period} />
       <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">Loudest of {selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side. Switch to Dots to see each wall.</p></>;
@@ -123,7 +125,7 @@ export default function CountyMapPage() {
   const [status, setStatus] = useState<MapStatus>({ loading: true, error: null, zoom: 13 });
   const [layers, setLayers] = useState<Layers | null>(null);
   const [initialCamera, setInitialCamera] = useState<Camera | null>(null);
-  const [target, setTarget] = useState<{ lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number; select?: boolean } | null>(null);
+  const [target, setTarget] = useState<{ lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number; select?: boolean; label?: string } | null>(null);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
@@ -203,16 +205,17 @@ export default function CountyMapPage() {
     let place = PLACES[text] ?? (pair ? [Number(pair[2]), Number(pair[1])] as [number, number] : null);
     let zoom = 15;
     let select = false;
+    let label: string | undefined;
     if (!place && text) {
       setMessage('Looking up the address…');
       try {
         const found = await findAddress(raw.trim(), undefined, magicKey);
         // A house number means one property: zoom in and select it. A bare street or place stays wider.
-        if (found) { place = [found.lng, found.lat]; select = /^\d/.test(found.label); zoom = select ? 18 : 16; pickedRef.current = found.label; setQuery(found.label); }
+        if (found) { place = [found.lng, found.lat]; select = /^\d/.test(found.label); zoom = select ? 18 : 16; label = found.label.replace(/, CA, (\d{5})$/, ', CA $1'); pickedRef.current = found.label; setQuery(found.label); }
       } catch { setMessage('The address service is unavailable right now. Try a place name or latitude, longitude.'); return; }
     }
     if (!place || Math.abs(place[0]) > 180 || Math.abs(place[1]) > 85) { setMessage('No LA County address matched. Try a street address with city, a place such as Reseda, or latitude, longitude.'); return; }
-    setTarget({ lng: place[0], lat: place[1], zoom, nonce: Date.now(), select });
+    setTarget({ lng: place[0], lat: place[1], zoom, nonce: Date.now(), select, label });
     setMessage(''); setExpanded(false);
   }
   async function copyView() {

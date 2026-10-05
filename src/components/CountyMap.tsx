@@ -8,14 +8,14 @@ import { createSplatLayer } from '@/lib/splat-layer';
 export type Values = Record<Period, number | null>;
 export type Selection =
   | { kind: 'receiver'; key: string; facade: boolean; onRoad: boolean; masked: boolean; values: Values; aircraft: number | null; building: string | null; at: [number, number] }
-  | { kind: 'building'; key: string; height: number; values: Values; aircraft: number | null; count: number; at: [number, number] }
+  | { kind: 'building'; key: string; height: number; values: Values; aircraft: number | null; count: number; at: [number, number]; address?: string }
   | { kind: 'road'; name: string; aadt: number; mtfcc: string; basis: string }
   | { kind: 'context'; layer: ContextId; title: string; detail: string };
 export type Camera = { lng: number; lat: number; zoom: number; pitch: number; bearing: number };
 export type MapStatus = { loading: boolean; error: string | null; zoom: number };
 type Props = StyleOptions & {
   // select: after the flight, select the building at (or nearest to) the point, e.g. a searched address.
-  target: { lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number; select?: boolean } | null;
+  target: { lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number; select?: boolean; label?: string } | null;
   splatSceneUrl: string | null;
   onSplatStatus?: (status: 'loading' | 'ready' | 'error' | 'off') => void;
   initialCamera: Camera | null;
@@ -57,7 +57,7 @@ function contextTitle(layer: ContextId, p: Record<string, unknown>): { title: st
 }
 
 /** Select the building at or nearest to a point (within ~25 m); a searched address keeps its own point for the address lookup. */
-function selectNear(map: MapLibreMap, lng: number, lat: number, onSelect: (selection: Selection | null) => void) {
+function selectNear(map: MapLibreMap, lng: number, lat: number, onSelect: (selection: Selection | null) => void, address?: string) {
   const layers = ['buildings-3d', 'building-footprints'].filter((id) => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
   const point = map.project([lng, lat]);
   const metres = 40075016 * Math.cos((lat * Math.PI) / 180) / (512 * 2 ** map.getZoom());
@@ -72,7 +72,7 @@ function selectNear(map: MapLibreMap, lng: number, lat: number, onSelect: (selec
   }).sort((a, b) => a.d - b.d)[0]?.f;
   if (!best) return;
   const p = best.properties as Record<string, unknown>;
-  onSelect({ kind: 'building', key: String(p.k), height: Number(p.h), values: valuesOf(p), aircraft: num(p.a), count: Number(p.c ?? 0), at: [lng, lat] });
+  onSelect({ kind: 'building', key: String(p.k), height: Number(p.h), values: valuesOf(p), aircraft: num(p.a), count: Number(p.c ?? 0), at: [lng, lat], address });
 }
 
 export default function CountyMap(props: Props) {
@@ -191,7 +191,7 @@ export default function CountyMap(props: Props) {
     const pick = () => {
       if (done || !mapRef.current) return;
       done = true;
-      selectNear(mapRef.current, target.lng, target.lat, propsRef.current.onSelect);
+      selectNear(mapRef.current, target.lng, target.lat, propsRef.current.onSelect, target.label);
     };
     // After the flight, once its tiles are drawn (or after 6 s at the latest).
     const onEnd = () => { map.once('idle', pick); };
