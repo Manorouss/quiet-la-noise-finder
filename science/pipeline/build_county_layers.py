@@ -10,7 +10,8 @@ on-road labels). Later roots win when a tile appears twice. Outputs, in --out:
                      inside the estimated 55 CNEL line; aircraft.py), m masked, o on road, f facade (1)
                      or open space (0). All points from z16; thinned below.
   buildings.pmtiles  footprints: k integer id (selection only), h height (m), d/e/n/q highest facade
-                     LAeq / CNEL, a highest facade aircraft CNEL, c count.
+                     LAeq / CNEL, dl/el/nl/ql the quietest facade, a highest facade aircraft CNEL,
+                     c count. layers.json carries percentiles of the loudest facade per period.
   roads.pmtiles      modeled road sources clipped to each tile core: a AADT, c MTFCC,
                      nm name, t traffic basis (hpms | default). Minor roads appear later.
   field_{d,e,n,q}.pmtiles  raster-dem per period (q = 24 h CNEL, roads + aircraft) in Terrarium encoding with elevation = LAeq
@@ -61,6 +62,7 @@ TO_LONLAT = Transformer.from_crs("EPSG:26911", "OGC:CRS84", always_xy=True)
 PERIODS = ("D", "E", "N")
 BANDS = "denq"          # field rasters: the three periods and the 24 h CNEL (roads + aircraft)
 AIRPORT_CONTOURS = CONTEXT / "la_county_airport_noise_contours.geojson"
+BUILDING_PERCENTILES: dict[str, list[float]] = {}  # filled by building_features, written to layers.json
 CELL = 5.0              # field grid (m)
 MARGIN = 100.0          # neighbour receivers used around each tile (m)
 SIGMA, SIGMA_FILL, SIGMA_GLOW = 9.0, 30.0, 24.0
@@ -132,6 +134,7 @@ def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray], air
                 if p.get("building_key"):
                     best = building_loudest.setdefault(p["building_key"], {})
                     best["q"] = max(best.get("q", -1.0), out["q"])
+                    best["ql"] = min(best.get("ql", 999.0), out["q"])
                     if "a" in out:
                         best["a"] = max(best.get("a", -1.0), out["a"])
             values.append(cnel)
@@ -157,19 +160,29 @@ def building_features(tiles: dict[str, Path], building_loudest: dict):
             key = p["building_key"]
             out = {"k": key, "h": round(float(p.get("height_m") or 4.0), 1), "c": int(p.get("receiver_count") or 0)}
             for name, period in zip("den", PERIODS):
-                value = ((p.get("periods") or {}).get(period) or {}).get("max")
-                if isinstance(value, (int, float)) and math.isfinite(value) and value != -99:
-                    out[name] = round(float(value), 1)
+                stats = (p.get("periods") or {}).get(period) or {}
+                for field, suffix in (("max", ""), ("min", "l")):
+                    value = stats.get(field)
+                    if isinstance(value, (int, float)) and math.isfinite(value) and value != -99:
+                        out[name + suffix] = round(float(value), 1)
             previous = merged.get(key)
-            if previous:  # same footprint released by two tiles: keep the loudest facade per period
+            if previous:  # same footprint released by two tiles: loudest and quietest facade over both
+                prev = previous["properties"]
                 for name in "den":
-                    if name in previous and (name not in out or previous["properties"][name] > out[name]):
-                        out[name] = previous["properties"][name]
-                out["c"] += previous["properties"]["c"]
+                    if name in prev and (name not in out or prev[name] > out[name]):
+                        out[name] = prev[name]
+                    if name + "l" in prev and (name + "l" not in out or prev[name + "l"] < out[name + "l"]):
+                        out[name + "l"] = prev[name + "l"]
+                out["c"] += prev["c"]
             merged[key] = {"type": "Feature", "geometry": feature["geometry"], "properties": out}
     for k, (key, feature) in enumerate(merged.items(), 1):  # small integer ids, as for receivers
         feature["properties"]["k"] = k
         feature["properties"].update(building_loudest.get(key, {}))
+    # Percentiles of the loudest wall per period, so the map can say how a building compares.
+    for name in "denq":
+        values = np.array([f["properties"][name] for f in merged.values() if name in f["properties"]])
+        if len(values):
+            BUILDING_PERCENTILES[name] = [round(float(v), 1) for v in np.percentile(values, np.arange(101))]
     return merged.values()
 
 
@@ -427,6 +440,7 @@ def main() -> int:
                            "cell_m": CELL, "sigma_m": SIGMA, "fill_sigma_m": SIGMA_FILL, "glow_sigma_m": SIGMA_GLOW, "zooms": [FIELD_MIN_ZOOM, FIELD_MAX_ZOOM]},
         "files": {name: {"sha256": sha(out / name), "bytes": (out / name).stat().st_size}
                   for name in ("receivers.pmtiles", "buildings.pmtiles", "roads.pmtiles", *(f"{k}_{b}.pmtiles" for k in ("field", "glow") for b in BANDS), "coverage.geojson", *extra)},
+        "building_percentiles": {"what": "percentiles 0..100 of the loudest facade level per building, per period (d/e/n LAeq, q 24 h CNEL)", **BUILDING_PERCENTILES},
         "aircraft": {"method": "official airport CNEL contours, extended to 55 dB by each airport's contour area ratio (aircraft.py)",
                      "floor_db": FLOOR_DB, "min_source_year": MIN_YEAR,
                      "airports": [{"name": a.name, "official_levels": sorted(a.official), "area_ratio": round(a.ratio, 2), "source": a.source} for a in airports]},

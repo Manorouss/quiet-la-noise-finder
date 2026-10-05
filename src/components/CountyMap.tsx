@@ -8,7 +8,7 @@ import { createSplatLayer } from '@/lib/splat-layer';
 export type Values = Record<Period, number | null>;
 export type Selection =
   | { kind: 'receiver'; key: string; facade: boolean; onRoad: boolean; masked: boolean; values: Values; aircraft: number | null; building: string | null; at: [number, number] }
-  | { kind: 'building'; key: string; height: number; values: Values; aircraft: number | null; count: number; at: [number, number]; address?: string }
+  | { kind: 'building'; key: string; height: number; values: Values; quietest: Values; aircraft: number | null; count: number; at: [number, number]; address?: string }
   | { kind: 'road'; name: string; aadt: number; mtfcc: string; basis: string }
   | { kind: 'context'; layer: ContextId; title: string; detail: string }
   | { kind: 'empty'; at: [number, number] };  // nothing modeled under the click or search
@@ -29,6 +29,7 @@ type Props = StyleOptions & {
 const HOME: Camera = { lng: -118.53, lat: 34.19, zoom: 13.2, pitch: 0, bearing: 0 };
 const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 const valuesOf = (p: Record<string, unknown>): Values => ({ D: num(p.d), E: num(p.e), N: num(p.n), Q: num(p.q) });
+const quietestOf = (p: Record<string, unknown>): Values => ({ D: num(p.dl), E: num(p.el), N: num(p.nl), Q: num(p.ql) });
 
 /** Area centroid of a footprint's largest ring (lng/lat), where its address point most likely sits. */
 function footprintCentre(geometry: GeoJSON.Geometry, fallback: [number, number]): [number, number] {
@@ -74,7 +75,7 @@ function selectNear(map: MapLibreMap, lng: number, lat: number, onSelect: (selec
   if (!best) { onSelect({ kind: 'empty', at: [lng, lat] }); return; }
   const p = best.properties as Record<string, unknown>;
   // Keep the building's own centre (a shared link then finds its parcel); show the searched address if any.
-  onSelect({ kind: 'building', key: String(p.k), height: Number(p.h), values: valuesOf(p), aircraft: num(p.a), count: Number(p.c ?? 0), at: footprintCentre(best.geometry, [lng, lat]), address });
+  onSelect({ kind: 'building', key: String(p.k), height: Number(p.h), values: valuesOf(p), quietest: quietestOf(p), aircraft: num(p.a), count: Number(p.c ?? 0), at: footprintCentre(best.geometry, [lng, lat]), address });
 }
 
 export default function CountyMap(props: Props) {
@@ -143,7 +144,7 @@ export default function CountyMap(props: Props) {
         const p = (f: MapGeoJSONFeature) => f.properties as Record<string, unknown>;
         const clicked: [number, number] = [event.lngLat.lng, event.lngLat.lat];
         const selectBuilding = (f: MapGeoJSONFeature) => propsRef.current.onSelect({
-          kind: 'building', key: String(p(f).k), height: Number(p(f).h), values: valuesOf(p(f)), aircraft: num(p(f).a), count: Number(p(f).c ?? 0), at: footprintCentre(f.geometry, clicked),
+          kind: 'building', key: String(p(f).k), height: Number(p(f).h), values: valuesOf(p(f)), quietest: quietestOf(p(f)), aircraft: num(p(f).a), count: Number(p(f).c ?? 0), at: footprintCentre(f.geometry, clicked),
         });
         if (propsRef.current.mode3d && building) {
           selectBuilding(building);

@@ -20,7 +20,7 @@ const STYLE_HELP: Record<NoiseStyle, string> = {
   dots: 'Every modeled point: building walls (larger) and open ground.',
 };
 const PLACES: Record<string, [number, number]> = { tarzana: [-118.553, 34.172], reseda: [-118.536, 34.201], 'van nuys': [-118.449, 34.186], northridge: [-118.536, 34.228], encino: [-118.501, 34.159], 'lake balboa': [-118.497, 34.197] };
-type Layers = { tiles: string[]; receiver_count: number; building_count: number; built_at_utc: string };
+type Layers = { tiles: string[]; receiver_count: number; building_count: number; built_at_utc: string; building_percentiles?: Partial<Record<'d' | 'e' | 'n' | 'q', number[]>> };
 
 function band(value: number | null) {
   if (value === null) return null;
@@ -79,6 +79,16 @@ function LevelWords({ value, period }: { value: number | null; period: Period })
   return <p className="level-words"><strong>{label}</strong> · {words}.{who}</p>;
 }
 
+// Where a building's loudest wall falls among all mapped buildings (percentiles from layers.json).
+function Compare({ value, period, percentiles }: { value: number | null; period: Period; percentiles?: Layers['building_percentiles'] }) {
+  const table = percentiles?.[({ D: 'd', E: 'e', N: 'n', Q: 'q' } as const)[period]];
+  if (value === null || !table || table.length !== 101) return null;
+  let below = table.findIndex((p) => p >= value);
+  below = below < 0 ? 100 : below;
+  const text = below >= 50 ? `Louder than ${below}% of mapped buildings` : `Quieter than ${100 - below}% of mapped buildings`;
+  return <p className="receiver-meta compare-line">{text} ({period === 'Q' ? '24 h' : PERIOD_NAME[period].toLowerCase()}, loudest wall).</p>;
+}
+
 function Aircraft({ value }: { value: number | null }) {
   if (value === null) return null;
   return <p className="receiver-meta">Aircraft here: about {value.toFixed(0)} dB CNEL, estimated from the official airport contours; included in the 24 h value.</p>;
@@ -94,7 +104,7 @@ function insideRing(lng: number, lat: number, ring: Ring) {
   return inside;
 }
 
-function Inspector({ selection, period, onClose, covered }: { selection: Selection | null; period: Period; onClose: () => void; covered: (lng: number, lat: number) => boolean | null }) {
+function Inspector({ selection, period, onClose, covered, percentiles }: { selection: Selection | null; period: Period; onClose: () => void; covered: (lng: number, lat: number) => boolean | null; percentiles?: Layers['building_percentiles'] }) {
   if (!selection) return <div className="inspection-empty"><strong>Select a place on the map</strong><p>Search an address above, or click any building, spot or road to see its day, evening, night and 24 h levels.</p></div>;
   const close = <button type="button" className="plain-icon" aria-label="Close" onClick={onClose}>×</button>;
   if (selection.kind === 'receiver') {
@@ -112,7 +122,10 @@ function Inspector({ selection, period, onClose, covered }: { selection: Selecti
       <AddressLine at={selection.at} known={selection.address} />
       <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? 'dB CNEL, loudest wall · 24 h' : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
       <LevelWords value={selection.values[period]} period={period} />
-      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">Loudest of {selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side. Switch to Dots to see each wall.</p></>;
+      <Compare value={selection.values[period]} period={period} percentiles={percentiles} />
+      <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">{selection.quietest[period] !== null && selection.values[period] !== null
+        ? `Quietest wall: ${selection.quietest[period]!.toFixed(1)} dB, ${(selection.values[period]! - selection.quietest[period]!).toFixed(0)} dB below the loudest (${selection.count} modeled points around the walls). Bedrooms on the quiet side hear less.`
+        : `Loudest of ${selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side.`} Switch to Dots to see each wall.</p></>;
   }
   if (selection.kind === 'empty') {
     const inside = covered(selection.at[0], selection.at[1]);
@@ -295,7 +308,7 @@ export default function CountyMapPage() {
         <p role="status">{message}</p>
       </form>
       <div className="quick-controls"><Choice label="Time of day" value={period} options={[['D', 'Day'], ['E', 'Evening'], ['N', 'Night'], ['Q', '24 h']]} onChange={setPeriod} /></div>
-      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} covered={covered} /></section>
+      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} covered={covered} percentiles={layers?.building_percentiles} /></section>
       <div className="guide-body">
         <section className="guide-section"><h2>Noise display</h2><Choice label="Noise display style" value={noise} options={[['field', 'Field'], ['bands', 'Bands'], ['glow', 'Glow'], ['dots', 'Dots']]} onChange={setNoise} /><p className="control-help">{STYLE_HELP[noise]}{mode3d ? ' In 3D, buildings are colored by their loudest wall.' : ''}</p></section>
         <section className="guide-section"><h2>Base map</h2><Choice label="Base map" value={theme} options={[['light', 'Light'], ['grayscale', 'Gray'], ['dark', 'Dark'], ['satellite', 'Photo']]} onChange={setTheme} /></section>
