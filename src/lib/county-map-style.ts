@@ -19,8 +19,11 @@ export const CONTEXT_FILES: Record<ContextId, string> = {
   'city-fire': 'context/la_city_fire_stations.geojson',
 };
 export const PERIOD_KEY: Record<Period, 'd' | 'e' | 'n' | 'q'> = { D: 'd', E: 'e', N: 'n', Q: 'q' };
-// field_{d,e,n}.pmtiles: Terrarium raster-dem whose elevation is the LAeq in dB; 0 = not modeled.
+// field_{d,e,n,q}.pmtiles: Terrarium raster-dem whose elevation is the level in dB. Not modeled is
+// encoded as 150 dB (older builds: 0), so smooth (linear) sampling at the coverage edge blends towards
+// a louder value, never a quieter one; both sentinels render clear.
 const NODATA_DB = 20;
+const NOT_MODELED_ABOVE = 100;
 const CLEAR = 'rgba(0,0,0,0)';
 const TERRAIN_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const SATELLITE_TILES = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
@@ -31,14 +34,14 @@ const bandStep = (input: unknown) => expr(['step', input, BAND_COLORS[0], ...BAN
 const AIRPORT_CLASS = expr(['to-number', ['get', 'CLASS'], 0]);
 
 function fieldColor(noise: NoiseStyle) {
-  if (noise === 'bands') return expr(['step', ['elevation'], CLEAR, NODATA_DB, BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]])]);
+  if (noise === 'bands') return expr(['step', ['elevation'], CLEAR, NODATA_DB, BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]]), NOT_MODELED_ABOVE, CLEAR]);
   if (noise === 'glow') {
     // Soft heat: quiet places stay clear, louder ones glow brighter and warmer (24 m blurred surface).
-    return expr(['interpolate', ['linear'], ['elevation'], 0, CLEAR, 50, 'rgba(242,236,125,0)', 55, 'rgba(248,214,104,0.35)', 60, 'rgba(248,170,80,0.6)', 65, 'rgba(242,120,55,0.78)', 70, 'rgba(227,70,48,0.88)', 75, 'rgba(193,30,60,0.94)', 80, 'rgba(120,20,95,0.97)', 86, 'rgba(60,14,90,1)']);
+    return expr(['interpolate', ['linear'], ['elevation'], 0, CLEAR, 50, 'rgba(242,236,125,0)', 55, 'rgba(248,214,104,0.35)', 60, 'rgba(248,170,80,0.6)', 65, 'rgba(242,120,55,0.78)', 70, 'rgba(227,70,48,0.88)', 75, 'rgba(193,30,60,0.94)', 80, 'rgba(120,20,95,0.97)', 86, 'rgba(60,14,90,1)', NOT_MODELED_ABOVE - 0.1, 'rgba(60,14,90,1)', NOT_MODELED_ABOVE, CLEAR]);
   }
   // Smooth field: each band color sits at its band centre.
   return expr(['interpolate', ['linear'], ['elevation'], 0, CLEAR, NODATA_DB, CLEAR, NODATA_DB + 0.1, BAND_COLORS[0], 42.5, BAND_COLORS[0],
-    ...BAND_COLORS.slice(1).flatMap((color, i) => [47.5 + 5 * i, color])]);
+    ...BAND_COLORS.slice(1).flatMap((color, i) => [47.5 + 5 * i, color]), NOT_MODELED_ABOVE - 0.1, BAND_COLORS[BAND_COLORS.length - 1], NOT_MODELED_ABOVE, CLEAR]);
 }
 
 export function receiverColor(period: Period) {
@@ -82,10 +85,10 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
     { id: 'hillshade', type: 'hillshade', source: 'hillshade-dem', paint: { 'hillshade-exaggeration': dark ? 0.25 : 0.18, 'hillshade-shadow-color': dark ? '#000000' : '#5b5f66', 'hillshade-highlight-color': '#ffffff' } },
     { id: 'building-footprints', type: 'fill', source: 'buildings', 'source-layer': 'buildings', minzoom: 14, layout: visible(!o.mode3d), paint: { 'fill-color': dark ? '#d9dde3' : '#ffffff', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.12, 17, 0.32], 'fill-outline-color': dark ? 'rgba(255,255,255,0.35)' : 'rgba(60,64,72,0.35)' } },
   ];
-  // Above the basemap streets (so road corridors read as loud), below labels. Nearest sampling keeps the
-  // modeled edge sharp; the glow ramp is clear below 50 dB, so its smooth sampling cannot fake quiet.
+  // Above the basemap streets (so road corridors read as loud), below labels. Linear sampling keeps the
+  // surface smooth past its last zoom level (z15, ~5 m pixels) instead of showing blocks.
   const field: LayerSpecification = { id: 'noise-field', type: 'color-relief', source: 'field', layout: visible(showField),
-    paint: { 'color-relief-color': fieldColor(o.noise), 'color-relief-opacity': o.noise === 'glow' ? 1 : 0.86, resampling: o.noise === 'glow' ? 'linear' : 'nearest' } as never };
+    paint: { 'color-relief-color': fieldColor(o.noise), 'color-relief-opacity': o.noise === 'glow' ? 1 : 0.86, resampling: 'linear' } as never };
   const overlay: LayerSpecification[] = [
     { id: 'roads-modeled-casing', type: 'line', source: 'roads', 'source-layer': 'roads', layout: { ...visible(o.roads), 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#0d1017' : '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 1.5, 16, 7] } },
     { id: 'roads-modeled', type: 'line', source: 'roads', 'source-layer': 'roads', layout: { ...visible(o.roads), 'line-cap': 'round', 'line-join': 'round' },
