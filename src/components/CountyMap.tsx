@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Map as MapLibreMap, MapGeoJSONFeature } from 'maplibre-gl';
 import { buildStyle, terrainFor, type ContextId, type Period, type StyleOptions } from '@/lib/county-map-style';
 import { createSplatLayer } from '@/lib/splat-layer';
@@ -80,6 +80,11 @@ export default function CountyMap(props: Props) {
   const mapRef = useRef<MapLibreMap | null>(null);
   const propsRef = useRef(props);
   propsRef.current = props;
+  // 2D <-> 3D builds a fresh map at the same camera: turning terrain on in a running MapLibre 6.9 map
+  // left it blank (headless Chrome), while a map created with terrain works. mapVersion re-runs the
+  // effects that attach things to the map (selection highlight, Photo 3D layer).
+  const [mapVersion, setMapVersion] = useState(0);
+  const lastCameraRef = useRef<Camera | null>(null);
   const styleKey = JSON.stringify([props.layersUrl, props.period, props.noise, props.mode3d, props.roads, props.context, props.theme, props.photo3d]);
 
   useEffect(() => {
@@ -93,7 +98,9 @@ export default function CountyMap(props: Props) {
         maplibre.addProtocol('pmtiles', new Protocol({ metadata: true }).tile);
         (globalThis as { __quietPmtiles?: boolean }).__quietPmtiles = true;
       }
-      const start = propsRef.current.initialCamera ?? HOME;
+      const saved = lastCameraRef.current ?? propsRef.current.initialCamera ?? HOME;
+      const three = propsRef.current.mode3d;
+      const start = { ...saved, pitch: three ? (saved.pitch >= 30 ? saved.pitch : 60) : 0, bearing: three ? (saved.bearing || -17) : 0 };
       map = new maplibre.Map({
         container: hostRef.current, style: buildStyle(propsRef.current), center: [start.lng, start.lat], zoom: start.zoom, pitch: start.pitch, bearing: start.bearing,
         minZoom: 9, maxZoom: 19, maxPitch: 78, attributionControl: { compact: true }, canvasContextAttributes: { antialias: true },
@@ -110,8 +117,11 @@ export default function CountyMap(props: Props) {
       map.on('moveend', () => {
         if (!map) return;
         const c = map.getCenter();
-        propsRef.current.onCamera({ lng: c.lng, lat: c.lat, zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() });
+        const camera = { lng: c.lng, lat: c.lat, zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
+        lastCameraRef.current = camera;
+        propsRef.current.onCamera(camera);
       });
+      map.once('load', () => { if (!cancelled) setMapVersion((v) => v + 1); });
       map.on('click', (event) => {
         if (!map) return;
         const pad = 8;
@@ -153,8 +163,16 @@ export default function CountyMap(props: Props) {
         map.on('mouseleave', id, () => { if (map) map.getCanvas().style.cursor = ''; });
       }
     })();
-    return () => { cancelled = true; map?.remove(); mapRef.current = null; };
-  }, []);
+    return () => {
+      cancelled = true;
+      if (map) {
+        const c = map.getCenter();
+        lastCameraRef.current = { lng: c.lng, lat: c.lat, zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
+        map.remove();
+      }
+      mapRef.current = null;
+    };
+  }, [props.mode3d]);
 
   // Every setting is part of one style; setStyle diffs it into minimal map updates. Terrain is kept out of
   // the diff and set directly (see terrainFor in county-map-style).
@@ -174,13 +192,6 @@ export default function CountyMap(props: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (props.mode3d && map.getPitch() < 30) map.easeTo({ pitch: 60, bearing: map.getBearing() || -17, duration: 900 });
-    if (!props.mode3d && map.getPitch() > 0) map.easeTo({ pitch: 0, bearing: 0, duration: 700 });
-  }, [props.mode3d]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
     const apply = () => {
       const key = props.selectedKey ?? '';
       // Layer ids are integers (older builds used strings): compare as text.
@@ -188,7 +199,7 @@ export default function CountyMap(props: Props) {
       if (map.getLayer('selected-building')) map.setFilter('selected-building', ['==', ['to-string', ['get', 'k']], key]);
     };
     if (map.isStyleLoaded()) apply(); else map.once('idle', apply);
-  }, [props.selectedKey, styleKey]);
+  }, [props.selectedKey, styleKey, mapVersion]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -241,7 +252,7 @@ export default function CountyMap(props: Props) {
     };
     if (map.isStyleLoaded()) void sync(); else map.once('idle', () => void sync());
     return () => { cancelled = true; };
-  }, [props.photo3d, props.splatSceneUrl, styleKey]);
+  }, [props.photo3d, props.splatSceneUrl, styleKey, mapVersion]);
 
   return <div ref={hostRef} className="county-map map" aria-label="Map of modeled road noise" role="region" />;
 }
