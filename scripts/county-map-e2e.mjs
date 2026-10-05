@@ -135,7 +135,8 @@ async function searchAddress(page, typed, pick) {
   const page = await open({ width: 1280, height: 800 }, '#lat=34.17993&lng=-118.55574&z=18&period=D&style=field&mode=2d&base=light&sel=-118.555738,34.179930', 'shared');
   await page.waitForSelector('.receiver-result', { timeout: 30000 }).catch(() => null);
   await page.waitForFunction(() => !document.querySelector('.selection-address.is-pending'), null, { timeout: 15000 }).catch(() => null);
-  check('shared link reopens the selected place', /Calvin/i.test(await text(page, '.selection-address') ?? ''), await text(page, '.selection-address'));
+  const shared = await text(page, '.selection-address') ?? '';
+  check('shared link reopens the selected place with its own address', /Calvin/i.test(shared) && !/^Near/.test(shared), shared);
   await page.goto(`${base}/`, { waitUntil: 'load' });
   await page.waitForURL(/\/map\/?/, { timeout: 15000 }).catch(() => null);
   check('site root opens the county map', /\/map\/?(#|$)/.test(page.url()), page.url());
