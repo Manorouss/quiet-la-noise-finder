@@ -11,7 +11,7 @@ const SPLAT_SCENE = `${LAYERS_URL}splats/showcase_101_ventura`;
 const SPLAT_VIEW = { lng: -118.3721, lat: 34.1474, zoom: 17.3, pitch: 62, bearing: -35 };
 const PERIOD_NAME: Record<Period, string> = { D: 'Day', E: 'Evening', N: 'Night' };
 const CONTEXT_DEFAULTS: Record<ContextId, boolean> = { 'airport-contours': false, heliports: false, 'county-fire': false, 'city-fire': false };
-const CONTEXT_LABELS: Record<ContextId, string> = { 'airport-contours': 'Airport noise contours (official CNEL)', heliports: 'Heliports', 'county-fire': 'LA County fire stations', 'city-fire': 'City of LA fire stations' };
+const CONTEXT_LABELS: Record<ContextId, string> = { 'airport-contours': 'Aircraft noise (official contours, CNEL)', heliports: 'Heliports', 'county-fire': 'LA County fire stations', 'city-fire': 'City of LA fire stations' };
 const STYLE_HELP: Record<NoiseStyle, string> = {
   field: 'A smooth surface interpolated from the modeled points, 5 m detail.',
   bands: 'The same surface in 5 dB steps, like an official noise map.',
@@ -176,6 +176,7 @@ export default function CountyMapPage() {
         <section className="guide-section"><h2>Layers</h2>
           <label className="source-toggle"><input type="checkbox" checked={roads} onChange={(e) => setRoads(e.target.checked)} />Roads in the model, by traffic</label>
           <div className="context-options">{(Object.keys(CONTEXT_LABELS) as ContextId[]).map((id) => <label key={id} className={`context-toggle context-${id}`}><input type="checkbox" checked={context[id]} onChange={(e) => setContext({ ...context, [id]: e.target.checked })} />{CONTEXT_LABELS[id]}</label>)}</div>
+          {context['airport-contours'] && <p className="control-help">Official airport contours of CNEL, a 24-hour average that counts evening noise 5 dB and night noise 10 dB louder. Shown in the same 5 dB colours, but not yet added into the road values. Outside the 65 CNEL line aircraft are still heard. Source: LA County Airport Land Use Plan; some contours date from 1991.</p>}
         </section>
         <div className="guide-actions"><button type="button" onClick={copyView}>Copy view link</button></div>
       </div>
@@ -183,7 +184,7 @@ export default function CountyMapPage() {
       <div className="guide-secondary">
         <details className="study-details"><summary>Coverage & method</summary>
           <p><strong>{layers ? `${layers.tiles.length} km² modeled, ${layers.receiver_count.toLocaleString()} points, ${layers.building_count.toLocaleString()} buildings.` : 'Coverage is loading.'}</strong> More of the county is added as the calculation runs. Dashed lines mark the modeled area; anything outside it is not modeled yet, not quiet.</p>
-          <p>CNOSSOS-EU road noise (NoiseModelling 6), every Census road with FHWA HPMS 2024 traffic counts where they exist and typical values elsewhere, LA County building footprints and heights, USGS terrain. Sound bends over roofs and hills; reflections between buildings are not yet included. Evening traffic is 0.6× and night 0.2× the daytime hourly flow. Values are modeled and uncalibrated: not measurements and not indoor levels.</p>
+          <p>CNOSSOS-EU road noise (NoiseModelling 6), every Census road with FHWA HPMS 2024 traffic counts where they exist and typical values elsewhere, LA County building footprints and heights. Tiles are being recomputed one by one with the 2023 USGS lidar terrain at 10 m, freeway sound walls found in the lidar, and roads on bridges at deck height; tiles not yet redone use 10 m USGS terrain without walls. Sound bends over roofs, hills and walls; reflections between buildings are not yet included. Evening traffic is 0.6× and night 0.2× the daytime hourly flow. Values are modeled and uncalibrated: not measurements and not indoor levels.</p>
           {layers && <p>Data built {layers.built_at_utc.replace('T', ' ').replace('Z', ' UTC')}.</p>}
         </details>
         <p className="workspace-notice" role="status">{notice}</p>

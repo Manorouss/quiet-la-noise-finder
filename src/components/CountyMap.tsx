@@ -46,7 +46,11 @@ function footprintCentre(geometry: GeoJSON.Geometry, fallback: [number, number])
 }
 
 function contextTitle(layer: ContextId, p: Record<string, unknown>): { title: string; detail: string } {
-  if (layer === 'airport-contours') return { title: `${String(p.AIRPORT_NAME || 'Airport')} · ${String(p.CLASS || '')} CNEL contour`, detail: 'Official airport noise contour. Shown for context; aircraft are not yet part of the road-noise values.' };
+  if (layer === 'airport-contours') {
+    const level = Number(p.CLASS);
+    const band = Number.isFinite(level) ? `${level}–${level + 5} dB CNEL` : 'CNEL contour';
+    return { title: `${String(p.AIRPORT_NAME || 'Airport')} · ${band}`, detail: `Official airport noise contour (${String(p.SOURCE || 'LA County Airport Land Use Plan')}). CNEL is a 24-hour average with evening and night noise weighted up; it is not yet added into the road-noise values.` };
+  }
   if (layer === 'heliports') return { title: String(p.name || 'Heliport'), detail: 'Heliport location. Helicopter activity is not yet modeled.' };
   return { title: p.station ? `Fire station ${String(p.station)}` : 'Fire station', detail: `${layer === 'city-fire' ? 'City of Los Angeles' : 'LA County'} fire station. Sirens are not modeled.` };
 }

@@ -28,6 +28,7 @@ const GRAY = '#9ea3a8';
 
 const expr = (value: unknown) => value as ExpressionSpecification;
 const bandStep = (input: unknown) => expr(['step', input, BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]])]);
+const AIRPORT_CLASS = expr(['to-number', ['get', 'CLASS'], 0]);
 
 function fieldColor(noise: NoiseStyle) {
   if (noise === 'bands') return expr(['step', ['elevation'], CLEAR, NODATA_DB, BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]])]);
@@ -97,8 +98,16 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
     // Invisible but rendered, so a click in Field/Bands/Glow still finds the nearest modeled point.
     { id: 'receivers-hit', type: 'circle', source: 'receivers', 'source-layer': 'receivers', minzoom: 14, layout: visible(o.noise !== 'dots'), paint: { 'circle-radius': 7, 'circle-opacity': 0 } },
     { id: 'coverage-outline', type: 'line', source: 'coverage', paint: { 'line-color': dark ? '#e6e9ee' : '#3b4656', 'line-width': 1.4, 'line-opacity': 0.75, 'line-dasharray': [2, 2] } },
-    { id: 'context-airport-contours', type: 'fill', source: 'context-airport-contours', layout: visible(o.context['airport-contours']), paint: { 'fill-color': '#6d4bd8', 'fill-opacity': 0.08 } },
-    { id: 'context-airport-contours-line', type: 'line', source: 'context-airport-contours', layout: visible(o.context['airport-contours']), paint: { 'line-color': '#6d4bd8', 'line-width': 1.3 } },
+    // Official airport CNEL contours: each polygon is the band from CLASS to CLASS + 5 dB, drawn in the
+    // same 5 dB colours as the road bands (a different metric; the panel note says so). Louder bands on top.
+    { id: 'context-airport-contours', type: 'fill', source: 'context-airport-contours', layout: { ...visible(o.context['airport-contours']), 'fill-sort-key': AIRPORT_CLASS },
+      paint: { 'fill-color': bandStep(['+', AIRPORT_CLASS, 0.1]), 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.45, 15, 0.28] } },
+    { id: 'context-airport-contours-line', type: 'line', source: 'context-airport-contours', layout: { ...visible(o.context['airport-contours']), 'line-sort-key': AIRPORT_CLASS },
+      paint: { 'line-color': bandStep(['+', AIRPORT_CLASS, 0.1]), 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 15, 1.8] } },
+    { id: 'context-airport-contours-label', type: 'symbol', source: 'context-airport-contours', minzoom: 11,
+      layout: { ...visible(o.context['airport-contours']), 'symbol-placement': 'line', 'symbol-spacing': 420, 'text-field': ['concat', ['to-string', AIRPORT_CLASS], ' CNEL'],
+        'text-font': ['Noto Sans Medium'], 'text-size': 11, 'text-keep-upright': true },
+      paint: { 'text-color': dark ? '#f4f1ea' : '#2b2340', 'text-halo-color': dark ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.9)', 'text-halo-width': 1.4 } },
     ...(['heliports', 'county-fire', 'city-fire'] as const).map((id): LayerSpecification => ({
       id: `context-${id}`, type: 'circle', source: `context-${id}`, layout: visible(o.context[id]),
       paint: { 'circle-color': id === 'heliports' ? '#2b6cb0' : '#c53030', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 7], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 },
