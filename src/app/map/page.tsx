@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import CountyMap, { type Camera, type MapStatus, type Selection, type Values } from '@/components/CountyMap';
 import { BAND_COLORS, BAND_EDGES, type BaseTheme, type ContextId, type NoiseStyle, type Period } from '@/lib/county-map-style';
-import { addressAt, findAddress, type Address } from '@/lib/address';
+import { addressAt, findAddress, suggestAddresses, type Address, type Suggestion } from '@/lib/address';
 
 const LAYERS_URL = process.env.NEXT_PUBLIC_QUIET_LA_LAYERS_URL || '/county-layers/';
 // Photo 3D showcase (lidar + aerial imagery as Gaussian splats): Studio City, Ventura Blvd and US-101.
@@ -60,19 +60,37 @@ function AddressLine({ at, near }: { at: [number, number]; near?: boolean }) {
   return <p className="selection-address">{near || current.address.near ? <span>Near </span> : null}{current.address.text}</p>;
 }
 
+// Plain-language reading of a level (outdoor, at the building or on open ground).
+const LEVEL_WORDS: [number, string, string][] = [
+  [45, 'Quiet', 'like a residential street away from through traffic'],
+  [55, 'Moderate', 'typical of a residential street'],
+  [65, 'Noticeable', 'typical near a busy street'],
+  [70, 'Loud', 'typical beside an arterial road or near a freeway'],
+  [Infinity, 'Very loud', 'typical beside a major arterial or a freeway'],
+];
+
+function LevelWords({ value, period }: { value: number | null; period: Period }) {
+  if (value === null) return null;
+  const [, label, words] = LEVEL_WORDS.find(([edge]) => value < edge)!;
+  const guideline = period === 'Q' ? 53 : period === 'N' ? 45 : null;
+  const who = guideline === null ? '' : ` ${value > guideline ? 'Above' : 'Within'} the WHO guideline for road traffic (${guideline} dB ${period === 'Q' ? 'over 24 h' : 'at night'}).`;
+  return <p className="level-words"><strong>{label}</strong> · {words}.{who}</p>;
+}
+
 function Aircraft({ value }: { value: number | null }) {
   if (value === null) return null;
   return <p className="receiver-meta">Aircraft here: about {value.toFixed(0)} dB CNEL, estimated from the official airport contours; included in the 24 h value.</p>;
 }
 
 function Inspector({ selection, period, onClose }: { selection: Selection | null; period: Period; onClose: () => void }) {
-  if (!selection) return <div className="inspection-empty"><strong>Select a place on the map</strong><p>Click any modeled spot, building or road to see its modeled day, evening and night levels.</p></div>;
+  if (!selection) return <div className="inspection-empty"><strong>Select a place on the map</strong><p>Search an address above, or click any building, spot or road to see its day, evening, night and 24 h levels.</p></div>;
   const close = <button type="button" className="plain-icon" aria-label="Close" onClick={onClose}>×</button>;
   if (selection.kind === 'receiver') {
     const value = selection.values[period];
     return <><div className="receiver-heading"><span>{selection.facade ? 'Building wall · 4 m up, 2 m out' : 'Open ground · 1.5 m up'}</span>{close}</div>
       <AddressLine at={selection.at} near={!selection.facade} />
       <div className="receiver-result"><strong>{selection.masked || value === null ? 'Unavailable' : value.toFixed(1)}</strong><span>{selection.masked || value === null ? '' : UNIT(period)}</span></div>
+      {!selection.masked && <LevelWords value={value} period={period} />}
       {selection.masked ? <p className="receiver-meta">This point failed the physical plausibility check and is not shown as a value.</p> : <ValueRows values={selection.values} period={period} />}
       <Aircraft value={selection.aircraft} />
       {selection.onRoad && <p className="receiver-meta">Within 3 m of a road centerline: this is on the road, not a living location.</p>}</>;
@@ -81,6 +99,7 @@ function Inspector({ selection, period, onClose }: { selection: Selection | null
     return <><div className="receiver-heading"><span>Building · about {selection.height.toFixed(0)} m tall</span>{close}</div>
       <AddressLine at={selection.at} />
       <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? 'dB CNEL, loudest wall · 24 h' : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
+      <LevelWords value={selection.values[period]} period={period} />
       <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">Loudest of {selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side. Switch to Dots to see each wall.</p></>;
   }
   if (selection.kind === 'road') {
@@ -104,8 +123,12 @@ export default function CountyMapPage() {
   const [status, setStatus] = useState<MapStatus>({ loading: true, error: null, zoom: 13 });
   const [layers, setLayers] = useState<Layers | null>(null);
   const [initialCamera, setInitialCamera] = useState<Camera | null>(null);
-  const [target, setTarget] = useState<{ lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number } | null>(null);
+  const [target, setTarget] = useState<{ lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number; select?: boolean } | null>(null);
   const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const pickedRef = useRef('');
   const [message, setMessage] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [notice, setNotice] = useState('');
@@ -137,21 +160,59 @@ export default function CountyMapPage() {
   useEffect(() => { writeView(); }, [writeView]);
   const onCamera = useCallback((camera: Camera) => { cameraRef.current = camera; writeView(); }, [writeView]);
 
+  // Address suggestions while typing (needs a few characters; a picked suggestion is not re-suggested).
+  useEffect(() => {
+    const text = query.trim();
+    if (!searchFocused || text.length < 3 || text === pickedRef.current || /^-?\d+(\.\d+)?\s*,/.test(text)) { setSuggestions([]); return; }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      suggestAddresses(text, controller.signal).then((list) => { setSuggestions(list); setActiveSuggestion(-1); }).catch(() => setSuggestions([]));
+    }, 250);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [query, searchFocused]);
+
+  function pickSuggestion(suggestion: Suggestion) {
+    pickedRef.current = suggestion.text;
+    setQuery(suggestion.text);
+    setSuggestions([]);
+    void runSearch(suggestion.text, suggestion.magicKey);
+  }
+
+  function searchKeys(event: KeyboardEvent<HTMLInputElement>) {
+    if (!suggestions.length) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveSuggestion((i) => (i + (event.key === 'ArrowDown' ? 1 : -1) + suggestions.length) % suggestions.length);
+    } else if (event.key === 'Enter' && activeSuggestion >= 0) {
+      event.preventDefault();
+      pickSuggestion(suggestions[activeSuggestion]);
+    } else if (event.key === 'Escape') {
+      setSuggestions([]);
+    }
+  }
+
   async function search(event: React.FormEvent) {
     event.preventDefault();
-    const text = query.trim().toLowerCase();
+    setSuggestions([]);
+    await runSearch(query);
+  }
+
+  async function runSearch(raw: string, magicKey?: string) {
+    const text = raw.trim().toLowerCase();
     const pair = text.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
     let place = PLACES[text] ?? (pair ? [Number(pair[2]), Number(pair[1])] as [number, number] : null);
     let zoom = 15;
+    let select = false;
     if (!place && text) {
       setMessage('Looking up the address…');
       try {
-        const found = await findAddress(query.trim());
-        if (found) { place = [found.lng, found.lat]; zoom = 18; setQuery(found.label); }
+        const found = await findAddress(raw.trim(), undefined, magicKey);
+        // A house number means one property: zoom in and select it. A bare street or place stays wider.
+        if (found) { place = [found.lng, found.lat]; select = /^\d/.test(found.label); zoom = select ? 18 : 16; pickedRef.current = found.label; setQuery(found.label); }
       } catch { setMessage('The address service is unavailable right now. Try a place name or latitude, longitude.'); return; }
     }
     if (!place || Math.abs(place[0]) > 180 || Math.abs(place[1]) > 85) { setMessage('No LA County address matched. Try a street address with city, a place such as Reseda, or latitude, longitude.'); return; }
-    setTarget({ lng: place[0], lat: place[1], zoom, nonce: Date.now() });
+    setTarget({ lng: place[0], lat: place[1], zoom, nonce: Date.now(), select });
     setMessage(''); setExpanded(false);
   }
   async function copyView() {
@@ -164,16 +225,26 @@ export default function CountyMapPage() {
   return <main className={`workspace county-workspace ${expanded ? 'is-expanded' : ''}`}>
     <header className="workspace-header">
       <a href="/map/" className="workspace-brand" aria-label="Quiet LA home">Quiet LA<span>Noise explorer</span></a>
-      <div className="workspace-scope">Los Angeles County <span>· road noise, county model v1 · preview</span></div>
+      <div className="workspace-scope">Los Angeles County <span>· road and aircraft noise · modeled preview</span></div>
       <Choice label="Map dimension" value={mode3d ? '3d' : '2d'} options={[['2d', '2D'], ['3d', '3D']]} onChange={(m) => setMode3d(m === '3d')} />
     </header>
     <CountyMap layersUrl={LAYERS_URL} period={period} noise={noise} mode3d={mode3d} roads={roads} context={context} theme={theme} photo3d={photo3d && mode3d} splatSceneUrl={SPLAT_SCENE} onSplatStatus={setSplatStatus} target={target} initialCamera={initialCamera} selectedKey={selectedKey} onSelect={setSelection} onStatus={setStatus} onCamera={onCamera} />
     <aside className="map-guide" aria-label="Map controls and inspection">
       <div className="guide-heading"><h1>How loud is it here?</h1><button type="button" className="sheet-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? 'Less' : 'Controls'}</button></div>
-      <p className="guide-intro">Modeled road noise outside homes, from freeways down to residential streets. Aircraft, helicopters and sirens are not included yet.</p>
+      <p className="guide-intro">Modeled noise outside every home, from freeways down to residential streets. The 24 h view adds aircraft; helicopters and sirens are not included yet.</p>
+      <form className="place-search" onSubmit={search} role="search">
+        <label htmlFor="place-search">Look up an address</label>
+        <div><input id="place-search" value={query} onChange={(e) => { pickedRef.current = ''; setQuery(e.target.value); }} onKeyDown={searchKeys}
+          onFocus={() => setSearchFocused(true)} onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
+          placeholder="e.g. 5518 Aura Ave, Tarzana" autoComplete="off" role="combobox" aria-expanded={suggestions.length > 0} aria-controls="place-suggestions" aria-autocomplete="list"
+          aria-activedescendant={activeSuggestion >= 0 ? `place-suggestion-${activeSuggestion}` : undefined} /><button type="submit" aria-label="Find address">→</button></div>
+        {suggestions.length > 0 && <ul className="search-suggestions" id="place-suggestions" role="listbox">{suggestions.map((s, i) => (
+          <li key={s.magicKey + s.text} id={`place-suggestion-${i}`} role="option" aria-selected={i === activeSuggestion} onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s); }}>{s.text}</li>))}</ul>}
+        <p role="status">{message}</p>
+      </form>
       <div className="quick-controls"><Choice label="Time of day" value={period} options={[['D', 'Day'], ['E', 'Evening'], ['N', 'Night'], ['Q', '24 h']]} onChange={setPeriod} /></div>
+      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} /></section>
       <div className="guide-body">
-        <form className="place-search" onSubmit={search}><label htmlFor="place-search">Go to an address or place</label><div><input id="place-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Street address, Reseda, or lat, lng" autoComplete="off" /><button type="submit" aria-label="Find place">→</button></div><p role="status">{message}</p></form>
         <section className="guide-section"><h2>Noise display</h2><Choice label="Noise display style" value={noise} options={[['field', 'Field'], ['bands', 'Bands'], ['glow', 'Glow'], ['dots', 'Dots']]} onChange={setNoise} /><p className="control-help">{STYLE_HELP[noise]}{mode3d ? ' In 3D, buildings are colored by their loudest wall.' : ''}</p></section>
         <section className="guide-section"><h2>Base map</h2><Choice label="Base map" value={theme} options={[['light', 'Light'], ['grayscale', 'Gray'], ['dark', 'Dark'], ['satellite', 'Photo']]} onChange={setTheme} /></section>
         <section className="guide-section"><h2>Photo 3D <span className="county-beta">beta</span></h2>
@@ -187,7 +258,6 @@ export default function CountyMapPage() {
         </section>
         <div className="guide-actions"><button type="button" onClick={copyView}>Copy view link</button></div>
       </div>
-      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} /></section>
       <div className="guide-secondary">
         <details className="study-details"><summary>Coverage & method</summary>
           <p><strong>{layers ? `${layers.tiles.length} km² modeled, ${layers.receiver_count.toLocaleString()} points, ${layers.building_count.toLocaleString()} buildings.` : 'Coverage is loading.'}</strong> More of the county is added as the calculation runs. Dashed lines mark the modeled area; anything outside it is not modeled yet, not quiet.</p>

@@ -63,9 +63,20 @@ export async function addressAt(lng: number, lat: number, signal?: AbortSignal):
   return result;
 }
 
-/** Best match for a typed LA County address, or null when the locator is not confident. */
-export async function findAddress(text: string, signal?: AbortSignal): Promise<{ lng: number; lat: number; label: string } | null> {
-  const data = await getJson<CandidatesResponse>(`${LOCATOR}/findAddressCandidates?${new URLSearchParams({ 'Single Line Input': text, maxLocations: '1', outSR: '4326', f: 'json' })}`, signal);
+export type Suggestion = { text: string; magicKey: string };
+type SuggestResponse = { suggestions?: { text: string; magicKey: string; isCollection?: boolean }[] };
+
+/** Up to five LA County addresses or streets that start like the typed text (CAMS suggest). */
+export async function suggestAddresses(text: string, signal?: AbortSignal): Promise<Suggestion[]> {
+  const data = await getJson<SuggestResponse>(`${LOCATOR}/suggest?${new URLSearchParams({ text, maxSuggestions: '5', f: 'json' })}`, signal);
+  return (data.suggestions ?? []).filter((s) => !s.isCollection).map(({ text: label, magicKey }) => ({ text: label, magicKey }));
+}
+
+/** Best match for a typed LA County address (or a picked suggestion), or null when the locator is not confident. */
+export async function findAddress(text: string, signal?: AbortSignal, magicKey?: string): Promise<{ lng: number; lat: number; label: string } | null> {
+  const query = new URLSearchParams({ 'Single Line Input': text, maxLocations: '1', outSR: '4326', f: 'json' });
+  if (magicKey) query.set('magicKey', magicKey);
+  const data = await getJson<CandidatesResponse>(`${LOCATOR}/findAddressCandidates?${query}`, signal);
   const best = data.candidates?.[0];
   return best && best.score >= MIN_SCORE ? { lng: best.location.x, lat: best.location.y, label: best.address } : null;
 }

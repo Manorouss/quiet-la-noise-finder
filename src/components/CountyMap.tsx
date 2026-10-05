@@ -14,7 +14,8 @@ export type Selection =
 export type Camera = { lng: number; lat: number; zoom: number; pitch: number; bearing: number };
 export type MapStatus = { loading: boolean; error: string | null; zoom: number };
 type Props = StyleOptions & {
-  target: { lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number } | null;
+  // select: after the flight, select the building at (or nearest to) the point, e.g. a searched address.
+  target: { lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number; select?: boolean } | null;
   splatSceneUrl: string | null;
   onSplatStatus?: (status: 'loading' | 'ready' | 'error' | 'off') => void;
   initialCamera: Camera | null;
@@ -53,6 +54,25 @@ function contextTitle(layer: ContextId, p: Record<string, unknown>): { title: st
   }
   if (layer === 'heliports') return { title: String(p.name || 'Heliport'), detail: 'Heliport location. Helicopter activity is not yet modeled.' };
   return { title: p.station ? `Fire station ${String(p.station)}` : 'Fire station', detail: `${layer === 'city-fire' ? 'City of Los Angeles' : 'LA County'} fire station. Sirens are not modeled.` };
+}
+
+/** Select the building at or nearest to a point (within ~25 m); a searched address keeps its own point for the address lookup. */
+function selectNear(map: MapLibreMap, lng: number, lat: number, onSelect: (selection: Selection | null) => void) {
+  const layers = ['buildings-3d', 'building-footprints'].filter((id) => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
+  const point = map.project([lng, lat]);
+  const metres = 40075016 * Math.cos((lat * Math.PI) / 180) / (512 * 2 ** map.getZoom());
+  const pad = Math.max(12, 25 / metres);
+  const hits = map.queryRenderedFeatures([[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]], { layers });
+  const inside = map.queryRenderedFeatures(point, { layers });
+  const pickFrom = inside.length ? inside : hits;
+  const best = pickFrom.map((f) => {
+    const [cx, cy] = footprintCentre(f.geometry, [lng, lat]);
+    const p = map.project([cx, cy]);
+    return { f, d: Math.hypot(p.x - point.x, p.y - point.y) };
+  }).sort((a, b) => a.d - b.d)[0]?.f;
+  if (!best) return;
+  const p = best.properties as Record<string, unknown>;
+  onSelect({ kind: 'building', key: String(p.k), height: Number(p.h), values: valuesOf(p), aircraft: num(p.a), count: Number(p.c ?? 0), at: [lng, lat] });
 }
 
 export default function CountyMap(props: Props) {
@@ -163,7 +183,21 @@ export default function CountyMap(props: Props) {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (map && props.target) map.flyTo({ center: [props.target.lng, props.target.lat], zoom: props.target.zoom ?? Math.max(map.getZoom(), 15), pitch: props.target.pitch ?? map.getPitch(), bearing: props.target.bearing ?? map.getBearing(), duration: 1800, essential: true });
+    const target = props.target;
+    if (!map || !target) return;
+    map.flyTo({ center: [target.lng, target.lat], zoom: target.zoom ?? Math.max(map.getZoom(), 15), pitch: target.pitch ?? map.getPitch(), bearing: target.bearing ?? map.getBearing(), duration: 1800, essential: true });
+    if (!target.select) return;
+    let done = false;
+    const pick = () => {
+      if (done || !mapRef.current) return;
+      done = true;
+      selectNear(mapRef.current, target.lng, target.lat, propsRef.current.onSelect);
+    };
+    // After the flight, once its tiles are drawn (or after 6 s at the latest).
+    const onEnd = () => { map.once('idle', pick); };
+    map.once('moveend', onEnd);
+    const timer = window.setTimeout(pick, 6000);
+    return () => { done = true; window.clearTimeout(timer); map.off('moveend', onEnd); map.off('idle', pick); };
   }, [props.target]);
 
   // Photo 3D showcase: a Gaussian-splat scene in a custom layer (re-added after style changes,
