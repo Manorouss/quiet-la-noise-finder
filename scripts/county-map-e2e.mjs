@@ -83,7 +83,7 @@ async function searchAddress(page, typed, pick) {
   check('search: compares with mapped buildings', /than \d+% of mapped buildings/.test(await text(page, '.compare-line') ?? ''), await text(page, '.compare-line'));
   check('search: says which model computed it', /Computed with the (upgraded|earlier) model/.test(await text(page, '.model-line') ?? ''), await text(page, '.model-line'));
   check('search: least exposed wall', /Least exposed wall/.test(await text(page, '.receiver-section') ?? ''));
-  await page.click('.save-place');
+  await page.click('.save-place:has-text("Save to compare")');
   await page.waitForSelector('.saved-row', { timeout: 10000 }).catch(() => null);
   check('save to compare lists the house', /19305 Redwing/i.test(await text(page, '.saved-places') ?? ''), await text(page, '.saved-row'));
   await page.reload({ waitUntil: 'load' });

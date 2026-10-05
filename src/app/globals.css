@@ -43,6 +43,8 @@
 .level-words { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--secondary); }
 .save-place { margin-top: 10px; min-height: 34px; padding: 6px 10px; border: 1px solid #bcc9c0; border-radius: 5px; background: transparent; color: var(--active); font-size: 12px; font-weight: 600; cursor: pointer; }
 .save-place:disabled { color: var(--secondary); cursor: default; }
+.place-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.share-notice { margin: -12px 0 16px; }
 .saved-places { margin: -8px 0 22px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
 .saved-places h2 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
 .saved-places h2 span { font-weight: 400; color: var(--secondary); }
