@@ -56,8 +56,9 @@ th { color: var(--sub); font-weight: 600; border-top: 0; }
   </header>
 
   <section class="card">
-    <div class="muted">Road-noise calculation for every built-up km² of LA County</div>
+    <div class="muted">Upgraded road-noise model (v2: lidar terrain, sound walls, bridges) for every built-up km² of LA County</div>
     <div class="big" id="pct">–</div>
+    <div class="muted" id="onmap"></div>
     <div class="bar"><i id="bar" style="width:0"></i></div>
     <div class="facts" id="facts"></div>
   </section>
@@ -135,6 +136,9 @@ async function refresh() {
   const s = data.summary;
   document.getElementById('pct').textContent = (s.fraction * 100).toFixed(s.fraction < 0.1 ? 2 : 1) + '% done';
   document.getElementById('bar').style.width = Math.max(0.3, s.fraction * 100) + '%';
+  const onMap = s.cells_done + (s.cells_older_only || 0);
+  document.getElementById('onmap').textContent = `On the map now: ${onMap.toLocaleString()} of ${s.cells_total.toLocaleString()} km² (${(onMap / s.cells_total * 100).toFixed(1)}%). `
+    + (s.cells_older_only ? `${s.cells_older_only.toLocaleString()} km² still show the older model until the upgrade redoes them.` : '');
   const eta = s.eta_days == null ? 'no recent speed yet' : s.eta_days < 1.5 ? Math.round(s.eta_days * 24) + ' hours left at the current speed' : s.eta_days.toFixed(1) + ' days left at the current speed';
   document.getElementById('facts').innerHTML = `<span>Model <b>${s.model || ''}</b>: ${s.model_summary || ''}</span><span><b>${fmt(s.done_receivers)}</b> of ~${fmt(s.total_receivers)} points</span><span><b>${s.cells_done.toLocaleString()}</b> of ${s.cells_total.toLocaleString()} km²</span><span><b>${Math.round(s.rate.all || 0)}</b> points/s</span><span><b>${eta}</b></span><span>queue: ${data.queue.priority ? data.queue.priority + ' priority, ' : ''}${data.queue.todo} prepared${data.queue.failed ? ', ' + data.queue.failed + ' failed' : ''}${data.daemon ? '' : ' · tile builder stopped'}</span>`;
   for (const host of ['mac', 'pc']) document.getElementById('card-' + host).innerHTML = machine(host, data.hosts[host], s.rate[host]);
