@@ -155,11 +155,12 @@ async function searchAddress(page, typed, pick) {
   check('24 h field includes aircraft', /_q\.pmtiles$/.test(await fieldUrl()), await fieldUrl());
   await page.screenshot({ path: `${out}/desktop_aircraft.png` });
   // Switches stay under the pointer: the row does not move when toggled (even though the period and panel change).
-  const switchTop = (sel) => page.evaluate((s) => document.querySelector(s).getBoundingClientRect().top, sel);
+  // (Scrolled into view first: a click on a row below the fold scrolls it, which is not the row moving.)
+  const switchTop = async (sel) => { await page.locator(sel).scrollIntoViewIfNeeded(); return page.evaluate((s) => document.querySelector(s).getBoundingClientRect().top, sel); };
   const before = await switchTop('.context-airport-contours .ml-switch');
   await page.click('.context-airport-contours .ml-main');
   await idle(page);
-  const moved = Math.abs(await switchTop('.context-airport-contours .ml-switch') - before);
+  const moved = Math.abs(await page.evaluate(() => document.querySelector('.context-airport-contours .ml-switch').getBoundingClientRect().top) - before);
   check('aircraft switch stays in place', moved < 1, `moved ${moved.toFixed(1)} px`);
   check('aircraft off: roads-only 24 h field', /_r\.pmtiles$/.test(await fieldUrl()), await fieldUrl());
   check('aircraft off: contours hidden', await page.evaluate(() => window.__quietCountyMap.getLayoutProperty('context-airport-contours-line', 'visibility') === 'none'));
@@ -176,7 +177,7 @@ async function searchAddress(page, typed, pick) {
   // Heliports and fire stations draw as icons (Van Nuys Airport has both nearby).
   const heliTop = await switchTop('.context-heliports .ml-switch');
   await page.click('.context-heliports .ml-main');
-  check('heliport switch stays in place', Math.abs(await switchTop('.context-heliports .ml-switch') - heliTop) < 1);
+  check('heliport switch stays in place', Math.abs(await page.evaluate(() => document.querySelector('.context-heliports .ml-switch').getBoundingClientRect().top) - heliTop) < 1);
   await page.click('.context-fire .ml-main');
   await idle(page);
   const icons = await page.evaluate(() => {
