@@ -114,8 +114,11 @@ export default function CountyMap(props: Props) {
       map.addControl(new maplibre.GeolocateControl({ trackUserLocation: false }), 'bottom-right');
       map.addControl(new maplibre.ScaleControl({ unit: 'imperial' }), 'bottom-right');
       const report = (loading: boolean, error: string | null = null) => propsRef.current.onStatus({ loading, error, zoom: map?.getZoom() ?? 0 });
-      map.on('dataloading', () => report(true));
-      map.on('idle', () => report(false));
+      // "Loading" covers the first load of each map only: later tile loads (panning, distant 3D terrain
+      // that keeps streaming in) do not bring the notice back.
+      let settled = false;
+      map.on('dataloading', () => { if (!settled) report(true); });
+      map.on('idle', () => { settled = true; report(false); });
       map.on('error', (event) => { const message = event.error?.message ?? ''; if (!/tile|404|aborted/i.test(message)) report(false, message); });
       map.on('moveend', () => {
         if (!map) return;

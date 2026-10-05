@@ -100,11 +100,14 @@ async function searchAddress(page, typed, pick) {
   await page.evaluate(() => window.__quietCountyMap.jumpTo({ zoom: 16 }));
   await idle(page);
   await page.click('.workspace-header button:has-text("3D")');
-  const has3d = await page.waitForFunction(() => window.__quietCountyMap?.loaded() && window.__quietCountyMap.queryRenderedFeatures({ layers: ['buildings-3d'] }).length > 0, null, { timeout: 45000, polling: 1000 }).then(() => true).catch(() => false);
+  // (In 3D the map keeps streaming distant terrain, so loaded() can stay false.)
+  const has3d = await page.waitForFunction(() => window.__quietCountyMap?.getLayer('buildings-3d') && window.__quietCountyMap.queryRenderedFeatures({ layers: ['buildings-3d'] }).length > 0, null, { timeout: 45000, polling: 1000 }).then(() => true).catch(() => false);
   check('3D: extruded buildings', has3d);
+  await page.waitForTimeout(3000);
+  check('3D: no lingering loading notice', !(await page.isVisible('.workspace-state')));
   await page.screenshot({ path: `${out}/desktop_3d.png`, timeout: 120000 });
   await page.click('.workspace-header button:has-text("2D")', { timeout: 120000 });
-  await page.waitForFunction(() => window.__quietCountyMap?.loaded() && window.__quietCountyMap.getPitch() === 0, null, { timeout: 45000, polling: 1000 }).catch(() => null);
+  await page.waitForFunction(() => window.__quietCountyMap?.getPitch() === 0, null, { timeout: 45000, polling: 1000 }).catch(() => null);
 
   await page.evaluate(() => window.__quietCountyMap.jumpTo({ center: [-118.4899, 34.2098], zoom: 13.5 }));
   await idle(page);
