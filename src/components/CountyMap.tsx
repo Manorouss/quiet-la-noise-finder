@@ -117,8 +117,10 @@ export default function CountyMap(props: Props) {
       // "Loading" covers the first load of each map only: later tile loads (panning, distant 3D terrain
       // that keeps streaming in) do not bring the notice back.
       let settled = false;
+      const settle = () => { settled = true; report(false); };
       map.on('dataloading', () => { if (!settled) report(true); });
-      map.on('idle', () => { settled = true; report(false); });
+      map.on('idle', settle);
+      map.once('load', settle);  // first complete render; in 3D, idle can take long while terrain streams
       map.on('error', (event) => { const message = event.error?.message ?? ''; if (!/tile|404|aborted/i.test(message)) report(false, message); });
       map.on('moveend', () => {
         if (!map) return;
