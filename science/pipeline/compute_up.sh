@@ -3,8 +3,8 @@
 # Parts (model v2, see county_models.py): the corridor job (lidar walls and bridge decks,
 # corridor_products.py, until its plan is done), the tile builder (county_daemon.py), the three
 # engine workers (Mac :9130 x8, PC :9131 x16, PC :9132 x8), the progress page
-# (compute_dashboard.py, port 8765) and the 2-hourly public map publisher
-# (publish_county_layers.sh → R2).
+# (compute_dashboard.py, port 8765), the 2-hourly public map publisher
+# (publish_county_layers.sh → R2) and the watchdog (compute_watchdog.sh, restarts stopped parts).
 # After a Mac restart nothing is running: tiles that were mid-run go back to the
 # queue (their partial attempts stay; reruns get a new -v<N>) and stale PC engines
 # are stopped. Pause flags are kept, so a paused machine stays paused.
@@ -43,4 +43,5 @@ for spec in "mac 9130 8" "pc 9131 16" "pc 9132 8"; do
 done
 alive "publish_county_layers.sh" || { nohup /bin/bash "$P/publish_county_layers.sh" > /dev/null 2>&1 & echo "started 2-hourly map publishing"; }
 alive "compute_dashboard.py" || { nohup python3 "$P/compute_dashboard.py" >> "$C/dashboard.log" 2>&1 & echo "started progress page"; }
+alive "compute_watchdog.sh" || { nohup /bin/bash "$P/compute_watchdog.sh" > /dev/null 2>&1 & echo "started watchdog"; }
 echo "Progress page: http://localhost:8765/ (from the PC or a phone: http://$(ipconfig getifaddr en0 || echo '<mac-ip>'):8765/)"
