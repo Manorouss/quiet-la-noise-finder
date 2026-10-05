@@ -10,6 +10,41 @@
     "https://www.lawa.org/media/28288"
    ],
    "notes": "2025 = energy average of the published daily CNELs (one decimal); official annual values are rounded. Aircraft only: VNY publishes no total/community CNEL."
+  },
+  "Sepulveda Transit Corridor": {
+   "reports": "https://libraryarchives.metro.net/DPGTL/eirs/sepulveda-transit-corridor-project/2025-06-STCP-deir-appendix-o-01.pdf",
+   "used": [
+    "https://libraryarchives.metro.net/DPGTL/eirs/sepulveda-transit-corridor-project/2025-06-STCP-deir-appendix-o-02.pdf"
+   ],
+   "notes": "Appendix O (HTA): 24-hour hourly Leq per site, read by OCR; day/evening/night Leq and CNEL computed from the hourly values (Ldn matches the report within 0.2 dB except site 19). Positions geocoded from addresses (Census), roughly 30-80 m."
+  },
+  "Los Angeles International": {
+   "reports": "https://www.lawa.org/lawa-environment/noise-management/lawa-noise-management-lax/california-state-airport-noise-standards-quarterly-reports-and-contour-maps",
+   "used": [
+    "https://www.lawa.org/sites/lawa/files/2026-03/LAX%204q25_20260319_Quarterly%20Report%20Map.pdf"
+   ],
+   "notes": "Official calendar-2025 annual CNEL (whole dB). Positions from the public WebTrak monitor list, checked against the georeferenced map (10-20 m)."
+  },
+  "Long Beach": {
+   "reports": "https://www.longbeach.gov/lgb/community-information/noise-office/monthly-noise-and-activity-reports/",
+   "used": [
+    "https://www.longbeach.gov/globalassets/airport/media-library/documents/monthly-noise-report-december-2025"
+   ],
+   "notes": "2025 = day-weighted energy average of the monthly average-daily aircraft CNEL (not an official annual value). Positions from WebTrak (2020)."
+  },
+  "Santa Monica": {
+   "reports": "https://santamonica.gov/airport-operations-statistics",
+   "used": [
+    "https://www.santamonica.gov/media/Public%20Works/Airport/noise%20reports/Calendar%20Year%202025%20CNEL%20Noise%20Contours%20Report.pdf"
+   ],
+   "notes": "Calendar-2025 aircraft CNEL, Table 3-1 (HMMH). Positions from WebTrak."
+  },
+  "Burbank": {
+   "reports": "https://www.hollywoodburbankairport.com/wp-content/uploads/2026/09/Quarterly-Noise-Monitoring-Reports-Updated-5-21-26.pdf",
+   "used": [
+    "https://www.hollywoodburbankairport.com/wp-content/uploads/2026/03/4Q-2025-Quarterly-Noise-Report.pdf"
+   ],
+   "notes": "Calendar-2025 aircraft CNEL (Table 4); monitor coordinates from Table A-1. The 4Q 2025 table used arithmetic, not energy, means (reads up to 0.4 dB low annually; site 6 more)."
   }
  },
  "sites": [
@@ -117,6 +152,1783 @@
     "2024_official": 62
    },
    "kind": "permanent monitor (Title 21)"
+  },
+  {
+   "id": "STCP01",
+   "airport": null,
+   "lat": 34.036395,
+   "lon": -118.434754,
+   "position_uncertainty_m": 60,
+   "location": "2435 S Sepulveda Blvd, Los Angeles, CA 90064",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 65.4,
+    "E": 70.6,
+    "N": 67.5,
+    "CNEL": 74.4,
+    "Ldn": 73.9
+   },
+   "start_date": "6/28/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP02",
+   "airport": null,
+   "lat": 34.040598,
+   "lon": -118.437038,
+   "position_uncertainty_m": 60,
+   "location": "2203 S Bentley Ave, Los Angeles, CA 90025",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 64.7,
+    "E": 62.2,
+    "N": 57.6,
+    "CNEL": 66.3,
+    "Ldn": 65.9
+   },
+   "start_date": "7/5/2023",
+   "primary_source": "Local traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP03",
+   "airport": null,
+   "lat": 34.047469,
+   "lon": -118.442793,
+   "position_uncertainty_m": 60,
+   "location": "1726 S Bentley Ave, Los Angeles, CA 90025",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 57.8,
+    "E": 57.0,
+    "N": 55.1,
+    "CNEL": 62.3,
+    "Ldn": 62.0
+   },
+   "start_date": "7/12/2023",
+   "primary_source": "Local traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP04",
+   "airport": null,
+   "lat": 34.048615,
+   "lon": -118.448897,
+   "position_uncertainty_m": 60,
+   "location": "1521 Beloit Ave, Los Angeles, CA 90025",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 61.6,
+    "E": 60.6,
+    "N": 60.1,
+    "CNEL": 67.0,
+    "Ldn": 66.7
+   },
+   "start_date": "7/12/2023",
+   "primary_source": "I-405 and Santa Monica Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP15",
+   "airport": null,
+   "lat": 34.066761,
+   "lon": -118.46067,
+   "position_uncertainty_m": 60,
+   "location": "426 S Sepulveda Blvd, Los Angeles, CA 90049",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 67.5,
+    "E": 66.8,
+    "N": 63.9,
+    "CNEL": 71.5,
+    "Ldn": 71.0
+   },
+   "start_date": "6/6/2023",
+   "primary_source": "I-405 and Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP16",
+   "airport": null,
+   "lat": 34.065977,
+   "lon": -118.461855,
+   "position_uncertainty_m": 60,
+   "location": "11330 Denair St, Los Angeles, CA 90049",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 68.1,
+    "E": 70.5,
+    "N": 69.6,
+    "CNEL": 76.3,
+    "Ldn": 75.9
+   },
+   "start_date": "6/7/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP18",
+   "airport": null,
+   "lat": 34.069024,
+   "lon": -118.46191,
+   "position_uncertainty_m": 60,
+   "location": "353 Dalkeith Ave, Los Angeles, CA 90049",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 66.1,
+    "E": 67.1,
+    "N": 65.5,
+    "CNEL": 72.4,
+    "Ldn": 72.0
+   },
+   "start_date": "6/7/2023",
+   "primary_source": "I-405, Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP19",
+   "airport": null,
+   "lat": 34.082563,
+   "lon": -118.444636,
+   "position_uncertainty_m": 60,
+   "location": "10615 Bellagio Rd, Los Angeles, CA 90077",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 60.9,
+    "E": 55.3,
+    "N": 54.6,
+    "CNEL": 62.6,
+    "Ldn": 62.4
+   },
+   "start_date": "6/2/2023",
+   "primary_source": "Bellagio Road",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": "hourly data and report table disagree by 1 dB"
+  },
+  {
+   "id": "STCP20",
+   "airport": null,
+   "lat": 34.074806,
+   "lon": -118.466898,
+   "position_uncertainty_m": 60,
+   "location": "11420 Thurston Cir, Los Angeles, CA 90049",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 67.9,
+    "E": 69.4,
+    "N": 66.4,
+    "CNEL": 73.6,
+    "Ldn": 73.1
+   },
+   "start_date": "6/27/2023",
+   "primary_source": "I-405, Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP23",
+   "airport": null,
+   "lat": 34.078681,
+   "lon": -118.469834,
+   "position_uncertainty_m": 60,
+   "location": "11720 Bellagio Rd, Los Angeles, CA 90049",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 67.6,
+    "E": 66.9,
+    "N": 64.3,
+    "CNEL": 71.7,
+    "Ldn": 71.3
+   },
+   "start_date": "6/21/2023",
+   "primary_source": "I-405, Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP24",
+   "airport": null,
+   "lat": 34.080762,
+   "lon": -118.472348,
+   "position_uncertainty_m": 60,
+   "location": "11812 Bellagio Rd, Los Angeles, CA 90049",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 67.1,
+    "E": 65.1,
+    "N": 63.4,
+    "CNEL": 70.8,
+    "Ldn": 70.5
+   },
+   "start_date": "6/6/2023",
+   "primary_source": "I-405, Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP26",
+   "airport": null,
+   "lat": 34.088829,
+   "lon": -118.472579,
+   "position_uncertainty_m": 60,
+   "location": "1399 Casiano Rd, Los Angeles, CA 90049",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 69.9,
+    "E": 70.5,
+    "N": 69.5,
+    "CNEL": 76.3,
+    "Ldn": 76.0
+   },
+   "start_date": "5/17/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP30",
+   "airport": null,
+   "lat": 34.099662,
+   "lon": -118.454194,
+   "position_uncertainty_m": 60,
+   "location": "10635 Levico Way, Los Angeles, CA 90077",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 50.9,
+    "E": 41.7,
+    "N": 48.8,
+    "CNEL": 55.5,
+    "Ldn": 55.4
+   },
+   "start_date": "6/6/2023",
+   "primary_source": "Distant aircraft",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP31",
+   "airport": null,
+   "lat": 34.119136,
+   "lon": -118.448387,
+   "position_uncertainty_m": 60,
+   "location": "2607 Basil Ln, Los Angeles, CA 90077",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 48.8,
+    "E": 44.9,
+    "N": 35.3,
+    "CNEL": 48.0,
+    "Ldn": 47.4
+   },
+   "start_date": "6/7/2023",
+   "primary_source": "Distant aircraft",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP32",
+   "airport": null,
+   "lat": 34.116661,
+   "lon": -118.463127,
+   "position_uncertainty_m": 60,
+   "location": "2341 Donella Cir, Los Angeles, CA 90077",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 62.4,
+    "E": 53.9,
+    "N": 55.3,
+    "CNEL": 63.5,
+    "Ldn": 63.4
+   },
+   "start_date": "6/6/2023",
+   "primary_source": "Roscomare Road",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP37",
+   "airport": null,
+   "lat": 34.133013,
+   "lon": -118.46944,
+   "position_uncertainty_m": 60,
+   "location": "3490 Vista Haven Rd, Sherman Oaks, CA 91403",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 53.2,
+    "E": 49.1,
+    "N": 46.1,
+    "CNEL": 54.6,
+    "Ldn": 54.3
+   },
+   "start_date": "5/30/2023",
+   "primary_source": "Distant aircraft, local traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": "distant aircraft and local traffic only (hillside)"
+  },
+  {
+   "id": "STCP38",
+   "airport": null,
+   "lat": 34.141546,
+   "lon": -118.470694,
+   "position_uncertainty_m": 60,
+   "location": "15460 Briarwood Dr, Sherman Oaks, CA 91403",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 69.2,
+    "E": 69.2,
+    "N": 67.4,
+    "CNEL": 74.5,
+    "Ldn": 74.1
+   },
+   "start_date": "6/20/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP39",
+   "airport": null,
+   "lat": 34.142349,
+   "lon": -118.472153,
+   "position_uncertainty_m": 60,
+   "location": "15515 Woodcrest Dr, Sherman Oaks, CA 91403",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 58.6,
+    "E": 58.6,
+    "N": 56.5,
+    "CNEL": 63.7,
+    "Ldn": 63.3
+   },
+   "start_date": "5/30/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP41",
+   "airport": null,
+   "lat": 34.147682,
+   "lon": -118.46866,
+   "position_uncertainty_m": 60,
+   "location": "15371 Del Gado Dr, Sherman Oaks, CA 91403",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 64.3,
+    "E": 66.4,
+    "N": 66.2,
+    "CNEL": 72.7,
+    "Ldn": 72.4
+   },
+   "start_date": "6/29/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP42",
+   "airport": null,
+   "lat": 34.150194,
+   "lon": -118.469138,
+   "position_uncertainty_m": 60,
+   "location": "15350 Sutton St, Sherman Oaks, CA 91403",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 66.9,
+    "E": 67.4,
+    "N": 65.5,
+    "CNEL": 72.5,
+    "Ldn": 72.2
+   },
+   "start_date": "6/8/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP43",
+   "airport": null,
+   "lat": 34.150664,
+   "lon": -118.467277,
+   "position_uncertainty_m": 60,
+   "location": "4440 Sepulveda Blvd, Sherman Oaks, CA 91403",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 72.1,
+    "E": 74.1,
+    "N": 69.5,
+    "CNEL": 77.1,
+    "Ldn": 76.5
+   },
+   "start_date": "3/25/2024",
+   "primary_source": "I-405, Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP44",
+   "airport": null,
+   "lat": 34.158047,
+   "lon": -118.466085,
+   "position_uncertainty_m": 60,
+   "location": "4800 Sepulveda Blvd, Sherman Oaks, CA 91403",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 63.9,
+    "E": 63.2,
+    "N": 58.0,
+    "CNEL": 66.4,
+    "Ldn": 65.8
+   },
+   "start_date": "5/30/2023",
+   "primary_source": "Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP45",
+   "airport": null,
+   "lat": 34.161642,
+   "lon": -118.464724,
+   "position_uncertainty_m": 60,
+   "location": "15233 Valleyheart Dr, Sherman Oaks, CA 91403",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 60.3,
+    "E": 56.5,
+    "N": 56.7,
+    "CNEL": 63.9,
+    "Ldn": 63.7
+   },
+   "start_date": "7/25/2023",
+   "primary_source": "Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP47",
+   "airport": null,
+   "lat": 34.164798,
+   "lon": -118.449497,
+   "position_uncertainty_m": 60,
+   "location": "14520 Magnolia Blvd, Sherman Oaks, CA 91403",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 61.0,
+    "E": 60.5,
+    "N": 56.7,
+    "CNEL": 64.5,
+    "Ldn": 64.0
+   },
+   "start_date": "4/3/2024",
+   "primary_source": "Van Nuys Blvd, Shell car wash",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": "car wash next to the microphone"
+  },
+  {
+   "id": "STCP48",
+   "airport": null,
+   "lat": 34.164904,
+   "lon": -118.465337,
+   "position_uncertainty_m": 60,
+   "location": "15231 Magnolia Blvd, Sherman Oaks, CA 91403",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 64.3,
+    "E": 63.8,
+    "N": 59.5,
+    "CNEL": 67.5,
+    "Ldn": 67.0
+   },
+   "start_date": "7/13/2023",
+   "primary_source": "Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP49",
+   "airport": null,
+   "lat": 34.167479,
+   "lon": -118.466232,
+   "position_uncertainty_m": 60,
+   "location": "5329 Sepulveda Blvd, Sherman Oaks, CA 91411",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 65.3,
+    "E": 64.2,
+    "N": 60.1,
+    "CNEL": 68.2,
+    "Ldn": 67.7
+   },
+   "start_date": "6/15/2023",
+   "primary_source": "Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP50",
+   "airport": null,
+   "lat": 34.166717,
+   "lon": -118.467437,
+   "position_uncertainty_m": 60,
+   "location": "15353 Weddington St, Sherman Oaks, CA 91411",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 62.4,
+    "E": 61.6,
+    "N": 60.4,
+    "CNEL": 67.5,
+    "Ldn": 67.2
+   },
+   "start_date": "7/18/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP51",
+   "airport": null,
+   "lat": 34.169401,
+   "lon": -118.466095,
+   "position_uncertainty_m": 60,
+   "location": "5450 Sepulveda Blvd, Sherman Oaks, CA 91411",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 66.6,
+    "E": 65.5,
+    "N": 62.7,
+    "CNEL": 70.3,
+    "Ldn": 69.9
+   },
+   "start_date": "6/13/2023",
+   "primary_source": "Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP52",
+   "airport": null,
+   "lat": 34.183084,
+   "lon": -118.470864,
+   "position_uncertainty_m": 60,
+   "location": "6200 Blucher Ave, Van Nuys, CA 91411",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 60.3,
+    "E": 58.0,
+    "N": 55.4,
+    "CNEL": 63.2,
+    "Ldn": 62.8
+   },
+   "start_date": "3/25/2024",
+   "primary_source": "I-405, G Line, local traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP53",
+   "airport": null,
+   "lat": 34.18297,
+   "lon": -118.47088,
+   "position_uncertainty_m": 60,
+   "location": "6201 Blucher Ave, Van Nuys, CA 91411",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 60.3,
+    "E": 58.2,
+    "N": 55.6,
+    "CNEL": 63.3,
+    "Ldn": 63.0
+   },
+   "start_date": "3/25/2024",
+   "primary_source": "I-405, G Line, local traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP55",
+   "airport": null,
+   "lat": 34.183483,
+   "lon": -118.46741,
+   "position_uncertainty_m": 60,
+   "location": "6224 Peach Ave, Van Nuys, CA 91411",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 54.0,
+    "E": 54.5,
+    "N": 49.9,
+    "CNEL": 57.8,
+    "Ldn": 57.3
+   },
+   "start_date": "5/24/2023",
+   "primary_source": "Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP56",
+   "airport": null,
+   "lat": 34.189596,
+   "lon": -118.4665,
+   "position_uncertainty_m": 60,
+   "location": "6561 Sepulveda Blvd, Van Nuys, CA 91411",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 63.8,
+    "E": 63.0,
+    "N": 59.0,
+    "CNEL": 67.0,
+    "Ldn": 66.5
+   },
+   "start_date": "6/15/2023",
+   "primary_source": "Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP57",
+   "airport": null,
+   "lat": 34.189724,
+   "lon": -118.47365,
+   "position_uncertainty_m": 60,
+   "location": "6546 Aqueduct Ave, Van Nuys, CA 91406",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 64.3,
+    "E": 65.2,
+    "N": 62.3,
+    "CNEL": 69.6,
+    "Ldn": 69.1
+   },
+   "start_date": "5/24/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP58",
+   "airport": null,
+   "lat": 34.193985,
+   "lon": -118.446981,
+   "position_uncertainty_m": 60,
+   "location": "14419 Vanowen St, Van Nuys, CA 91405",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 56.1,
+    "E": 56.3,
+    "N": 52.4,
+    "CNEL": 60.1,
+    "Ldn": 59.6
+   },
+   "start_date": "3/25/2024",
+   "primary_source": "Sepulveda Blvd?/Vanowen St (table says Sepulveda Blvd, Vanowen)",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP59",
+   "airport": null,
+   "lat": 34.196134,
+   "lon": -118.466119,
+   "position_uncertainty_m": 60,
+   "location": "6920 Sepulveda Blvd, Van Nuys, CA 91405",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 61.0,
+    "E": 61.9,
+    "N": 58.7,
+    "CNEL": 66.0,
+    "Ldn": 65.6
+   },
+   "start_date": "6/13/2023",
+   "primary_source": "Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP60",
+   "airport": null,
+   "lat": 34.194682,
+   "lon": -118.472963,
+   "position_uncertainty_m": 60,
+   "location": "6841 Firmament Ave, Van Nuys, CA 91406",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 61.8,
+    "E": 61.8,
+    "N": 58.1,
+    "CNEL": 65.8,
+    "Ldn": 65.3
+   },
+   "start_date": "6/6/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP61",
+   "airport": null,
+   "lat": 34.206695,
+   "lon": -118.435963,
+   "position_uncertainty_m": 60,
+   "location": "13917 Cohasset St, Van Nuys, CA 91405",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 50.5,
+    "E": 48.3,
+    "N": 45.2,
+    "CNEL": 53.1,
+    "Ldn": 52.7
+   },
+   "start_date": "6/13/2023",
+   "primary_source": "LOSSAN rail corridor, distant traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": "dominated by the LOSSAN rail line (not modeled)"
+  },
+  {
+   "id": "STCP62",
+   "airport": null,
+   "lat": 34.20614,
+   "lon": -118.447648,
+   "position_uncertainty_m": 60,
+   "location": "7467 Sylmar Ave, Van Nuys, CA 91405",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 54.5,
+    "E": 52.8,
+    "N": 46.3,
+    "CNEL": 55.8,
+    "Ldn": 55.1
+   },
+   "start_date": "6/14/2023",
+   "primary_source": "Van Nuys Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP63",
+   "airport": null,
+   "lat": 34.203063,
+   "lon": -118.464607,
+   "position_uncertainty_m": 60,
+   "location": "15235 Wyandotte St, Van Nuys, CA 91405",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 58.0,
+    "E": 55.7,
+    "N": 52.3,
+    "CNEL": 60.4,
+    "Ldn": 60.0
+   },
+   "start_date": "7/18/2023",
+   "primary_source": "Sepulveda Blvd",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP64",
+   "airport": null,
+   "lat": 34.202943,
+   "lon": -118.472104,
+   "position_uncertainty_m": 60,
+   "location": "15550 Wyandotte St, Van Nuys, CA 91406",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 63.1,
+    "E": 62.6,
+    "N": 59.3,
+    "CNEL": 66.9,
+    "Ldn": 66.5
+   },
+   "start_date": "5/30/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP65",
+   "airport": null,
+   "lat": 34.207502,
+   "lon": -118.471886,
+   "position_uncertainty_m": 60,
+   "location": "15559 Covello St, Van Nuys, CA 91406",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 62.2,
+    "E": 61.5,
+    "N": 60.0,
+    "CNEL": 67.1,
+    "Ldn": 66.7
+   },
+   "start_date": "6/27/2023",
+   "primary_source": "I-405 traffic",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "STCP66",
+   "airport": null,
+   "lat": 34.214824,
+   "lon": -118.460451,
+   "position_uncertainty_m": 60,
+   "location": "15018 Marson St, Panorama City, CA 91402",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 61.6,
+    "E": 59.9,
+    "N": 48.9,
+    "CNEL": 61.5,
+    "Ldn": 60.5
+   },
+   "start_date": "5/24/2023",
+   "primary_source": "LOSSAN rail corridor",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": "dominated by the LOSSAN rail line (not modeled)"
+  },
+  {
+   "id": "STCP67",
+   "airport": null,
+   "lat": 34.212324,
+   "lon": -118.467714,
+   "position_uncertainty_m": 60,
+   "location": "7824 Zombar Ave, Van Nuys, CA 91406",
+   "metric": "total noise (all sources), 24-hour measurement, microphone about 1.5 m high near building setback",
+   "measured": {
+    "D": 54.8,
+    "E": 52.9,
+    "N": 50.9,
+    "CNEL": 58.4,
+    "Ldn": 58.0
+   },
+   "start_date": "6/20/2023",
+   "primary_source": "Local traffic, distant aircraft",
+   "kind": "24-hour measurement (Metro Sepulveda Transit Corridor DEIR, 2023-24)",
+   "exclude": null
+  },
+  {
+   "id": "LAX-PDR1",
+   "airport": "Los Angeles International",
+   "lat": 33.95172,
+   "lon": -118.44326,
+   "position_uncertainty_m": 20,
+   "location": "Waterview trail, Playa del Rey, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 67.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-PDR2",
+   "airport": "Los Angeles International",
+   "lat": 33.95646,
+   "lon": -118.44583,
+   "position_uncertainty_m": 20,
+   "location": "214 Sunridge Street, Playa del Rey, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 62.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-ESG1",
+   "airport": "Los Angeles International",
+   "lat": 33.92367,
+   "lon": -118.426,
+   "position_uncertainty_m": 20,
+   "location": "738 West Mariposa Avenue, El Segundo (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 62.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-ESG2",
+   "airport": "Los Angeles International",
+   "lat": 33.92799,
+   "lon": -118.42081,
+   "position_uncertainty_m": 20,
+   "location": "504 West Sycamore Avenue, El Segundo (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 67.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-ESG3",
+   "airport": "Los Angeles International",
+   "lat": 33.9253,
+   "lon": -118.411,
+   "position_uncertainty_m": 20,
+   "location": "505 East Palm Avenue, El Segundo (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 61.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-ESG5",
+   "airport": "Los Angeles International",
+   "lat": 33.92597,
+   "lon": -118.40219,
+   "position_uncertainty_m": 20,
+   "location": "East Oak Avenue, El Segundo (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 59.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-DEL1",
+   "airport": "Los Angeles International",
+   "lat": 33.92587,
+   "lon": -118.37669,
+   "position_uncertainty_m": 20,
+   "location": "11857 Judah Avenue, Lair Port (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 53.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-WCH2",
+   "airport": "Los Angeles International",
+   "lat": 33.957,
+   "lon": -118.422,
+   "position_uncertainty_m": 20,
+   "location": "Villanova Avenue, Westchester, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 60.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-WCH3",
+   "airport": "Los Angeles International",
+   "lat": 33.9589,
+   "lon": -118.404,
+   "position_uncertainty_m": 20,
+   "location": "8708-8710 Emerson Avenue, Westchester, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 60.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-WCH5",
+   "airport": "Los Angeles International",
+   "lat": 33.9539,
+   "lon": -118.386,
+   "position_uncertainty_m": 20,
+   "location": "Interceptor Street, Westchester, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 73.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-WCH6",
+   "airport": "Los Angeles International",
+   "lat": 33.95726,
+   "lon": -118.38216,
+   "position_uncertainty_m": 20,
+   "location": "8838 Ramsgate Avenue, Westchester, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 62.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-ING1",
+   "airport": "Los Angeles International",
+   "lat": 33.95092,
+   "lon": -118.35855,
+   "position_uncertainty_m": 20,
+   "location": "298 West 94th Street, Inglewood (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 60.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-ING2",
+   "airport": "Los Angeles International",
+   "lat": 33.95885,
+   "lon": -118.35795,
+   "position_uncertainty_m": 20,
+   "location": "167 West Kelso Street, Inglewood (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 65.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-ING3",
+   "airport": "Los Angeles International",
+   "lat": 33.95579,
+   "lon": -118.35081,
+   "position_uncertainty_m": 20,
+   "location": "898 East La Brea Drive, Inglewood (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 66.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-ING6",
+   "airport": "Los Angeles International",
+   "lat": 33.94346,
+   "lon": -118.33502,
+   "position_uncertainty_m": 20,
+   "location": "West 102nd Street, Inglewood (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 69.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-ING8",
+   "airport": "Los Angeles International",
+   "lat": 33.94904,
+   "lon": -118.32375,
+   "position_uncertainty_m": 20,
+   "location": "2774 West Hardy Street, Inglewood (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 60.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-LNX1",
+   "airport": "Los Angeles International",
+   "lat": 33.93912,
+   "lon": -118.36347,
+   "position_uncertainty_m": 20,
+   "location": "10704 South Buford Avenue, Lennox (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 74.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-LNX2",
+   "airport": "Los Angeles International",
+   "lat": 33.94402,
+   "lon": -118.36358,
+   "position_uncertainty_m": 20,
+   "location": "10147 South Buford Avenue, Inglewood (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 63.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-LNX3",
+   "airport": "Los Angeles International",
+   "lat": 33.93489,
+   "lon": -118.36015,
+   "position_uncertainty_m": 20,
+   "location": "11076 Dalerose Avenue, Inglewood (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 62.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-LNX4",
+   "airport": "Los Angeles International",
+   "lat": 33.93748,
+   "lon": -118.35033,
+   "position_uncertainty_m": 20,
+   "location": "10852 Larch Avenue, Lennox (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 64.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-ATH2",
+   "airport": "Los Angeles International",
+   "lat": 33.94782,
+   "lon": -118.29544,
+   "position_uncertainty_m": 20,
+   "location": "1181 West 97th Street, Gramercy Park, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 66.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-SLA1",
+   "airport": "Los Angeles International",
+   "lat": 33.96135,
+   "lon": -118.3155,
+   "position_uncertainty_m": 20,
+   "location": "8474 Cimarron Street, Gramercy Park, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 64.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-SLA3",
+   "airport": "Los Angeles International",
+   "lat": 33.94008,
+   "lon": -118.3107,
+   "position_uncertainty_m": 20,
+   "location": "1915 West 106th Street, Westmont, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 62.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-SLA5",
+   "airport": "Los Angeles International",
+   "lat": 33.94506,
+   "lon": -118.28983,
+   "position_uncertainty_m": 20,
+   "location": "816 West Century Boulevard, Vermont Vista, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 64.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LAX-SLA7",
+   "airport": "Los Angeles International",
+   "lat": 33.94878,
+   "lon": -118.27176,
+   "position_uncertainty_m": 20,
+   "location": "9645 Wall Street, Green Meadows, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL (LAX operations)",
+   "measured": {
+    "2025": 64.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT1 (BK01)",
+   "airport": "Long Beach",
+   "lat": 33.82265,
+   "lon": -118.12973,
+   "position_uncertainty_m": 20,
+   "location": "East Monlaco Road, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 45.3
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT2 (BK02)",
+   "airport": "Long Beach",
+   "lat": 33.81365,
+   "lon": -118.13,
+   "position_uncertainty_m": 20,
+   "location": "3124 Charlemagne Avenue, Los Altos, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 47.1
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT3 (BK03)",
+   "airport": "Long Beach",
+   "lat": 33.7818,
+   "lon": -118.10789,
+   "position_uncertainty_m": 20,
+   "location": "1210 Palo Verde Avenue, Los Altos, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 57.1
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT4 (BK04)",
+   "airport": "Long Beach",
+   "lat": 33.7972,
+   "lon": -118.12674,
+   "position_uncertainty_m": 20,
+   "location": "Montair Avenue, Los Altos, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 60.1
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT5 (BK05)",
+   "airport": "Long Beach",
+   "lat": 33.81524,
+   "lon": -118.17402,
+   "position_uncertainty_m": 20,
+   "location": "East 32nd Street, Signal Hill (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 56.8
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT6 (BK06)",
+   "airport": "Long Beach",
+   "lat": 33.82299,
+   "lon": -118.16825,
+   "position_uncertainty_m": 20,
+   "location": "3640 Gardenia Avenue, California Heights, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 58.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT7 (BK07)",
+   "airport": "Long Beach",
+   "lat": 33.84759,
+   "lon": -118.18829,
+   "position_uncertainty_m": 20,
+   "location": "5038 Elm Avenue, North Long Beach, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 54.3
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT8 (BK08)",
+   "airport": "Long Beach",
+   "lat": 33.83586,
+   "lon": -118.17362,
+   "position_uncertainty_m": 20,
+   "location": "1402 Tehachapi Drive, Bixby Knolls, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 58.6
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT9 (BK09)",
+   "airport": "Long Beach",
+   "lat": 33.8331,
+   "lon": -118.16973,
+   "position_uncertainty_m": 20,
+   "location": "1813 East Cartagena Street, Bixby Knolls, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 60.6
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT10 (BK10)",
+   "airport": "Long Beach",
+   "lat": 33.80143,
+   "lon": -118.1313,
+   "position_uncertainty_m": 20,
+   "location": "2454 Stearnlee Avenue, Los Altos, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 63.1
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT11 (BK11)",
+   "airport": "Long Beach",
+   "lat": 33.80777,
+   "lon": -118.13284,
+   "position_uncertainty_m": 20,
+   "location": "2840 Greenbrier Road, Los Altos, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 50.8
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT12 (BK12)",
+   "airport": "Long Beach",
+   "lat": 33.80204,
+   "lon": -118.13931,
+   "position_uncertainty_m": 20,
+   "location": "2486 Quincy Avenue, Los Altos, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 47.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT13 (BK13)",
+   "airport": "Long Beach",
+   "lat": 33.83136,
+   "lon": -118.16923,
+   "position_uncertainty_m": 20,
+   "location": "Marshall Place, Bixby Knolls, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 60.6
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT14 (BK14)",
+   "airport": "Long Beach",
+   "lat": 33.83401,
+   "lon": -118.16291,
+   "position_uncertainty_m": 20,
+   "location": "2473 Greenmeadow Road, Lakewood (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 57.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT15 (BK15)",
+   "airport": "Long Beach",
+   "lat": 33.81399,
+   "lon": -118.16534,
+   "position_uncertainty_m": 20,
+   "location": "San Diego Freeway, California Heights, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 62.4
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT16 (BK16)",
+   "airport": "Long Beach",
+   "lat": 33.82205,
+   "lon": -118.16378,
+   "position_uncertainty_m": 20,
+   "location": "36th Street, Lakewood (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 59.4
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT17 (BK17)",
+   "airport": "Long Beach",
+   "lat": 33.80496,
+   "lon": -118.13583,
+   "position_uncertainty_m": 20,
+   "location": "Clark Avenue, Los Altos, Long Beach (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 64.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "LGB-RMT18 (BK18)",
+   "airport": "Long Beach",
+   "lat": 33.82724,
+   "lon": -118.1628,
+   "position_uncertainty_m": 20,
+   "location": "2401 Cover Street, Lakewood (nearest address, approximate)",
+   "metric": "aircraft CNEL (all aircraft)",
+   "measured": {
+    "2025": 64.2
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "SMO-NMT6 (SMO6)",
+   "airport": "Santa Monica",
+   "lat": 34.0211,
+   "lon": -118.44494,
+   "position_uncertainty_m": 20,
+   "location": "South Bundy Drive, Mar Vista, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 60.2
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "SMO-NMT1 (SMO1)",
+   "airport": "Santa Monica",
+   "lat": 34.00814,
+   "lon": -118.46058,
+   "position_uncertainty_m": 20,
+   "location": "3249 18th Street, Santa Monica (nearest address, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 56.5
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "SMO-NMT2 (SMO2)",
+   "airport": "Santa Monica",
+   "lat": 34.02355,
+   "lon": -118.44121,
+   "position_uncertainty_m": 20,
+   "location": "11787 Sardis Avenue, Sawtelle, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 52.5
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "SMO-NMT3 (SMO3)",
+   "airport": "Santa Monica",
+   "lat": 34.00689,
+   "lon": -118.45834,
+   "position_uncertainty_m": 20,
+   "location": "1233 Rose Avenue, Venice, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 55.2
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "SMO-NMT4 (SMO4)",
+   "airport": "Santa Monica",
+   "lat": 34.00299,
+   "lon": -118.46569,
+   "position_uncertainty_m": 20,
+   "location": "200 Frederick Street, Venice, Los Angeles (nearest address, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 54.0
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "SMO-NMT5 (SMO5)",
+   "airport": "Santa Monica",
+   "lat": 34.01049,
+   "lon": -118.45775,
+   "position_uncertainty_m": 20,
+   "location": "3199 23rd Street, Santa Monica (nearest address, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 58.2
+   },
+   "kind": "permanent monitor"
+  },
+  {
+   "id": "BUR01",
+   "airport": "Burbank",
+   "lat": 34.188424,
+   "lon": -118.358983,
+   "position_uncertainty_m": 10,
+   "location": "Pacific Ave nr N Dymond/Manning St, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 62.2
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR02",
+   "airport": "Burbank",
+   "lat": 34.184296,
+   "lon": -118.34733,
+   "position_uncertainty_m": 10,
+   "location": "Alley S of Victory Blvd nr N Lima St, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 59.8
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR03",
+   "airport": "Burbank",
+   "lat": 34.175731,
+   "lon": -118.354197,
+   "position_uncertainty_m": 10,
+   "location": "Hatteras St nr Maple St/N Pass Ave, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 61.3
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR04",
+   "airport": "Burbank",
+   "lat": 34.212022,
+   "lon": -118.364391,
+   "position_uncertainty_m": 10,
+   "location": "Stagg St nr Clybourn Ave, Sun Valley (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 58.6
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR05",
+   "airport": "Burbank",
+   "lat": 34.215261,
+   "lon": -118.357381,
+   "position_uncertainty_m": 10,
+   "location": "Strathern St & Ledge Ave, Sun Valley (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 56.3
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR06",
+   "airport": "Burbank",
+   "lat": 34.220705,
+   "lon": -118.365214,
+   "position_uncertainty_m": 10,
+   "location": "Clybourn Ave nr Crockett St, Sun Valley (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 53.8
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": "published Q4 2025 value does not match the daily data"
+  },
+  {
+   "id": "BUR07",
+   "airport": "Burbank",
+   "lat": 34.224979,
+   "lon": -118.363989,
+   "position_uncertainty_m": 10,
+   "location": "Nettleton St & Terhune Ave, Sun Valley (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 55.5
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR09",
+   "airport": "Burbank",
+   "lat": 34.198871,
+   "lon": -118.398889,
+   "position_uncertainty_m": 10,
+   "location": "Vose St nr Gault St, North Hollywood (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 62.9
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR10",
+   "airport": "Burbank",
+   "lat": 34.195336,
+   "lon": -118.342392,
+   "position_uncertainty_m": 10,
+   "location": "N Niagara St nr Thornton Ave, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 53.0
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR11",
+   "airport": "Burbank",
+   "lat": 34.197321,
+   "lon": -118.340376,
+   "position_uncertainty_m": 10,
+   "location": "Burton Ave & N Naomi St, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 52.6
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR12",
+   "airport": "Burbank",
+   "lat": 34.190175,
+   "lon": -118.365404,
+   "position_uncertainty_m": 10,
+   "location": "Kittridge St nr Denny Ave, North Hollywood (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 54.9
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR13",
+   "airport": "Burbank",
+   "lat": 34.181303,
+   "lon": -118.34527,
+   "position_uncertainty_m": 10,
+   "location": "Jeffries Ave/Ontario St, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 57.8
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR14",
+   "airport": "Burbank",
+   "lat": 34.178786,
+   "lon": -118.347134,
+   "position_uncertainty_m": 10,
+   "location": "N Lima St & Wyoming Ave, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 57.7
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR15",
+   "airport": "Burbank",
+   "lat": 34.173922,
+   "lon": -118.363157,
+   "position_uncertainty_m": 10,
+   "location": "Collins St nr Willowcrest Ave, North Hollywood (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 60.2
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR16",
+   "airport": "Burbank",
+   "lat": 34.181185,
+   "lon": -118.350949,
+   "position_uncertainty_m": 10,
+   "location": "Jeffries Ave nr N Screenland Dr, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 61.4
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR18",
+   "airport": "Burbank",
+   "lat": 34.196899,
+   "lon": -118.389014,
+   "position_uncertainty_m": 10,
+   "location": "Simpson Ave nr Hart St, North Hollywood (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 62.1
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR19",
+   "airport": "Burbank",
+   "lat": 34.181277,
+   "lon": -118.357866,
+   "position_uncertainty_m": 10,
+   "location": "Jeffries Ave & N Valley St, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 62.6
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR20",
+   "airport": "Burbank",
+   "lat": 34.188378,
+   "lon": -118.351878,
+   "position_uncertainty_m": 10,
+   "location": "Pacific Ave nr Kenwood St, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 66.4
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR21",
+   "airport": "Burbank",
+   "lat": 34.1867,
+   "lon": -118.354939,
+   "position_uncertainty_m": 10,
+   "location": "Monterey Ave nr Pass Ave, Burbank (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 67.0
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": null
+  },
+  {
+   "id": "BUR22",
+   "airport": "Burbank",
+   "lat": 34.217035,
+   "lon": -118.361725,
+   "position_uncertainty_m": 10,
+   "location": "Wheatland Ave nr Lanark St, Sun Valley (nearest streets, approximate)",
+   "metric": "aircraft CNEL",
+   "measured": {
+    "2025": 59.3
+   },
+   "kind": "permanent monitor (Title 21)",
+   "exclude": "no daily data for Q4 2025 / Q1 2026 to check"
   }
  ]
 }
