@@ -1,0 +1,24 @@
+{
+ "about": "San Fernando Valley main lines (OSM usage=main): Ventura Subdivision (Metrolink VC Line, Amtrak, UP) and Valley Subdivision (Metrolink AV Line, UP). Passenger counts: weekly GTFS averages, week of 2026-10-05 (gtfs_counts.py), trains per hour by CNEL period, both directions. Freight: FRA crossing inventory (2025 counts) thru trains minus passenger trains per day, spread evenly over 24 h.",
+ "osm": "implementation/work/source_cache/rail/osm_rail_sfv_main.json",
+ "stations": {
+  "Chatsworth": [-118.599411, 34.253197], "Northridge": [-118.545097, 34.230614], "Van Nuys": [-118.448219, 34.211559],
+  "Burbank Airport South": [-118.3526, 34.192795], "Burbank Airport North": [-118.35, 34.206389], "Sun Valley": [-118.373398, 34.222401],
+  "Sylmar/San Fernando": [-118.450172, 34.292591], "Downtown Burbank": [-118.312866, 34.178944], "Glendale": [-118.258926, 34.123341]
+ },
+ "services": {
+  "VC": {"trainset": "US_METROLINK", "D": 0.869, "E": 0.238, "N": 0.159, "stops": ["Chatsworth", "Northridge", "Van Nuys", "Burbank Airport South", "Downtown Burbank", "Glendale"]},
+  "AMTRAK": {"trainset": "US_AMTRAK", "D": 0.536, "E": 0.476, "N": 0.238, "stops": ["Chatsworth", "Van Nuys", "Burbank Airport South", "Glendale"]},
+  "AV": {"trainset": "US_METROLINK", "D": 1.548, "E": 1.238, "N": 0.19, "stops": ["Sylmar/San Fernando", "Sun Valley", "Burbank Airport North", "Downtown Burbank", "Glendale"]},
+  "FREIGHT_2": {"trainset": "US_FREIGHT", "D": 0.0833, "E": 0.0833, "N": 0.0833, "stops": [], "speed_kmh": 72.0},
+  "FREIGHT_4": {"trainset": "US_FREIGHT", "D": 0.1667, "E": 0.1667, "N": 0.1667, "stops": [], "speed_kmh": 72.0},
+  "FREIGHT_8": {"trainset": "US_FREIGHT", "D": 0.3333, "E": 0.3333, "N": 0.3333, "stops": [], "speed_kmh": 72.0}
+ },
+ "classes": [
+  {"name": "Ventura west (Chatsworth-Van Nuys)", "name_contains": "Ventura", "lon_max": -118.45, "services": ["VC", "AMTRAK", "FREIGHT_2"]},
+  {"name": "Ventura east (Van Nuys-Burbank Jct)", "name_contains": "Ventura", "services": ["VC", "AMTRAK", "FREIGHT_4"]},
+  {"name": "Valley north (Sylmar-Burbank Jct)", "name_contains": "Valley", "lat_min": 34.19, "lon_max": -118.335, "services": ["AV", "FREIGHT_4"]},
+  {"name": "Valley south (Burbank Jct-Glendale)", "name_contains": "Valley", "services": ["VC", "AV", "AMTRAK", "FREIGHT_8"]}
+ ],
+ "transfer": "EU5", "roughness": "EU4", "bridge_code": "EU3", "default_track_kmh": 113.0
+}
