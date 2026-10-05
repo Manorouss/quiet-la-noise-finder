@@ -84,7 +84,17 @@ function Aircraft({ value }: { value: number | null }) {
   return <p className="receiver-meta">Aircraft here: about {value.toFixed(0)} dB CNEL, estimated from the official airport contours; included in the 24 h value.</p>;
 }
 
-function Inspector({ selection, period, onClose }: { selection: Selection | null; period: Period; onClose: () => void }) {
+type Ring = [number, number][];
+function insideRing(lng: number, lat: number, ring: Ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > lat) !== (yj > lat) && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function Inspector({ selection, period, onClose, covered }: { selection: Selection | null; period: Period; onClose: () => void; covered: (lng: number, lat: number) => boolean | null }) {
   if (!selection) return <div className="inspection-empty"><strong>Select a place on the map</strong><p>Search an address above, or click any building, spot or road to see its day, evening, night and 24 h levels.</p></div>;
   const close = <button type="button" className="plain-icon" aria-label="Close" onClick={onClose}>×</button>;
   if (selection.kind === 'receiver') {
@@ -103,6 +113,13 @@ function Inspector({ selection, period, onClose }: { selection: Selection | null
       <div className="receiver-result"><strong>{selection.values[period] === null ? '—' : selection.values[period]!.toFixed(1)}</strong><span>{period === 'Q' ? 'dB CNEL, loudest wall · 24 h' : `dB, loudest wall · ${PERIOD_NAME[period].toLowerCase()}`}</span></div>
       <LevelWords value={selection.values[period]} period={period} />
       <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">Loudest of {selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side. Switch to Dots to see each wall.</p></>;
+  }
+  if (selection.kind === 'empty') {
+    const inside = covered(selection.at[0], selection.at[1]);
+    if (inside === false) return <><div className="receiver-heading"><span>Not modeled yet</span>{close}</div><AddressLine at={selection.at} near />
+      <p className="level-words"><strong>No value here yet.</strong> This place is outside the area computed so far. The map grows outward from Tarzana as the county calculation runs; blank never means quiet.</p></>;
+    return <><div className="receiver-heading"><span>Nothing modeled right here</span>{close}</div>
+      <p className="level-words">Zoom in and click a building, or switch the display to Dots and click a point.</p></>;
   }
   if (selection.kind === 'road') {
     return <><div className="receiver-heading"><span>Road in the model</span>{close}</div>
@@ -124,6 +141,8 @@ export default function CountyMapPage() {
   const [selection, setSelection] = useState<Selection | null>(null);
   const [status, setStatus] = useState<MapStatus>({ loading: true, error: null, zoom: 13 });
   const [layers, setLayers] = useState<Layers | null>(null);
+  const [coverage, setCoverage] = useState<Ring[] | null>(null);
+  const covered = useCallback((lng: number, lat: number) => (coverage ? coverage.some((ring) => insideRing(lng, lat, ring)) : null), [coverage]);
   const [initialCamera, setInitialCamera] = useState<Camera | null>(null);
   const [target, setTarget] = useState<{ lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number; select?: boolean; label?: string } | null>(null);
   const [query, setQuery] = useState('');
@@ -155,6 +174,9 @@ export default function CountyMapPage() {
       setTarget({ lng: sel[0], lat: sel[1], zoom: Math.min(19, Math.max(15, n('z') || 17)), nonce: Date.now(), select: true });
     }
     fetch(`${LAYERS_URL}layers.json`).then((r) => (r.ok ? r.json() : null)).then(setLayers).catch(() => setLayers(null));
+    fetch(`${LAYERS_URL}coverage.geojson`).then((r) => (r.ok ? r.json() : null))
+      .then((doc: { features?: { geometry: { coordinates: Ring[] } }[] } | null) => setCoverage(doc?.features?.map((f) => f.geometry.coordinates[0]) ?? null))
+      .catch(() => setCoverage(null));
     setReady(true);
   }, []);
 
@@ -232,6 +254,13 @@ export default function CountyMapPage() {
         const found = await findAddress(raw.trim(), undefined, magicKey);
         // A house number means one property: zoom in and select it. A bare street or place stays wider.
         if (found) { place = [found.lng, found.lat]; select = /^\d/.test(found.label); zoom = select ? 18 : 16; label = found.label.replace(/, CA, (\d{5})$/, ', CA $1'); pickedRef.current = found.label; setQuery(found.label); }
+        if (found && covered(found.lng, found.lat) === false) {
+          setMessage('This address is outside the area modeled so far, so there is no value yet. The map grows as the county calculation runs.');
+          setTarget({ lng: found.lng, lat: found.lat, zoom: 15, nonce: Date.now() });
+          setSelection({ kind: 'empty', at: [found.lng, found.lat] });
+          setExpanded(false);
+          return;
+        }
       } catch { setMessage('The address service is unavailable right now. Try a place name or latitude, longitude.'); return; }
     }
     if (!place || Math.abs(place[0]) > 180 || Math.abs(place[1]) > 85) { setMessage('No LA County address matched. Try a street address with city, a place such as Reseda, or latitude, longitude.'); return; }
@@ -266,7 +295,7 @@ export default function CountyMapPage() {
         <p role="status">{message}</p>
       </form>
       <div className="quick-controls"><Choice label="Time of day" value={period} options={[['D', 'Day'], ['E', 'Evening'], ['N', 'Night'], ['Q', '24 h']]} onChange={setPeriod} /></div>
-      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} /></section>
+      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} covered={covered} /></section>
       <div className="guide-body">
         <section className="guide-section"><h2>Noise display</h2><Choice label="Noise display style" value={noise} options={[['field', 'Field'], ['bands', 'Bands'], ['glow', 'Glow'], ['dots', 'Dots']]} onChange={setNoise} /><p className="control-help">{STYLE_HELP[noise]}{mode3d ? ' In 3D, buildings are colored by their loudest wall.' : ''}</p></section>
         <section className="guide-section"><h2>Base map</h2><Choice label="Base map" value={theme} options={[['light', 'Light'], ['grayscale', 'Gray'], ['dark', 'Dark'], ['satellite', 'Photo']]} onChange={setTheme} /></section>

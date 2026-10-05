@@ -137,6 +137,11 @@ async function searchAddress(page, typed, pick) {
   await page.waitForFunction(() => !document.querySelector('.selection-address.is-pending'), null, { timeout: 15000 }).catch(() => null);
   const shared = await text(page, '.selection-address') ?? '';
   check('shared link reopens the selected place with its own address', /Calvin/i.test(shared) && !/^Near/.test(shared), shared);
+  await page.fill('#place-search', '100 N Garfield Ave, Pasadena');
+  await page.press('#place-search', 'Enter');
+  await page.waitForFunction(() => /not modeled|outside the area/i.test(document.querySelector('.receiver-section')?.textContent ?? ''), null, { timeout: 20000 }).catch(() => null);
+  const outside = await text(page, '.receiver-section');
+  check('address outside coverage says not modeled yet', /Not modeled yet/i.test(outside ?? ''), (outside ?? '').slice(0, 90));
   await page.goto(`${base}/`, { waitUntil: 'load' });
   await page.waitForURL(/\/map\/?/, { timeout: 15000 }).catch(() => null);
   check('site root opens the county map', /\/map\/?(#|$)/.test(page.url()), page.url());

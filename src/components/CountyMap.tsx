@@ -10,7 +10,8 @@ export type Selection =
   | { kind: 'receiver'; key: string; facade: boolean; onRoad: boolean; masked: boolean; values: Values; aircraft: number | null; building: string | null; at: [number, number] }
   | { kind: 'building'; key: string; height: number; values: Values; aircraft: number | null; count: number; at: [number, number]; address?: string }
   | { kind: 'road'; name: string; aadt: number; mtfcc: string; basis: string }
-  | { kind: 'context'; layer: ContextId; title: string; detail: string };
+  | { kind: 'context'; layer: ContextId; title: string; detail: string }
+  | { kind: 'empty'; at: [number, number] };  // nothing modeled under the click or search
 export type Camera = { lng: number; lat: number; zoom: number; pitch: number; bearing: number };
 export type MapStatus = { loading: boolean; error: string | null; zoom: number };
 type Props = StyleOptions & {
@@ -70,7 +71,7 @@ function selectNear(map: MapLibreMap, lng: number, lat: number, onSelect: (selec
     const p = map.project([cx, cy]);
     return { f, d: Math.hypot(p.x - point.x, p.y - point.y) };
   }).sort((a, b) => a.d - b.d)[0]?.f;
-  if (!best) return;
+  if (!best) { onSelect({ kind: 'empty', at: [lng, lat] }); return; }
   const p = best.properties as Record<string, unknown>;
   // Keep the building's own centre (a shared link then finds its parcel); show the searched address if any.
   onSelect({ kind: 'building', key: String(p.k), height: Number(p.h), values: valuesOf(p), aircraft: num(p.a), count: Number(p.c ?? 0), at: footprintCentre(best.geometry, [lng, lat]), address });
@@ -157,7 +158,7 @@ export default function CountyMap(props: Props) {
         } else if (context) {
           const layer = context.layer.id.replace(/^context-/, '').replace(/-line$/, '') as ContextId;
           propsRef.current.onSelect({ kind: 'context', layer, ...contextTitle(layer, p(context)) });
-        } else propsRef.current.onSelect(null);
+        } else propsRef.current.onSelect({ kind: 'empty', at: clicked });
       });
       for (const id of ['receivers-dots', 'buildings-3d', 'building-footprints', 'roads-modeled', 'context-heliports', 'context-county-fire', 'context-city-fire']) {
         map.on('mouseenter', id, () => { if (map) map.getCanvas().style.cursor = 'pointer'; });
