@@ -59,17 +59,13 @@ function basemap(theme: BaseTheme, url: string): { sources: StyleSpecification['
   return { sources, layers: basemapLayers('protomaps', namedFlavor(theme), { lang: 'en' }) };
 }
 
-// Terrain and sky are also applied directly by the map component when they change: MapLibre 6.9's style
-// diff cannot change them (it rebuilds the whole style, blanking the map and cutting the 3D camera move).
+// Terrain is also applied directly by the map component when it changes: MapLibre 6.9's style diff cannot
+// change it (it rebuilds the whole style, blanking the map and cutting the 3D camera move). There is no sky:
+// with terrain on and the camera tilted, any sky left the map blank after a 2D -> 3D switch.
 export function terrainFor(o: StyleOptions): StyleSpecification['terrain'] {
   return o.mode3d ? { source: 'terrain-dem', exaggeration: 1.25 } : undefined;
 }
 
-// No sky: with terrain on and the camera tilted, any sky (with or without fog, set before or after the
-// tilt) left the map blank after switching 2D -> 3D in MapLibre 6.9 (headless Chrome test).
-export function skyFor(_o: StyleOptions): StyleSpecification['sky'] {
-  return undefined;
-}
 
 export function buildStyle(o: StyleOptions): StyleSpecification {
   const base = basemap(o.theme, o.layersUrl);
@@ -137,7 +133,6 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
     sources,
     layers: [...below, ...noiseLayers.slice(0, 1), ...middle, field, ...noiseLayers.slice(1), ...overlay, ...labels],
     terrain: terrainFor(o),
-    sky: skyFor(o),
     light: { anchor: 'viewport', color: '#ffffff', intensity: 0.35, position: [1.5, 200, 35] },
   };
 }
