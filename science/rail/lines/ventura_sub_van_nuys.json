@@ -1,0 +1,15 @@
+{
+ "line": "Ventura Subdivision (Metrolink / Amtrak / Union Pacific) through Van Nuys",
+ "usage": ["main"],
+ "main_tracks": 2,
+ "stops": [[-118.4479, 34.2112]],
+ "transfer": "EU5", "roughness": "EU4", "bridge_code": "EU3",
+ "services": [
+  {"name": "Metrolink VC Line", "trainset": "US_METROLINK", "D": 0.869, "E": 0.238, "N": 0.159, "stops": true,
+   "source": "Metrolink GTFS 2026-10-05, week of 2026-10-05, Van Nuys, both directions (gtfs_counts.py)"},
+  {"name": "Amtrak Pacific Surfliner + Coast Starlight", "trainset": "US_AMTRAK", "D": 0.536, "E": 0.476, "N": 0.238, "stops": true,
+   "source": "Amtrak GTFS, week of 2026-10-05, Van Nuys, both directions (gtfs_counts.py)"},
+  {"name": "Union Pacific freight", "trainset": "US_FREIGHT", "D": 0.0833, "E": 0.0833, "N": 0.0833, "stops": false, "speed_kmh": 72.0,
+   "source": "FRA crossing inventory 745995K (Van Nuys Blvd): 28 thru trains/day - 26 passenger = 2 freight/day, spread over 24 h"}
+ ]
+}
