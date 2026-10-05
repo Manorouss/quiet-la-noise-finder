@@ -63,6 +63,22 @@ def win(path: str) -> str:
     return path.replace("/", "\\")
 
 
+def wait_for_pc(reason: str, limit_s: int = 12 * 3600) -> bool:
+    """Block until the PC answers over SSH (it may be rebooting for Windows Update); False after limit_s."""
+    waited = 0
+    while subprocess.run(["ssh", "-F", str(SSH_CONFIG), "-o", "ConnectTimeout=10", "-o", "BatchMode=yes", PC, "echo ok"],
+                         capture_output=True, stdin=subprocess.DEVNULL).returncode != 0:
+        if waited == 0:
+            print(f"PC unreachable ({reason}); waiting for it to come back", file=sys.stderr, flush=True)
+        if waited >= limit_s:
+            return False
+        time.sleep(30)
+        waited += 30
+    if waited:
+        print(f"PC reachable again after {waited} s", file=sys.stderr, flush=True)
+    return True
+
+
 def stage(source: Path, label: str) -> Path:
     manifest = json.loads((source / "attempt_manifest.json").read_text())
     base = f"{manifest['attempt_id'].rsplit('-v', 1)[0]}-{label}"
@@ -141,6 +157,19 @@ def main() -> int:
                         help="keep the engine database (by default it is deleted after a successful run; exports and manifests stay)")
     args = parser.parse_args()
 
+    # A PC that is down (e.g. a Windows Update restart) must not burn through the queue: wait before
+    # staging, and after a failure wait until it is back so the worker's single retry can succeed.
+    if args.host == "pc" and not wait_for_pc("before staging"):
+        raise SystemExit("PC unreachable for 12 h")
+    try:
+        return run(args)
+    except BaseException:
+        if args.host == "pc":
+            wait_for_pc("after a failed run")
+        raise
+
+
+def run(args: argparse.Namespace) -> int:
     attempt = stage(args.source_attempt.resolve(), args.label)
     pc_attempt = f"{PC_ROOT}/attempts/{attempt.name}"
     if args.host == "pc":
