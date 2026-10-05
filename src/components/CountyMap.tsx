@@ -201,10 +201,14 @@ export default function CountyMap(props: Props) {
     if (map.isStyleLoaded()) apply(); else map.once('idle', apply);
   }, [props.selectedKey, styleKey, mapVersion]);
 
+  // A target set before the map exists (a shared link with a selected place) runs once the map loads;
+  // each target runs once, so rebuilding the map for 2D/3D does not fly back to it.
+  const handledTargetRef = useRef(0);
   useEffect(() => {
     const map = mapRef.current;
     const target = props.target;
-    if (!map || !target) return;
+    if (!map || !target || handledTargetRef.current === target.nonce) return;
+    handledTargetRef.current = target.nonce;
     // On phones the bottom sheet covers the lower map: centre the place in the part above it.
     const panel = document.querySelector('.map-guide')?.getBoundingClientRect();
     const padding = panel && window.innerWidth <= 720 ? { top: 0, right: 0, left: 0, bottom: Math.min(panel.height, window.innerHeight * 0.6) } : undefined;
@@ -222,7 +226,7 @@ export default function CountyMap(props: Props) {
     // Fallback if idle never comes; a flight paused in a background tab keeps waiting for moveend.
     const timer = window.setTimeout(() => { if (!map.isMoving()) pick(); }, 6000);
     return () => { done = true; window.clearTimeout(timer); map.off('moveend', onEnd); map.off('idle', pick); };
-  }, [props.target]);
+  }, [props.target, mapVersion]);
 
   // Photo 3D showcase: a Gaussian-splat scene in a custom layer (re-added after style changes,
   // which drop custom layers).

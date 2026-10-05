@@ -149,16 +149,36 @@ export default function CountyMapPage() {
     if (hash.has('lat') && hash.has('lng') && Math.abs(n('lat')) <= 85 && Math.abs(n('lng')) <= 180) {
       setInitialCamera({ lat: n('lat'), lng: n('lng'), zoom: Math.min(19, Math.max(9, n('z') || 14)), pitch: Math.min(78, Math.max(0, n('pitch') || 0)), bearing: n('bearing') || 0 });
     }
+    // A shared link may carry the selected place (sel=lng,lat): select the building there once the map is up.
+    const sel = (hash.get('sel') ?? '').split(',').map(Number);
+    if (sel.length === 2 && sel.every(Number.isFinite) && Math.abs(sel[0]) <= 180 && Math.abs(sel[1]) <= 85) {
+      setTarget({ lng: sel[0], lat: sel[1], zoom: Math.min(19, Math.max(15, n('z') || 17)), nonce: Date.now(), select: true });
+    }
     fetch(`${LAYERS_URL}layers.json`).then((r) => (r.ok ? r.json() : null)).then(setLayers).catch(() => setLayers(null));
     setReady(true);
   }, []);
 
+  const selectedAt = selection?.kind === 'receiver' || selection?.kind === 'building' ? `${selection.at[0].toFixed(6)},${selection.at[1].toFixed(6)}` : '';
   const writeView = useCallback(() => {
     const c = cameraRef.current;
     if (!c) return;
     const hash = new URLSearchParams({ lat: c.lat.toFixed(5), lng: c.lng.toFixed(5), z: c.zoom.toFixed(2), pitch: c.pitch.toFixed(0), bearing: c.bearing.toFixed(0), period, style: noise, mode: mode3d ? '3d' : '2d', base: theme, roads: roads ? '1' : '0', context: Object.entries(context).filter(([, v]) => v).map(([k]) => k).join(',') });
+    if (selectedAt) hash.set('sel', selectedAt);
     window.history.replaceState(null, '', `${window.location.pathname}#${hash}`);
-  }, [period, noise, mode3d, theme, roads, context]);
+  }, [period, noise, mode3d, theme, roads, context, selectedAt]);
+  // Escape closes the selected place (unless typing in the search box).
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape' && !(event.target instanceof HTMLInputElement)) setSelection(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  // Show "Loading map…" only when loading takes a moment, not on every pan.
+  const [slowLoading, setSlowLoading] = useState(false);
+  useEffect(() => {
+    if (!status.loading) { setSlowLoading(false); return; }
+    const timer = window.setTimeout(() => setSlowLoading(true), 1200);
+    return () => window.clearTimeout(timer);
+  }, [status.loading]);
   useEffect(() => { writeView(); }, [writeView]);
   const onCamera = useCallback((camera: Camera) => { cameraRef.current = camera; writeView(); }, [writeView]);
 
@@ -259,7 +279,7 @@ export default function CountyMapPage() {
           <div className="context-options">{(Object.keys(CONTEXT_LABELS) as ContextId[]).map((id) => <label key={id} className={`context-toggle context-${id}`}><input type="checkbox" checked={context[id]} onChange={(e) => { setContext({ ...context, [id]: e.target.checked }); if (id === 'airport-contours' && e.target.checked) setPeriod('Q'); }} />{CONTEXT_LABELS[id]}</label>)}</div>
           {context['airport-contours'] && <p className="control-help">Lines are the official airport contours of CNEL, a 24-hour average that counts evening noise 5 dB and night noise 10 dB louder. The 24 h view adds aircraft to the road noise: levels between the lines are interpolated, and because official maps stop at 65 CNEL, each airport&rsquo;s contours are extended to 55 CNEL as an estimate. Contours older than 2000 (Compton, El Monte, Torrance, Palmdale, Agua Dulce, Catalina) are drawn but not counted.</p>}
         </section>
-        <div className="guide-actions"><button type="button" onClick={copyView}>Copy view link</button></div>
+        <div className="guide-actions"><button type="button" onClick={copyView}>{selectedAt ? 'Copy link to this place' : 'Copy link to this view'}</button></div>
       </div>
       <div className="guide-secondary">
         <details className="study-details"><summary>Coverage & method</summary>
@@ -276,6 +296,6 @@ export default function CountyMapPage() {
       <div className="county-legend-ticks" aria-hidden="true">{BAND_EDGES.map((e) => <span key={e}>{e}</span>)}</div>
       <p>WHO guideline for road traffic: 53 dB Lden, 45 dB at night. Blank areas are not modeled yet, not quiet.</p>
     </div>
-    {(status.error || status.loading) && <div className={`workspace-state ${status.error ? 'is-error' : ''}`} role={status.error ? 'alert' : 'status'}>{status.error ? `Map data could not load: ${status.error}` : 'Loading map…'}</div>}
+    {(status.error || slowLoading) && <div className={`workspace-state ${status.error ? 'is-error' : ''}`} role={status.error ? 'alert' : 'status'}>{status.error ? `Map data could not load: ${status.error}` : 'Loading map…'}</div>}
   </main>;
 }
