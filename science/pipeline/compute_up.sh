@@ -7,7 +7,9 @@
 # (publish_county_layers.sh → R2) and the watchdog (compute_watchdog.sh, restarts stopped parts).
 # After a Mac restart nothing is running: tiles that were mid-run go back to the
 # queue (their partial attempts stay; reruns get a new -v<N>) and stale PC engines
-# are stopped. Pause flags are kept, so a paused machine stays paused.
+# are stopped. Pause flags are kept, so a paused machine stays paused. The NoiseModelling 6.0 engine
+# runs from its disk image, which a restart unmounts: it is re-mounted (read-only, checksum-pinned)
+# and no worker starts without it (every tile would fail at once).
 set -u
 cd "$(dirname "$0")/../../../../.."
 ROOT=$PWD
@@ -35,12 +37,25 @@ if ! alive "corridor_products.py" && [ "$(python3 -c "import json,pathlib,sys; p
   echo "started corridor job (lidar walls and bridge decks)"
 fi
 alive "county_daemon.py --model county-v2" || { nohup python3 "$P/county_daemon.py" --model county-v2 --queue "$Q" > /dev/null 2>&1 & echo "started tile builder"; }
-for spec in "mac 9130 8" "pc 9131 16" "pc 9132 8"; do
-  set -- $spec
-  alive "queue_worker_persist.sh $Q $1 $2 " || {
-    LABEL_PREFIX=v2 RUN_ARGS="--no-vertical --terrain-downscale 1" nohup /bin/bash "$P/queue_worker_persist.sh" "$Q" "$1" "$2" "$3" > /dev/null 2>&1 &
-    echo "started $1 worker :$2 ($3 threads)"; }
-done
+ENGINE=/Volumes/NoiseModelling/NoiseModelling.app/Contents/MacOS/NoiseModelling
+DMG=$ROOT/implementation/work/NoiseModelling-6.0.0.dmg
+if [ ! -x "$ENGINE" ]; then
+  if [ "$(shasum -a 256 "$DMG" | cut -d' ' -f1)" = "$(cut -d' ' -f1 "$DMG.sha256")" ]; then
+    hdiutil attach -nobrowse -readonly -noverify "$DMG" > /dev/null 2>&1 && echo "mounted the NoiseModelling 6.0 disk image"
+  else
+    echo "ALERT NoiseModelling disk image checksum mismatch: not mounted"
+  fi
+fi
+if [ -x "$ENGINE" ]; then
+  for spec in "mac 9130 8" "pc 9131 16" "pc 9132 8"; do
+    set -- $spec
+    alive "queue_worker_persist.sh $Q $1 $2 " || {
+      LABEL_PREFIX=v2 RUN_ARGS="--no-vertical --terrain-downscale 1" nohup /bin/bash "$P/queue_worker_persist.sh" "$Q" "$1" "$2" "$3" > /dev/null 2>&1 &
+      echo "started $1 worker :$2 ($3 threads)"; }
+  done
+else
+  echo "ALERT NoiseModelling engine unavailable ($ENGINE): workers not started"
+fi
 alive "publish_county_layers.sh" || { nohup /bin/bash "$P/publish_county_layers.sh" > /dev/null 2>&1 & echo "started 2-hourly map publishing"; }
 alive "compute_dashboard.py" || { nohup python3 "$P/compute_dashboard.py" >> "$C/dashboard.log" 2>&1 & echo "started progress page"; }
 # macOS pgrep skips its own ancestors, so when the watchdog runs this script it cannot see itself.
