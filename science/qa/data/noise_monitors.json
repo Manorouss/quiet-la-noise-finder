@@ -45,6 +45,10 @@
     "https://www.hollywoodburbankairport.com/wp-content/uploads/2026/03/4Q-2025-Quarterly-Noise-Report.pdf"
    ],
    "notes": "Calendar-2025 aircraft CNEL (Table 4); monitor coordinates from Table A-1. The 4Q 2025 table used arithmetic, not energy, means (reads up to 0.4 dB low annually; site 6 more)."
+  },
+  "EWVIS": {
+   "reports": "https://ceqanet.lci.ca.gov/2019011054/2/Attachment/jxV3K7",
+   "notes": "East West Valley Interceptor Sewer Draft EIR (LA Sanitation, 2019) Appendix F: hourly Leq at 6 sites, 2/25-26/2019; Ld/Le/Ln/CNEL computed from the hourly data. Microphone setback from Victory Blvd not stated."
   }
  },
  "sites": [
@@ -11241,6 +11245,384 @@
    },
    "kind": "permanent monitor (Title 21)",
    "exclude": "no daily data for Q4 2025 / Q1 2026 to check"
+  },
+  {
+   "id": "EWVIS-LTN1",
+   "airport": null,
+   "lat": 34.18606,
+   "lon": -118.37191,
+   "position_uncertainty_m": 60,
+   "location": "6372 Vicland Pl, North Hollywood",
+   "metric": "total noise (all sources), 24-hour measurement",
+   "measured": {
+    "D": 71.7,
+    "E": 70.6,
+    "N": 66.0,
+    "CNEL": 74.2
+   },
+   "start_date": "2/25/2019",
+   "primary_source": "Victory Blvd traffic (SR-170 for LTN1)",
+   "kind": "24-hour measurement (LA Sanitation EWVIS Draft EIR 2019, App. F)",
+   "exclude": null,
+   "parcel": {
+    "address": "6372 VICLAND PL LOS ANGELES CA 91606",
+    "parcels": 1,
+    "rings": [
+     [
+      [
+       -118.3715183,
+       34.1865548
+      ],
+      [
+       -118.371518,
+       34.1863761
+      ],
+      [
+       -118.3719148,
+       34.1863759
+      ],
+      [
+       -118.3719151,
+       34.1864995
+      ],
+      [
+       -118.3719131,
+       34.1865099
+      ],
+      [
+       -118.3719094,
+       34.1865198
+      ],
+      [
+       -118.371904,
+       34.1865289
+      ],
+      [
+       -118.3718972,
+       34.186537
+      ],
+      [
+       -118.3718891,
+       34.1865437
+      ],
+      [
+       -118.3718799,
+       34.186549
+      ],
+      [
+       -118.3718699,
+       34.1865526
+      ],
+      [
+       -118.3718595,
+       34.1865545
+      ],
+      [
+       -118.371849,
+       34.1865545
+      ],
+      [
+       -118.3715183,
+       34.1865548
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "id": "EWVIS-LTN2",
+   "airport": null,
+   "lat": 34.18674,
+   "lon": -118.37814,
+   "position_uncertainty_m": 60,
+   "location": "11341 Victory Blvd, North Hollywood",
+   "metric": "total noise (all sources), 24-hour measurement",
+   "measured": {
+    "D": 71.9,
+    "E": 69.9,
+    "N": 65.3,
+    "CNEL": 73.8
+   },
+   "start_date": "2/25/2019",
+   "primary_source": "Victory Blvd traffic (SR-170 for LTN1)",
+   "kind": "24-hour measurement (LA Sanitation EWVIS Draft EIR 2019, App. F)",
+   "exclude": null,
+   "parcel": {
+    "address": "11341 VICTORY BLVD NORTH HOLLYWOOD CA 91606",
+    "parcels": 1,
+    "rings": [
+     [
+      [
+       -118.378236,
+       34.1871534
+      ],
+      [
+       -118.378236,
+       34.1871292
+      ],
+      [
+       -118.3782359,
+       34.1868242
+      ],
+      [
+       -118.3785666,
+       34.1868239
+      ],
+      [
+       -118.3785666,
+       34.1871533
+      ],
+      [
+       -118.378236,
+       34.1871534
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "id": "EWVIS-LTN3",
+   "airport": null,
+   "lat": 34.18673,
+   "lon": -118.40564,
+   "position_uncertainty_m": 60,
+   "location": "12535 Victory Blvd, North Hollywood",
+   "metric": "total noise (all sources), 24-hour measurement",
+   "measured": {
+    "D": 75.4,
+    "E": 75.0,
+    "N": 71.0,
+    "CNEL": 78.9
+   },
+   "start_date": "2/25/2019",
+   "primary_source": "Victory Blvd traffic (SR-170 for LTN1)",
+   "kind": "24-hour measurement (LA Sanitation EWVIS Draft EIR 2019, App. F)",
+   "exclude": null,
+   "parcel": {
+    "address": "12535 VICTORY BLVD LOS ANGELES CA 91606",
+    "parcels": 1,
+    "rings": [
+     [
+      [
+       -118.406428,
+       34.187222
+      ],
+      [
+       -118.4064279,
+       34.1869883
+      ],
+      [
+       -118.4064299,
+       34.1869779
+      ],
+      [
+       -118.4064336,
+       34.186968
+      ],
+      [
+       -118.406439,
+       34.1869589
+      ],
+      [
+       -118.4064458,
+       34.1869509
+      ],
+      [
+       -118.406454,
+       34.1869441
+      ],
+      [
+       -118.4064631,
+       34.1869388
+      ],
+      [
+       -118.4064731,
+       34.1869352
+      ],
+      [
+       -118.4064835,
+       34.1869334
+      ],
+      [
+       -118.406494,
+       34.1869333
+      ],
+      [
+       -118.4065932,
+       34.1869334
+      ],
+      [
+       -118.4065933,
+       34.187222
+      ],
+      [
+       -118.406428,
+       34.187222
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "id": "EWVIS-LTN4",
+   "airport": null,
+   "lat": 34.18673,
+   "lon": -118.41846,
+   "position_uncertainty_m": 60,
+   "location": "13109 Victory Blvd, Van Nuys",
+   "metric": "total noise (all sources), 24-hour measurement",
+   "measured": {
+    "D": 73.4,
+    "E": 72.5,
+    "N": 68.5,
+    "CNEL": 76.5
+   },
+   "start_date": "2/25/2019",
+   "primary_source": "Victory Blvd traffic (SR-170 for LTN1)",
+   "kind": "24-hour measurement (LA Sanitation EWVIS Draft EIR 2019, App. F)",
+   "exclude": null,
+   "parcel": {
+    "address": "13109 W VICTORY BLVD LOS ANGELES CA 91401",
+    "parcels": 1,
+    "rings": [
+     [
+      [
+       -118.4185866,
+       34.1868206
+      ],
+      [
+       -118.4186127,
+       34.1868205
+      ],
+      [
+       -118.4186581,
+       34.1868205
+      ],
+      [
+       -118.4186583,
+       34.186975
+      ],
+      [
+       -118.4186583,
+       34.1870024
+      ],
+      [
+       -118.4185868,
+       34.1870027
+      ],
+      [
+       -118.4185868,
+       34.1869752
+      ],
+      [
+       -118.4185866,
+       34.1868206
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "id": "EWVIS-LTN5",
+   "airport": null,
+   "lat": 34.18672,
+   "lon": -118.43578,
+   "position_uncertainty_m": 60,
+   "location": "13903 Victory Blvd, Van Nuys",
+   "metric": "total noise (all sources), 24-hour measurement",
+   "measured": {
+    "D": 67.7,
+    "E": 66.2,
+    "N": 62.9,
+    "CNEL": 70.7
+   },
+   "start_date": "2/25/2019",
+   "primary_source": "Victory Blvd traffic (SR-170 for LTN1)",
+   "kind": "24-hour measurement (LA Sanitation EWVIS Draft EIR 2019, App. F)",
+   "exclude": null,
+   "parcel": {
+    "address": "13903 VICTORY BLVD LOS ANGELES CA 91401",
+    "parcels": 1,
+    "rings": [
+     [
+      [
+       -118.435727,
+       34.1871242
+      ],
+      [
+       -118.4357268,
+       34.1868632
+      ],
+      [
+       -118.4357288,
+       34.1868528
+      ],
+      [
+       -118.4357325,
+       34.1868429
+      ],
+      [
+       -118.4357379,
+       34.1868338
+      ],
+      [
+       -118.4357447,
+       34.1868257
+      ],
+      [
+       -118.4357528,
+       34.186819
+      ],
+      [
+       -118.435762,
+       34.1868137
+      ],
+      [
+       -118.4357719,
+       34.1868101
+      ],
+      [
+       -118.4357823,
+       34.1868082
+      ],
+      [
+       -118.4357929,
+       34.1868082
+      ],
+      [
+       -118.4358937,
+       34.1868082
+      ],
+      [
+       -118.4358939,
+       34.1871242
+      ],
+      [
+       -118.435727,
+       34.1871242
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "id": "EWVIS-LTN6",
+   "airport": null,
+   "lat": 34.18671,
+   "lon": -118.46305,
+   "position_uncertainty_m": 60,
+   "location": "15157 Victory Blvd, Van Nuys",
+   "metric": "total noise (all sources), 24-hour measurement",
+   "measured": {
+    "D": 69.5,
+    "E": 68.8,
+    "N": 65.7,
+    "CNEL": 73.3
+   },
+   "start_date": "2/25/2019",
+   "primary_source": "Victory Blvd traffic (SR-170 for LTN1)",
+   "kind": "24-hour measurement (LA Sanitation EWVIS Draft EIR 2019, App. F)",
+   "exclude": null
   }
  ]
 }
