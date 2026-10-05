@@ -154,19 +154,19 @@ async function searchAddress(page, typed, pick) {
   check('aircraft contours drawn', await page.evaluate(() => window.__quietCountyMap.queryRenderedFeatures({ layers: ['context-airport-contours-line'] }).length > 0));
   check('24 h field includes aircraft', /_q\.pmtiles$/.test(await fieldUrl()), await fieldUrl());
   await page.screenshot({ path: `${out}/desktop_aircraft.png` });
-  await page.click('.context-airport-contours .layer-main');
+  await page.click('.context-airport-contours .ml-main');
   await idle(page);
   check('aircraft off: roads-only 24 h field', /_r\.pmtiles$/.test(await fieldUrl()), await fieldUrl());
   check('aircraft off: contours hidden', await page.evaluate(() => window.__quietCountyMap.getLayoutProperty('context-airport-contours-line', 'visibility') === 'none'));
   check('aircraft off: legend says roads only', /Roads only/.test(await text(page, '.county-legend') ?? ''));
   await page.screenshot({ path: `${out}/desktop_aircraft_off.png` });
   await page.click('.quick-controls button:has-text("Day")');
-  await page.click('.context-airport-contours .layer-main');
+  await page.click('.context-airport-contours .ml-main');
   await idle(page);
   check('aircraft toggle switches to 24 h', /24 h/.test(await text(page, '.quick-controls [aria-checked="true"]') ?? ''));
   // Heliports and fire stations draw as icons (Van Nuys Airport has both nearby).
-  await page.click('.context-heliports .layer-main');
-  await page.click('.context-fire .layer-main');
+  await page.click('.context-heliports .ml-main');
+  await page.click('.context-fire .ml-main');
   await idle(page);
   const icons = await page.evaluate(() => {
     const map = window.__quietCountyMap;

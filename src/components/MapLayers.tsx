@@ -81,24 +81,24 @@ function AircraftGlyph() {
 }
 
 function LayerRow({ className, icon, title, meta, on, onChange, children }: { className: string; icon: ReactNode; title: string; meta: ReactNode; on: boolean; onChange: (on: boolean) => void; children?: ReactNode }) {
-  return <div className={`layer-row ${className} ${on ? 'is-on' : ''}`}>
-    <label className="layer-main">
-      <span className="layer-icon">{icon}</span>
-      <span className="layer-text"><strong>{title}</strong><small>{meta}</small></span>
-      <input type="checkbox" role="switch" className="layer-switch" checked={on} onChange={(e) => onChange(e.target.checked)} />
+  return <div className={`ml-row ${className} ${on ? 'is-on' : ''}`}>
+    <label className="ml-main">
+      <span className="ml-icon">{icon}</span>
+      <span className="ml-text"><strong>{title}</strong><small>{meta}</small></span>
+      <input type="checkbox" role="switch" className="ml-switch" checked={on} onChange={(e) => onChange(e.target.checked)} />
     </label>
-    {on && children && <div className="layer-legend">{children}</div>}
+    {on && children && <div className="ml-legend">{children}</div>}
   </div>;
 }
 
 function SourceRow({ icon, title, meta, status, children }: { icon: ReactNode; title: string; meta: string; status: string; children: ReactNode }) {
-  return <details className="layer-row source-row">
-    <summary className="layer-main">
-      <span className="layer-icon">{icon}</span>
-      <span className="layer-text"><strong>{title}</strong><small>{meta}</small></span>
-      <span className={`layer-status ${status === 'Included' ? 'is-in' : ''}`}>{status}</span>
+  return <details className="ml-row ml-source">
+    <summary className="ml-main">
+      <span className="ml-icon">{icon}</span>
+      <span className="ml-text"><strong>{title}</strong><small>{meta}</small></span>
+      <span className={`ml-status ${status === 'Included' ? 'is-in' : ''}`}>{status}</span>
     </summary>
-    <div className="layer-legend">{children}</div>
+    <div className="ml-legend">{children}</div>
   </details>;
 }
 
@@ -126,41 +126,41 @@ export function LayerPanel({ roads, setRoads, context, setContext, period, setPe
   const fireOn = context['county-fire'] || context['city-fire'];
   const aircraft = context['airport-contours'];
   const hospitals = places?.heliports.filter((p) => p.kind === 'hospital').length;
-  return <section className="guide-section layer-panel">
+  return <section className="guide-section ml-panel">
     <h2>In the noise colors</h2>
     <SourceRow icon={<TrafficGlyph />} title="Road traffic" meta="Every road, freeways to side streets" status="Included">
-      <p className="layer-note">Day, evening, night and 24 h levels from every modeled road. This is the base of the map, so it is always on.</p>
+      <p className="ml-note">Day, evening, night and 24 h levels from every modeled road. This is the base of the map, so it is always on.</p>
     </SourceRow>
     <LayerRow className="context-airport-contours" icon={<AircraftGlyph />} title="Aircraft" meta={aircraft ? 'Added to the 24 h colors' : 'Off: 24 h shows roads only'} on={aircraft}
       onChange={(on) => { setContext({ ...context, 'airport-contours': on }); if (on) setPeriod('Q'); }}>
       <div className="legend-chips">{[55, 60, 65, 70, 75].map((level) => <span key={level} style={{ background: bandColor(level + 0.1), color: level >= 65 ? '#fff' : '#2b2340' }}>{level}</span>)}<em>dB CNEL</em></div>
       <div className="legend-key"><span><i className="key-line" />Official contour</span><span><i className="key-line is-dashed" />Estimated, past the official lines</span></div>
       {period === 'Q'
-        ? <p className="layer-note">The 24 h colors include aircraft. Switch off to see road traffic alone.</p>
-        : <p className="layer-note">Aircraft counts only in the 24 h view (CNEL); day, evening and night show roads. <button type="button" className="text-button" onClick={() => setPeriod('Q')}>Show 24 h</button></p>}
-      <details className="layer-more"><summary>How the aircraft estimate works</summary>
+        ? <p className="ml-note">The 24 h colors include aircraft. Switch off to see road traffic alone.</p>
+        : <p className="ml-note">Aircraft counts only in the 24 h view (CNEL); day, evening and night show roads. <button type="button" className="ml-link" onClick={() => setPeriod('Q')}>Show 24 h</button></p>}
+      <details className="ml-more"><summary>How the aircraft estimate works</summary>
         <p>CNEL is a 24-hour average that counts evening noise 5 dB and night noise 10 dB louder. Most official airport maps stop at 65 CNEL, so each airport&rsquo;s contours are extended to 55 CNEL from the spacing of its official lines; levels between lines are interpolated. Contours older than 2000 (Compton, El Monte, Torrance, Palmdale, Agua Dulce, Catalina) are drawn but not counted.</p>
       </details>
     </LayerRow>
     <SourceRow icon={<HelicopterGlyph />} title="Helicopters" meta="Police, news, medical and tour flights" status="Not yet">
-      <p className="layer-note">Not in the colors yet. Unlike airports, helicopters have no official noise contours or fixed routes in LA; computing them needs flight tracks (for example from ADS-B receivers). The Heliports layer below shows where they land.</p>
+      <p className="ml-note">Not in the colors yet. Unlike airports, helicopters have no official noise contours or fixed routes in LA; computing them needs flight tracks (for example from ADS-B receivers). The Heliports layer below shows where they land.</p>
     </SourceRow>
     <SourceRow icon={<SirenGlyph />} title="Sirens" meta="Fire engines and ambulances" status="Not yet">
-      <p className="layer-note">Not in the colors yet. Sirens are short, very loud events; adding them needs how often each station&rsquo;s engines go out and which streets they take. The Fire stations layer below shows where they start.</p>
+      <p className="ml-note">Not in the colors yet. Sirens are short, very loud events; adding them needs how often each station&rsquo;s engines go out and which streets they take. The Fire stations layer below shows where they start.</p>
     </SourceRow>
-    <h2 className="layer-subhead">On the map only <span>does not change the colors</span></h2>
-    <LayerRow className="layer-roads" icon={<RoadsGlyph />} title="Road lines" meta="Line width by traffic, vehicles a day" on={roads} onChange={setRoads}>
+    <h2 className="ml-subhead">On the map only <span>does not change the colors</span></h2>
+    <LayerRow className="ml-roads" icon={<RoadsGlyph />} title="Road lines" meta="Line width by traffic, vehicles a day" on={roads} onChange={setRoads}>
       <div className="legend-roads">{ROAD_CLASSES.map(([min, label, width]) => <span key={min}><i style={{ height: `${width}px` }} />{label}</span>)}</div>
-      <p className="layer-note"><i className="key-dash" />Dashed: no traffic count on that street, so the model uses a typical value for its type. Counts show along the roads when you zoom in; click a road for details.</p>
+      <p className="ml-note"><i className="key-dash" />Dashed: no traffic count on that street, so the model uses a typical value for its type. Counts show along the roads when you zoom in; click a road for details.</p>
     </LayerRow>
     <LayerRow className="context-heliports" icon={<HeliGlyph color={HELIPAD_BLUE} size={24} />} title="Heliports"
       meta={places ? `${places.heliports.length} pads · ${hospitals} at hospitals` : 'Helipads and helistops'} on={context.heliports} onChange={(on) => setContext({ ...context, heliports: on })}>
       <div className="legend-key"><span><HeliGlyph color={HELIPAD_BLUE} size={16} />Heliport or helistop</span><span><HeliGlyph color={HOSPITAL_RED} size={16} />Hospital helipad</span></div>
-      <p className="layer-note">Many rooftop pads are for emergencies only. Names appear when you zoom in.</p>
+      <p className="ml-note">Many rooftop pads are for emergencies only. Names appear when you zoom in.</p>
     </LayerRow>
     <LayerRow className="context-fire" icon={<FireGlyph size={24} />} title="Fire stations"
       meta={places ? `${places.fire.length} stations · County and City of LA` : 'County and City of LA'} on={fireOn} onChange={(on) => setContext({ ...context, 'county-fire': on, 'city-fire': on })}>
-      <p className="layer-note">{places ? `${places.counts.county} LA County Fire and ${places.counts.city} LA City Fire stations` : 'LA County Fire and LA City Fire stations'} (two departments: the City of LA runs its own). Station numbers appear when you zoom in.</p>
+      <p className="ml-note">{places ? `${places.counts.county} LA County Fire and ${places.counts.city} LA City Fire stations` : 'LA County Fire and LA City Fire stations'} (two departments: the City of LA runs its own). Station numbers appear when you zoom in.</p>
     </LayerRow>
   </section>;
 }
