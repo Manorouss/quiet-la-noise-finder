@@ -6,7 +6,9 @@ buildings.geojson, build-manifest.json), already QA-flagged (physical-ceiling ma
 on-road labels). Later roots win when a tile appears twice. Outputs, in --out:
 
   receivers.pmtiles  points: k integer id (selection only), d/e/n LAeq per period (absent when masked
-                     or unavailable), q 24 h CNEL of roads plus aircraft, a aircraft CNEL (only
+                     or unavailable; road traffic plus trains where the rail pass ran, science/rail/
+                     rail_queue.py), t train CNEL (trains alone, where 40 dB or more), q 24 h CNEL of
+                     roads, trains and aircraft, a aircraft CNEL (only
                      inside the estimated 55 CNEL line; aircraft.py), m masked, o on road, f facade (1)
                      or open space (0). All points from z16; thinned below.
   buildings.pmtiles  footprints: k integer id (selection only), h height (m), d/e/n/q highest facade
@@ -59,6 +61,27 @@ PROJECT = HERE.parents[4]
 ATTEMPTS = PROJECT / "implementation/work/campaign/county_v1/attempts"
 BASEMAP = PROJECT / "implementation/work/county_layers/basemap/la_county_20261004.pmtiles"
 CONTEXT = PROJECT / "implementation/apps/quiet-la-web/public/_local-data/context"
+RAIL_RESULTS = PROJECT / "implementation/work/rail/results"
+RAIL_TILES: list[str] = []   # tiles whose receivers include trains (written to layers.json)
+
+
+def rail_levels(tile_id: str, path: Path) -> dict:
+    """Train D/E/N LAeq per source receiver key from the rail pass, if it ran on this tile's released road run."""
+    result = RAIL_RESULTS / f"{tile_id}.json"
+    if not result.exists() or not (RAIL_RESULTS.parent / "RELEASE").exists():  # (rail_queue.py: first pass done)
+        return {}
+    data = json.loads(result.read_text())
+    attempt = json.loads((path / "build-manifest.json").read_text()).get("attempt_id")
+    if data.get("road_attempt") != attempt or not data.get("levels"):
+        return {}
+    RAIL_TILES.append(tile_id)
+    return data["levels"]
+
+
+def esum(a: float | None, b: float | None) -> float | None:
+    if a is None or b is None:
+        return a
+    return 10 * math.log10(10 ** (a / 10) + 10 ** (b / 10))
 TO_UTM = Transformer.from_crs("OGC:CRS84", "EPSG:26911", always_xy=True)
 TO_LONLAT = Transformer.from_crs("EPSG:26911", "OGC:CRS84", always_xy=True)
 PERIODS = ("D", "E", "N")
@@ -113,6 +136,7 @@ def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray], air
     k = 0
     for tile_id, path in tiles.items():
         data = json.loads((path / "benchmark.geojson").read_text())
+        rail = rail_levels(tile_id, path)
         rows = []
         lonlat = np.array([f["geometry"]["coordinates"][:2] for f in data["features"]] or np.zeros((0, 2)))
         ux, uy = TO_UTM.transform(lonlat[:, 0], lonlat[:, 1]) if len(lonlat) else (np.zeros(0), np.zeros(0))
@@ -123,6 +147,12 @@ def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray], air
             k += 1
             out = {"k": k, "f": 1 if p["receiver_family"] == "building_facade_exterior" else 0}
             values = [laeq(p, period) for period in PERIODS]
+            train = rail.get(p.get("source_receiver_key")) if rail else None
+            if train and all(v is not None for v in train) and all(v is not None for v in values):
+                values = [esum(v, t) for v, t in zip(values, train)]
+                train_cnel = road_cnel(*train)
+                if train_cnel >= 40:
+                    out["t"] = round(train_cnel, 1)
             for name, value in zip("den", values):
                 if value is not None:
                     out[name] = round(value, 1)
@@ -139,6 +169,12 @@ def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray], air
                     best["ql"] = min(best.get("ql", 999.0), out["q"])
                     if "a" in out:
                         best["a"] = max(best.get("a", -1.0), out["a"])
+                    if train:  # the facade statistics of the tile assets are road only: recompute with trains
+                        for name, value in zip("den", values):
+                            best[name] = round(max(best.get(name, -1.0), value), 1)
+                            best[name + "l"] = round(min(best.get(name + "l", 999.0), value), 1)
+                        if "t" in out:
+                            best["t"] = max(best.get("t", -1.0), out["t"])
             values += [cnel, road]
             if p.get("masked"):
                 out["m"] = 1
@@ -456,6 +492,7 @@ def main() -> int:
         "files": {name: {"sha256": sha(out / name), "bytes": (out / name).stat().st_size}
                   for name in ("receivers.pmtiles", "buildings.pmtiles", "roads.pmtiles", *(f"{k}_{b}.pmtiles" for k in ("field", "glow") for b in BANDS), "coverage.geojson", *extra)},
         "building_percentiles": {"what": "percentiles 0..100 of the loudest facade level per building, per period (d/e/n LAeq, q 24 h CNEL, r roads-only CNEL)", **BUILDING_PERCENTILES},
+        "rail": {"method": "CNOSSOS-EU railway emission and propagation (science/rail), US train types calibrated to the FTA reference levels; added to the road levels per period", "tiles": sorted(RAIL_TILES)},
         "aircraft": {"method": "official airport CNEL contours, extended to 55 dB by each airport's contour area ratio (aircraft.py)",
                      "floor_db": FLOOR_DB, "min_source_year": MIN_YEAR,
                      "airports": [{"name": a.name, "official_levels": sorted(a.official), "area_ratio": round(a.ratio, 2), "source": a.source} for a in airports]},

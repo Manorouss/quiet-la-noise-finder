@@ -3,7 +3,7 @@
 # Parts (model v2, see county_models.py): the corridor job (lidar walls and bridge decks,
 # corridor_products.py, until its plan is done), the tile builder (county_daemon.py), the three
 # engine workers (Mac :9130 x8, PC :9131 x16, PC :9132 x8), the progress page
-# (compute_dashboard.py, port 8765), the 2-hourly public map publisher
+# (compute_dashboard.py, port 8765), the rail queue (science/rail/rail_queue.py, Mac port 9140), the 2-hourly public map publisher
 # (publish_county_layers.sh → R2) and the watchdog (compute_watchdog.sh, restarts stopped parts).
 # After a Mac restart nothing is running: tiles that were mid-run go back to the
 # queue (their partial attempts stay; reruns get a new -v<N>) and stale PC engines
@@ -53,6 +53,8 @@ if [ -x "$ENGINE" ]; then
       LABEL_PREFIX=v2 RUN_ARGS="--no-vertical --terrain-downscale 1" nohup /bin/bash "$P/queue_worker_persist.sh" "$Q" "$1" "$2" "$3" > /dev/null 2>&1 &
       echo "started $1 worker :$2 ($3 threads)"; }
   done
+  mkdir -p "$ROOT/implementation/work/rail"
+  alive "rail_queue.py" || { nohup "$P/geo-python" "$P/../rail/rail_queue.py" >> "$ROOT/implementation/work/rail/queue.out" 2>&1 & echo "started rail queue"; }
 else
   echo "ALERT NoiseModelling engine unavailable ($ENGINE): workers not started"
 fi

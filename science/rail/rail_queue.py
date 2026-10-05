@@ -7,7 +7,9 @@ track in the line config, and no rail result for that road run yet: prepare a ra
 work/rail/results/<tile>.json = {"road_attempt", "config", "levels": {source_receiver_key: [D, E, N] LAeq}}.
 A new road run for a tile (e.g. a newer model) makes its rail result stale, and the tile is redone.
 Waits while implementation/work/pipeline_control/pause-mac exists (the owner's pause); stops when
-implementation/work/pipeline_control/STOP-rail exists or when nothing is left.
+implementation/work/pipeline_control/STOP-rail exists. When the queue first runs empty it writes
+work/rail/RELEASE: from then on the map build adds trains (before, a half-done line would show seams), and
+it keeps checking every 10 minutes for newly computed tiles (compute_up.sh keeps it running).
 
   rail_queue.py [--config lines/sfv.json] [--port 9140] [--threads 2] [--once]
 """
@@ -85,8 +87,13 @@ def main() -> int:
             continue
         queue = todo(args.config)
         if not queue:
-            log("rail queue empty")
-            return 0
+            if not (RAIL / "RELEASE").exists():
+                (RAIL / "RELEASE").write_text(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()) + " first pass complete\n")
+                log("rail queue empty: first pass complete, trains released to the map")
+            if args.once:
+                return 0
+            time.sleep(600)
+            continue
         tile, run = queue[0]
         n = 1
         while (attempt := RAIL / "attempts" / f"{tile}-{run.name.split('-g20')[1]}-rail-v{n}").exists():
