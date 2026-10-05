@@ -14,7 +14,7 @@ on-road labels). Later roots win when a tile appears twice. Outputs, in --out:
   roads.pmtiles      modeled road sources clipped to each tile core: a AADT, c MTFCC,
                      nm name, t traffic basis (hpms | default). Minor roads appear later.
   field_{d,e,n,q}.pmtiles  raster-dem per period (q = 24 h CNEL, roads + aircraft) in Terrarium encoding with elevation = LAeq
-                     (dB, 0.1 dB steps); elevation 0 means not modeled. Built by normalized
+                     (dB, 0.1 dB steps); elevation 150 means not modeled (one pixel of padding past the edge). Built by normalized
                      Gaussian convolution of the receiver values (dB) on a 5 m grid per
                      tile, using neighbours' receivers for seamless edges; gaps inside
                      large buildings are filled from a wider kernel within modeled tiles.
@@ -242,13 +242,40 @@ def lonlat_to_tile(lon: float, lat: float, z: int) -> tuple[int, int]:
     return x, y
 
 
+NOT_MODELED_DB = 150.0  # far above any modeled level; the map renders >= 100 dB as clear
+
+
+def pad_one_pixel(values: np.ndarray) -> np.ndarray:
+    """Fill NaN pixels next to modeled ones with the mean of their modeled neighbours.
+
+    The map samples the surface linearly, so a pixel blends with its neighbours; with one pixel of
+    padding the blend towards the not-modeled value happens outside the coverage edge.
+    """
+    valid = np.isfinite(values)
+    padded = np.pad(np.where(valid, values, 0.0), 1)
+    weight = np.pad(valid.astype(float), 1)
+    total = np.zeros_like(values, dtype=float)
+    count = np.zeros_like(values, dtype=float)
+    rows, cols = values.shape
+    for dy in (0, 1, 2):
+        for dx in (0, 1, 2):
+            if dy == 1 and dx == 1:
+                continue
+            total += padded[dy:dy + rows, dx:dx + cols]
+            count += weight[dy:dy + rows, dx:dx + cols]
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return np.where(valid, values, np.where(count > 0, total / count, np.nan))
+
+
 def encode(values: np.ndarray) -> bytes:
-    """values (256, 256) dB with NaN → lossless Terrarium PNG (elevation = dB, 0 = not modeled).
+    """values (256, 256) dB with NaN → lossless Terrarium PNG (elevation = dB, 150 = not modeled).
 
     MapLibre's color-relief shader encodes its colour stops in the source encoding, so a
     standard encoding is required; the custom per-channel trick decodes but cannot be ramped.
+    Not modeled is a high value so linear sampling at the coverage edge can only look louder.
     """
-    db = np.where(np.isnan(values), 0.0, np.round(values, 1)) + 32768.0
+    values = pad_one_pixel(values)
+    db = np.where(np.isnan(values), NOT_MODELED_DB, np.round(values, 1)) + 32768.0
     red = np.floor(db / 256.0)
     green = np.floor(db - red * 256.0)
     blue = np.round((db - red * 256.0 - green) * 256.0)
@@ -325,7 +352,7 @@ def build_field(fields: dict[tuple[int, int], np.ndarray], mbtiles: dict[str, Pa
     for band, db in dbs.items():
         meta = {"name": f"quiet-la-field-{band}", "format": "png", "type": "overlay", "minzoom": str(FIELD_MIN_ZOOM), "maxzoom": str(FIELD_MAX_ZOOM),
                 "bounds": f"{min(lons)},{min(lats)},{max(lons)},{max(lats)}", "center": f"{(min(lons) + max(lons)) / 2},{(min(lats) + max(lats)) / 2},{FIELD_MIN_ZOOM + 3}",
-                "description": (f"Road-noise LAeq ({band.upper()})" if band != "q" else "24 h CNEL, roads + aircraft") + ", Terrarium raster-dem: elevation = dB; 0 = not modeled"}
+                "description": (f"Road-noise LAeq ({band.upper()})" if band != "q" else "24 h CNEL, roads + aircraft") + ", Terrarium raster-dem: elevation = dB; 150 = not modeled"}
         db.executemany("INSERT INTO metadata VALUES (?, ?)", meta.items())
         db.commit()
         db.close()
@@ -396,7 +423,7 @@ def main() -> int:
     layers = {
         "schema": "quiet_la_county_layers_v1", "built_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "tiles": sorted(tiles), "receiver_count": n_receivers, "building_count": n_buildings, "road_segments": n_roads, "field_tiles": n_field,
-        "field_encoding": {"type": "terrarium", "files": {"D": "field_d.pmtiles", "E": "field_e.pmtiles", "N": "field_n.pmtiles"}, "db": "elevation (0.1 dB steps)", "nodata": 0,
+        "field_encoding": {"type": "terrarium", "files": {"D": "field_d.pmtiles", "E": "field_e.pmtiles", "N": "field_n.pmtiles"}, "db": "elevation (0.1 dB steps)", "nodata": NOT_MODELED_DB, "edge_padding_px": 1,
                            "cell_m": CELL, "sigma_m": SIGMA, "fill_sigma_m": SIGMA_FILL, "glow_sigma_m": SIGMA_GLOW, "zooms": [FIELD_MIN_ZOOM, FIELD_MAX_ZOOM]},
         "files": {name: {"sha256": sha(out / name), "bytes": (out / name).stat().st_size}
                   for name in ("receivers.pmtiles", "buildings.pmtiles", "roads.pmtiles", *(f"{k}_{b}.pmtiles" for k in ("field", "glow") for b in BANDS), "coverage.geojson", *extra)},
