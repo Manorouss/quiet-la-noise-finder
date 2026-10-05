@@ -7,8 +7,8 @@ import { createSplatLayer } from '@/lib/splat-layer';
 
 export type Values = Record<Period, number | null>;
 export type Selection =
-  | { kind: 'receiver'; key: string; facade: boolean; onRoad: boolean; masked: boolean; values: Values; building: string | null }
-  | { kind: 'building'; key: string; height: number; values: Values; count: number }
+  | { kind: 'receiver'; key: string; facade: boolean; onRoad: boolean; masked: boolean; values: Values; building: string | null; at: [number, number] }
+  | { kind: 'building'; key: string; height: number; values: Values; count: number; at: [number, number] }
   | { kind: 'road'; name: string; aadt: number; mtfcc: string; basis: string }
   | { kind: 'context'; layer: ContextId; title: string; detail: string };
 export type Camera = { lng: number; lat: number; zoom: number; pitch: number; bearing: number };
@@ -27,6 +27,23 @@ type Props = StyleOptions & {
 const HOME: Camera = { lng: -118.53, lat: 34.19, zoom: 13.2, pitch: 0, bearing: 0 };
 const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 const valuesOf = (p: Record<string, unknown>): Values => ({ D: num(p.d), E: num(p.e), N: num(p.n) });
+
+/** Area centroid of a footprint's largest ring (lng/lat), where its address point most likely sits. */
+function footprintCentre(geometry: GeoJSON.Geometry, fallback: [number, number]): [number, number] {
+  const rings = geometry.type === 'Polygon' ? [geometry.coordinates[0]] : geometry.type === 'MultiPolygon' ? geometry.coordinates.map((poly) => poly[0]) : [];
+  let best: [number, number] = fallback;
+  let bestArea = 0;
+  for (const ring of rings) {
+    let area = 0, cx = 0, cy = 0;
+    for (let i = 0; i < ring.length - 1; i += 1) {
+      const [x0, y0] = ring[i], [x1, y1] = ring[i + 1];
+      const cross = x0 * y1 - x1 * y0;
+      area += cross; cx += (x0 + x1) * cross; cy += (y0 + y1) * cross;
+    }
+    if (Math.abs(area) > bestArea) { bestArea = Math.abs(area); best = [cx / (3 * area), cy / (3 * area)]; }
+  }
+  return best;
+}
 
 function contextTitle(layer: ContextId, p: Record<string, unknown>): { title: string; detail: string } {
   if (layer === 'airport-contours') return { title: `${String(p.AIRPORT_NAME || 'Airport')} · ${String(p.CLASS || '')} CNEL contour`, detail: 'Official airport noise contour. Shown for context; aircraft are not yet part of the road-noise values.' };
@@ -88,13 +105,18 @@ export default function CountyMap(props: Props) {
         const road = hits.find((f) => f.layer.id === 'roads-modeled');
         const context = hits.find((f) => f.layer.id.startsWith('context-'));
         const p = (f: MapGeoJSONFeature) => f.properties as Record<string, unknown>;
+        const clicked: [number, number] = [event.lngLat.lng, event.lngLat.lat];
+        const selectBuilding = (f: MapGeoJSONFeature) => propsRef.current.onSelect({
+          kind: 'building', key: String(p(f).k), height: Number(p(f).h), values: valuesOf(p(f)), count: Number(p(f).c ?? 0), at: footprintCentre(f.geometry, clicked),
+        });
         if (propsRef.current.mode3d && building) {
-          propsRef.current.onSelect({ kind: 'building', key: String(p(building).k), height: Number(p(building).h), values: valuesOf(p(building)), count: Number(p(building).c ?? 0) });
+          selectBuilding(building);
         } else if (receiver) {
           const r = p(receiver);
-          propsRef.current.onSelect({ kind: 'receiver', key: String(r.k), facade: r.f === 1, onRoad: r.o === 1, masked: r.m === 1, values: valuesOf(r), building: r.b ? String(r.b) : null });
+          const at = (receiver.geometry as GeoJSON.Point).coordinates as [number, number];
+          propsRef.current.onSelect({ kind: 'receiver', key: String(r.k), facade: r.f === 1, onRoad: r.o === 1, masked: r.m === 1, values: valuesOf(r), building: r.b ? String(r.b) : null, at: [at[0], at[1]] });
         } else if (building) {
-          propsRef.current.onSelect({ kind: 'building', key: String(p(building).k), height: Number(p(building).h), values: valuesOf(p(building)), count: Number(p(building).c ?? 0) });
+          selectBuilding(building);
         } else if (road) {
           propsRef.current.onSelect({ kind: 'road', name: String(p(road).nm || 'Unnamed road'), aadt: Number(p(road).a), mtfcc: String(p(road).c), basis: String(p(road).t) });
         } else if (context) {

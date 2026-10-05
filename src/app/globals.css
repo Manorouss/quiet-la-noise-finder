@@ -62,6 +62,9 @@
 .receiver-heading { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 500; }
 .plain-icon { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--secondary); }
 .plain-icon:hover { background: #e8eee7; color: var(--text); }
+.selection-address { margin: 6px 0 0; font-size: 15px; line-height: 1.35; font-weight: 600; }
+.selection-address span { font-weight: 400; color: var(--secondary); }
+.selection-address.is-pending { font-size: 12px; font-weight: 400; color: var(--secondary); }
 .receiver-result { display: flex; align-items: baseline; gap: 9px; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .receiver-result strong { font-size: 34px; font-weight: 550; line-height: 1.2; letter-spacing: -.03em; }
 .receiver-result span { font-size: 12px; color: var(--secondary); }
