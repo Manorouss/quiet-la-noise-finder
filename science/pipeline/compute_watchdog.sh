@@ -19,7 +19,7 @@ count() { local n; n=$(grep -c "$1" "$2" 2>/dev/null); echo "${n:-0}"; }
 
 last_failed=$(ls "$Q/failed" 2>/dev/null | wc -l | tr -d ' ')
 last_corridor=$(count FAILED "$W/source_cache/corridor_v2/corridor.log")
-last_publish=$(count FAILED "$C/publish.log")
+last_publish=$(count "release FAILED\|upload FAILED" "$C/publish.log")
 last_pauses=$(ls "$C"/pause-* 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' ')
 pc_down=0
 note "watchdog start (every ${INTERVAL}s)"
@@ -32,14 +32,14 @@ while [ ! -f "$C/STOP-watchdog" ]; do
   now=$(date +%s)
   for entry in "$Q"/running/*; do
     [ -e "$entry" ] || continue
-    age=$(( (now - $(stat -f %m "$entry")) / 60 ))
+    age=$(( (now - $(stat -f %c "$entry")) / 60 ))  # ctime: set when the worker moved it into running/
     [ "$age" -gt 120 ] && note "ALERT $(basename "$entry") has been running for $age min"
   done
   corridor=$(count FAILED "$W/source_cache/corridor_v2/corridor.log")
   [ "$corridor" -gt "$last_corridor" ] && note "ALERT corridor block failure: $(grep FAILED "$W/source_cache/corridor_v2/corridor.log" | tail -1 | cut -c1-200)"
   last_corridor=$corridor
-  publish=$(count FAILED "$C/publish.log")
-  [ "$publish" -gt "$last_publish" ] && note "ALERT publish failure: $(grep FAILED "$C/publish.log" | tail -1 | cut -c1-200)"
+  publish=$(count "release FAILED\|upload FAILED" "$C/publish.log")
+  [ "$publish" -gt "$last_publish" ] && note "ALERT publish failure: $(grep "release FAILED\|upload FAILED" "$C/publish.log" | tail -1 | cut -c1-200)"
   last_publish=$publish
   if "${SSH[@]}" "echo ok" < /dev/null > /dev/null 2>&1; then
     [ "$pc_down" = 1 ] && note "PC answers again"
