@@ -172,6 +172,7 @@
 .county-legend-bar { display: grid; grid-template-columns: repeat(9, 1fr); height: 10px; margin-top: 7px; overflow: hidden; border-radius: 3px; }
 .county-legend-ticks { display: grid; grid-template-columns: repeat(9, 1fr); margin-top: 3px; color: var(--secondary); font-size: 9px; font-variant-numeric: tabular-nums; }
 .county-legend-ticks span { text-align: right; transform: translateX(50%); }
+.county-legend-words { display: flex; justify-content: space-between; margin-top: 1px; color: var(--secondary); font-size: 9px; letter-spacing: .02em; }
 @media (max-width: 720px) { .county-legend { left: 10px; bottom: auto; top: 66px; width: 240px; } }
 .county-beta { margin-left: 6px; padding: 1px 6px; border-radius: 99px; background: #e8eee7; color: var(--active); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; vertical-align: 1px; }
 .pilot-new-map { margin-left: 4px; padding: 6px 10px; border-radius: 999px; background: #244f43; color: #fff; font-size: 10px; font-weight: 800; text-decoration: none; white-space: nowrap; }

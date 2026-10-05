@@ -104,7 +104,14 @@ function insideRing(lng: number, lat: number, ring: Ring) {
   return inside;
 }
 
-function Inspector({ selection, period, onClose, covered, percentiles }: { selection: Selection | null; period: Period; onClose: () => void; covered: (lng: number, lat: number) => boolean | null; percentiles?: Layers['building_percentiles'] }) {
+function ModelNote({ model }: { model: string | null }) {
+  if (!model) return null;
+  return <p className="receiver-meta model-line">{model === 'county-v2'
+    ? 'Computed with the upgraded model: 2023 lidar terrain, sound walls, roads on bridges.'
+    : 'Computed with the earlier model (no sound walls, coarser terrain); this area is being recomputed.'}</p>;
+}
+
+function Inspector({ selection, period, onClose, covered, percentiles, modelAt }: { selection: Selection | null; period: Period; onClose: () => void; covered: (lng: number, lat: number) => boolean | null; percentiles?: Layers['building_percentiles']; modelAt: (lng: number, lat: number) => string | null }) {
   if (!selection) return <div className="inspection-empty"><strong>Select a place on the map</strong><p>Search an address above, or click any building, spot or road to see its day, evening, night and 24 h levels.</p></div>;
   const close = <button type="button" className="plain-icon" aria-label="Close" onClick={onClose}>×</button>;
   if (selection.kind === 'receiver') {
@@ -115,7 +122,8 @@ function Inspector({ selection, period, onClose, covered, percentiles }: { selec
       {!selection.masked && <LevelWords value={value} period={period} />}
       {selection.masked ? <p className="receiver-meta">This point failed the physical plausibility check and is not shown as a value.</p> : <ValueRows values={selection.values} period={period} />}
       <Aircraft value={selection.aircraft} />
-      {selection.onRoad && <p className="receiver-meta">Within 3 m of a road centerline: this is on the road, not a living location.</p>}</>;
+      {selection.onRoad && <p className="receiver-meta">Within 3 m of a road centerline: this is on the road, not a living location.</p>}
+      <ModelNote model={modelAt(selection.at[0], selection.at[1])} /></>;
   }
   if (selection.kind === 'building') {
     return <><div className="receiver-heading"><span>Building · about {selection.height.toFixed(0)} m tall</span>{close}</div>
@@ -125,7 +133,8 @@ function Inspector({ selection, period, onClose, covered, percentiles }: { selec
       <Compare value={selection.values[period]} period={period} percentiles={percentiles} />
       <ValueRows values={selection.values} period={period} /><Aircraft value={selection.aircraft} /><p className="receiver-meta">{selection.lowest[period] !== null && selection.values[period] !== null
         ? `Least exposed wall: ${selection.lowest[period]!.toFixed(1)} dB, ${(selection.values[period]! - selection.lowest[period]!).toFixed(0)} dB below the loudest (${selection.count} modeled points around the walls). Bedrooms on the quiet side hear less.`
-        : `Loudest of ${selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side.`} Switch to Dots to see each wall.</p></>;
+        : `Loudest of ${selection.count} modeled points around the walls. The side facing away from traffic is often 10 dB or more below the loudest side.`} Switch to Dots to see each wall.</p>
+      <ModelNote model={modelAt(selection.at[0], selection.at[1])} /></>;
   }
   if (selection.kind === 'empty') {
     const inside = covered(selection.at[0], selection.at[1]);
@@ -154,8 +163,9 @@ export default function CountyMapPage() {
   const [selection, setSelection] = useState<Selection | null>(null);
   const [status, setStatus] = useState<MapStatus>({ loading: true, error: null, zoom: 13 });
   const [layers, setLayers] = useState<Layers | null>(null);
-  const [coverage, setCoverage] = useState<Ring[] | null>(null);
-  const covered = useCallback((lng: number, lat: number) => (coverage ? coverage.some((ring) => insideRing(lng, lat, ring)) : null), [coverage]);
+  const [coverage, setCoverage] = useState<{ ring: Ring; model: string }[] | null>(null);
+  const covered = useCallback((lng: number, lat: number) => (coverage ? coverage.some((tile) => insideRing(lng, lat, tile.ring)) : null), [coverage]);
+  const modelAt = useCallback((lng: number, lat: number) => coverage?.find((tile) => insideRing(lng, lat, tile.ring))?.model ?? null, [coverage]);
   const [initialCamera, setInitialCamera] = useState<Camera | null>(null);
   const [target, setTarget] = useState<{ lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number; nonce: number; select?: boolean; label?: string } | null>(null);
   const [query, setQuery] = useState('');
@@ -188,7 +198,7 @@ export default function CountyMapPage() {
     }
     fetch(`${LAYERS_URL}layers.json`).then((r) => (r.ok ? r.json() : null)).then(setLayers).catch(() => setLayers(null));
     fetch(`${LAYERS_URL}coverage.geojson`).then((r) => (r.ok ? r.json() : null))
-      .then((doc: { features?: { geometry: { coordinates: Ring[] } }[] } | null) => setCoverage(doc?.features?.map((f) => f.geometry.coordinates[0]) ?? null))
+      .then((doc: { features?: { properties?: { model?: string }; geometry: { coordinates: Ring[] } }[] } | null) => setCoverage(doc?.features?.map((f) => ({ ring: f.geometry.coordinates[0], model: f.properties?.model ?? 'county-v1' })) ?? null))
       .catch(() => setCoverage(null));
     setReady(true);
   }, []);
@@ -282,7 +292,11 @@ export default function CountyMapPage() {
   }
   async function copyView() {
     writeView();
-    try { await navigator.clipboard.writeText(window.location.href); setNotice('View link copied.'); } catch { setNotice('Your view is in the address bar.'); }
+    // Phones: the system share sheet; elsewhere: copy to the clipboard.
+    if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
+      try { await navigator.share({ title: 'Quiet LA', url: window.location.href }); return; } catch { /* cancelled: fall back to copying */ }
+    }
+    try { await navigator.clipboard.writeText(window.location.href); setNotice('Link copied.'); } catch { setNotice('Your view is in the address bar.'); }
   }
   const selectedKey = selection?.kind === 'receiver' || selection?.kind === 'building' ? selection.key : null;
 
@@ -308,7 +322,7 @@ export default function CountyMapPage() {
         <p role="status">{message}</p>
       </form>
       <div className="quick-controls"><Choice label="Time of day" value={period} options={[['D', 'Day'], ['E', 'Evening'], ['N', 'Night'], ['Q', '24 h']]} onChange={setPeriod} /></div>
-      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} covered={covered} percentiles={layers?.building_percentiles} /></section>
+      <section className="receiver-section" aria-live="polite"><Inspector selection={selection} period={period} onClose={() => setSelection(null)} covered={covered} percentiles={layers?.building_percentiles} modelAt={modelAt} /></section>
       <div className="guide-body">
         <section className="guide-section"><h2>Noise display</h2><Choice label="Noise display style" value={noise} options={[['field', 'Field'], ['bands', 'Bands'], ['glow', 'Glow'], ['dots', 'Dots']]} onChange={setNoise} /><p className="control-help">{STYLE_HELP[noise]}{mode3d ? ' In 3D, buildings are colored by their loudest wall.' : ''}</p></section>
         <section className="guide-section"><h2>Base map</h2><Choice label="Base map" value={theme} options={[['light', 'Light'], ['grayscale', 'Gray'], ['dark', 'Dark'], ['satellite', 'Photo']]} onChange={setTheme} /></section>
@@ -336,6 +350,7 @@ export default function CountyMapPage() {
       <div><span>{period === 'Q' ? 'Roads + aircraft · 24 h · dB CNEL' : `Road noise · ${PERIOD_NAME[period]} · dB LAeq`}</span></div>
       <div className="county-legend-bar" aria-hidden="true">{BAND_COLORS.map((c) => <i key={c} style={{ background: c }} />)}</div>
       <div className="county-legend-ticks" aria-hidden="true">{BAND_EDGES.map((e) => <span key={e}>{e}</span>)}</div>
+      <div className="county-legend-words" aria-hidden="true"><span>quieter</span><span>louder</span></div>
       <p>WHO guideline for road traffic: 53 dB Lden, 45 dB at night. Blank areas are not modeled yet, not quiet.</p>
     </div>
     {(status.error || slowLoading) && <div className={`workspace-state ${status.error ? 'is-error' : ''}`} role={status.error ? 'alert' : 'status'}>{status.error ? `Map data could not load: ${status.error}` : 'Loading map…'}</div>}
