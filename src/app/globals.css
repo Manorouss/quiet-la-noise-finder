@@ -181,4 +181,6 @@
   .search-suggestions { position: static; margin-top: 6px; box-shadow: none; }
   .county-workspace .receiver-section { margin: 10px 0 0; padding: 10px 0 0; border-bottom: 0; }
   .level-words { font-size: 11px; margin-top: 3px; }
+  .county-workspace:has(.receiver-result) .county-legend { bottom: auto; }
+  .county-workspace .workspace-state { top: 66px; right: 10px; left: auto; transform: none; max-width: 112px; }
 }

@@ -185,7 +185,10 @@ export default function CountyMap(props: Props) {
     const map = mapRef.current;
     const target = props.target;
     if (!map || !target) return;
-    map.flyTo({ center: [target.lng, target.lat], zoom: target.zoom ?? Math.max(map.getZoom(), 15), pitch: target.pitch ?? map.getPitch(), bearing: target.bearing ?? map.getBearing(), duration: 1800, essential: true });
+    // On phones the bottom sheet covers the lower map: centre the place in the part above it.
+    const panel = document.querySelector('.map-guide')?.getBoundingClientRect();
+    const padding = panel && window.innerWidth <= 720 ? { top: 0, right: 0, left: 0, bottom: Math.min(panel.height, window.innerHeight * 0.6) } : undefined;
+    map.flyTo({ center: [target.lng, target.lat], zoom: target.zoom ?? Math.max(map.getZoom(), 15), pitch: target.pitch ?? map.getPitch(), bearing: target.bearing ?? map.getBearing(), padding, duration: 1800, essential: true });
     if (!target.select) return;
     let done = false;
     const pick = () => {
