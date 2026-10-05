@@ -12,6 +12,7 @@ C=$W/pipeline_control
 Q=$W/pipeline_queue/county_v2
 LOG=$C/watchdog.log
 INTERVAL=${INTERVAL:-600}
+export QUIET_LA_WATCHDOG=1  # tells compute_up.sh not to start another watchdog
 SSH=(ssh -F "$HOME/.ssh/quietla_pc_config" -o ConnectTimeout=15 -o BatchMode=yes quietla-pc)
 note() { echo "$(date -u +%FT%TZ) $*" >> "$LOG"; }
 count() { local n; n=$(grep -c "$1" "$2" 2>/dev/null); echo "${n:-0}"; }

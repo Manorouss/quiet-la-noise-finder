@@ -43,5 +43,6 @@ for spec in "mac 9130 8" "pc 9131 16" "pc 9132 8"; do
 done
 alive "publish_county_layers.sh" || { nohup /bin/bash "$P/publish_county_layers.sh" > /dev/null 2>&1 & echo "started 2-hourly map publishing"; }
 alive "compute_dashboard.py" || { nohup python3 "$P/compute_dashboard.py" >> "$C/dashboard.log" 2>&1 & echo "started progress page"; }
-alive "compute_watchdog.sh" || { nohup /bin/bash "$P/compute_watchdog.sh" > /dev/null 2>&1 & echo "started watchdog"; }
+# macOS pgrep skips its own ancestors, so when the watchdog runs this script it cannot see itself.
+[ -n "${QUIET_LA_WATCHDOG:-}" ] || alive "compute_watchdog.sh" || { nohup /bin/bash "$P/compute_watchdog.sh" > /dev/null 2>&1 & echo "started watchdog"; }
 echo "Progress page: http://localhost:8765/ (from the PC or a phone: http://$(ipconfig getifaddr en0 || echo '<mac-ip>'):8765/)"
