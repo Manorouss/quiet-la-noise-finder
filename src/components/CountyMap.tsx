@@ -56,7 +56,7 @@ function contextTitle(layer: ContextId, p: Record<string, unknown>): { title: st
   return { title: p.station ? `Fire station ${String(p.station)}` : 'Fire station', detail: `${layer === 'city-fire' ? 'City of Los Angeles' : 'LA County'} fire station. Sirens are not modeled.` };
 }
 
-/** Select the building at or nearest to a point (within ~25 m); a searched address keeps its own point for the address lookup. */
+/** Select the building at or nearest to a point (within ~25 m), e.g. a searched address or a shared link. */
 function selectNear(map: MapLibreMap, lng: number, lat: number, onSelect: (selection: Selection | null) => void, address?: string) {
   const layers = ['buildings-3d', 'building-footprints'].filter((id) => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
   const point = map.project([lng, lat]);
@@ -72,7 +72,8 @@ function selectNear(map: MapLibreMap, lng: number, lat: number, onSelect: (selec
   }).sort((a, b) => a.d - b.d)[0]?.f;
   if (!best) return;
   const p = best.properties as Record<string, unknown>;
-  onSelect({ kind: 'building', key: String(p.k), height: Number(p.h), values: valuesOf(p), aircraft: num(p.a), count: Number(p.c ?? 0), at: [lng, lat], address });
+  // Keep the building's own centre (a shared link then finds its parcel); show the searched address if any.
+  onSelect({ kind: 'building', key: String(p.k), height: Number(p.h), values: valuesOf(p), aircraft: num(p.a), count: Number(p.c ?? 0), at: footprintCentre(best.geometry, [lng, lat]), address });
 }
 
 export default function CountyMap(props: Props) {
