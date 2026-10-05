@@ -164,10 +164,4 @@ function DenseWorkspace() {
   </main>;
 }
 
-// The county map is the main experience: a plain visit to the site root goes there before the page
-// draws. Shared pilot links (#model=... or ?study=...) still open the Tarzana pilot here.
-const ROOT_TO_MAP = "if(!location.hash&&!location.search)location.replace('/map/')";
-
-export default function HomePage() {
-  return pilotOnly ? <><script dangerouslySetInnerHTML={{ __html: ROOT_TO_MAP }} /><PilotPortal /></> : local ? <DenseWorkspace /> : <PolicyPortal />;
-}
+export default function HomePage() { return pilotOnly ? <PilotPortal /> : local ? <DenseWorkspace /> : <PolicyPortal />; }

@@ -18,6 +18,10 @@ type TileData = { tileId: string; receivers: Receiver[]; buildings: Building[]; 
 type PilotData = { receivers: Receiver[]; buildings: Building[]; loadedTileIds: string[]; maskedReceiverKeys: string[] };
 type SavedBuilding = { buildingPk: number; buildingKey: string; sourceBldId: string; sourceTileIds: string[]; model: string };
 
+// The county map (/map) is the main experience: a plain visit to the site root goes there before this
+// pilot draws (the loading state is in the static HTML). /pilot/ and shared pilot links (#model=...,
+// ?study=...) stay here.
+const ROOT_TO_MAP = "if(location.pathname==='/'&&!location.hash&&!location.search)location.replace('/map/')";
 const MODEL = 'tarzana-pilot-r02-c03-freeway-v1';
 const STUDY_ID = pilotReleaseContract.study_id;
 const DEFAULT_TILE_ID = pilotReleaseContract.default_tile_id;
@@ -437,7 +441,7 @@ export default function PilotPortal() {
   const copyView = async () => { writeView(); try { await navigator.clipboard.writeText(window.location.href); setNotice('View link copied.'); } catch { setNotice('View state is in the address bar. Copy that link.'); } };
   const selectedReceiverValue = validValue(selectedReceiver, period);
 
-  if (loadState === 'loading') return <main className="pilot-shell"><div className="pilot-state" role="status">Loading Los Angeles road-noise results…</div></main>;
+  if (loadState === 'loading') return <main className="pilot-shell"><script dangerouslySetInnerHTML={{ __html: ROOT_TO_MAP }} /><div className="pilot-state" role="status">Loading Los Angeles road-noise results…</div></main>;
   if (loadState === 'error') return <main className="pilot-shell"><div className="pilot-state pilot-state--error" role="alert"><strong>The pilot could not start.</strong><span>{error}</span><button type="button" onClick={() => window.location.reload()}>Reload</button></div></main>;
   return <main className="pilot-shell" aria-labelledby="pilot-title">
     <div ref={hostRef} className="pilot-map" aria-label="Combined-road pilot map. Building footprints and sampled exterior receivers." />
