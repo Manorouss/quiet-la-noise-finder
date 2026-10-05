@@ -335,8 +335,11 @@ def load_walls(halo: Polygon, path: Path) -> list[dict]:
     return walls
 
 
-def build_terrain(halo: Polygon, out: Path, dem_dir: Path = DEM_DIR, cell: float = 10.0):
+def dem_grid(halo: Polygon, dem_dir: Path, cell: float) -> np.ndarray:
+    """The DEMs in dem_dir resampled onto the halo's cell grid; -9999 where they have no data."""
     xmin, ymin, xmax, ymax = halo.bounds
+    width, height = int(round((xmax - xmin) / cell)), int(round((ymax - ymin) / cell))
+    terrain = np.full((height, width), -9999.0, dtype=np.float32)
     sources = []
     for tif in sorted(dem_dir.glob("*.tif")):
         src = rasterio.open(tif)
@@ -346,24 +349,39 @@ def build_terrain(halo: Polygon, out: Path, dem_dir: Path = DEM_DIR, cell: float
         else:
             src.close()
     if not sources:
-        raise ValueError("no DEM covers this tile")
+        return terrain
     crs = sources[0].crs
     mosaic, mosaic_transform = merge(sources, bounds=transform_bounds("EPSG:26911", crs, xmin - 100, ymin - 100, xmax + 100, ymax + 100))
     nodata = sources[0].nodata if sources[0].nodata is not None else -999999.0
     native = abs(sources[0].res[0])
     for s in sources:
         s.close()
-    width, height = int(round((xmax - xmin) / cell)), int(round((ymax - ymin) / cell))
     dst_transform = rasterio.transform.from_origin(xmin, ymax, cell, cell)
-    terrain = np.full((height, width), -9999.0, dtype=np.float32)
     reproject(mosaic[0], terrain, src_transform=mosaic_transform, src_crs=crs, dst_transform=dst_transform, dst_crs="EPSG:26911",
               src_nodata=nodata, dst_nodata=-9999.0, resampling=Resampling.average if cell > 2 * native else Resampling.bilinear)
+    return terrain
+
+
+def build_terrain(halo: Polygon, out: Path, dem_dir: Path = DEM_DIR, cell: float = 10.0):
+    """Terrain from dem_dir; cells it leaves empty (lidar gaps, Catalina) are filled from the USGS 1/3 arc-second DEM.
+
+    Returns the grid, its origin and the terrain source label recorded in the manifest."""
+    xmin, ymin, xmax, ymax = halo.bounds
+    terrain = dem_grid(halo, dem_dir, cell)
+    source = dem_dir.name
+    empty = terrain == -9999.0
+    if empty.any() and dem_dir.resolve() != DEM_DIR.resolve():
+        fallback = dem_grid(halo, DEM_DIR, cell)
+        terrain[empty] = fallback[empty]
+        filled = float((empty & (fallback != -9999.0)).mean())
+        source = DEM_DIR.name if empty.all() else f"{dem_dir.name}+{DEM_DIR.name}_fill_{filled:.1%}"
     if (terrain == -9999.0).mean() > 0.01:
         raise ValueError("DEM leaves more than 1% of the tile halo without data")
+    height, width = terrain.shape
     lines = [f"ncols {width}", f"nrows {height}", f"xllcorner {xmin:.3f}", f"yllcorner {ymin:.3f}", f"cellsize {cell:.3f}", "NODATA_value -9999"]
     lines += [" ".join(f"{v:.3f}" if v != -9999.0 else "-9999" for v in row) for row in terrain]
     out.write_text("\n".join(lines) + "\n")
-    return terrain, (xmin, ymax, cell)
+    return terrain, (xmin, ymax, cell), source
 
 
 def ground_z(terrain, origin, x, y):
@@ -479,7 +497,7 @@ def main() -> int:
     polys, props = prepare_buildings(raw)
     timings["buildings_s"] = round(time.monotonic() - started - timings["roads_s"], 1)
 
-    terrain, origin = build_terrain(halo, out / "input/terrain.asc", args.dem_dir or DEM_DIR, args.dem_cell)
+    terrain, origin, terrain_source = build_terrain(halo, out / "input/terrain.asc", args.dem_dir or DEM_DIR, args.dem_cell)
     dense_zone = None
     if args.dense_near_roads:
         busy = [e["geom"] for e in edges if traffic_for(e)["aadt_assigned"] / e["split"] >= args.dense_aadt and e["geom"].distance(tile) <= args.dense_near_roads]
@@ -539,7 +557,7 @@ def main() -> int:
         "traffic": {"basis_counts": dict(sorted(basis_counts.items())), "hpms_records_in_halo": len(hpms), "class_defaults": CLASS_DEFAULTS,
                     "diurnal": "day hourly = AADT/16; evening = 0.6 x day; night = 0.2 x day (pilot convention)",
                     "split": "two-way AADT x 0.5 on divided carriageways"},
-        "physics_contract": {"engine": "NoiseModelling 6.0.0", "pavement": "NL08", "ground_G": 0.5, "terrain_cell_m": args.dem_cell, "terrain_source": str((args.dem_dir or DEM_DIR).name), "sound_walls": len(walls), "sound_wall_source": args.walls.name if args.walls else None,
+        "physics_contract": {"engine": "NoiseModelling 6.0.0", "pavement": "NL08", "ground_G": 0.5, "terrain_cell_m": args.dem_cell, "terrain_source": terrain_source, "sound_walls": len(walls), "sound_wall_source": args.walls.name if args.walls else None,
                              "vertical_convention": "receiver and source Z relative to imported terrain"},
         "input_hashes": {"tiger_edges_zip": sha(EDGES), "hpms_rows_jsonl": sha(HPMS)},
         "build_timings_s": timings,

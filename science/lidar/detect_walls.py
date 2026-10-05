@@ -4,10 +4,14 @@
 Method, per 0.5 m cell within --corridor m of freeway (S1100) centrelines:
   height above ground = highest non-ground return - ground surface (class 2 minimum, gap-filled);
   candidate if 1.8-7 m high, mostly single returns (vegetation scatters into multiple returns),
-  outside building footprints (+1 m), and thin (at most 45% of the surrounding 2.5 m window is
-  raised, while tree crowns and roofs fill it). Connected candidate groups are kept when they are
-  long and thin (>= --min-length m, mean width <= 1.6 m); each becomes a polyline through the
-  group's cells ordered along its main direction, split where it bends, with the group's
+  outside building footprints (+1 m) and bridge decks (class 17, +1 m), thin (at most --density
+  of the surrounding 2.5 m window is raised, while tree crowns and roofs fill it), and open on
+  the road side (1-2 m toward the nearest freeway/ramp centreline is below 1 m, which rejects the
+  edges of decks, roofs and canopies). Each connected candidate group becomes
+  polyline pieces through its cells, ordered along its main direction and cut at gaps and every
+  ~40 m (2 m bins that jump >1.5 m off the line are dropped). A piece is kept when it is thin (mean width <= 1.6 m) and runs within --max-angle
+  degrees of the nearest freeway or ramp (S1100/S1630), which drops tree edges and fences that
+  cross the corridor; a group needs >= --min-length m of kept pieces. Walls get the group's
   median height. Output (WGS84 GeoJSON) feeds build_county_tile.py --walls.
 
 Usage:
@@ -17,14 +21,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 import numpy as np
 from pyproj import Transformer
 from rasterio import features
 from rasterio.transform import from_origin
-from shapely.geometry import LineString, box, mapping, shape
+import shapely
+from shapely.geometry import LineString, MultiLineString, box, mapping, shape
 from shapely.ops import transform as shp_transform, unary_union
+from shapely.strtree import STRtree
 
 TO_LONLAT = Transformer.from_crs("EPSG:26911", "OGC:CRS84", always_xy=True)
 CELL = 0.5
@@ -42,6 +49,14 @@ def fill_gaps(grid: np.ndarray, rounds: int = 60) -> np.ndarray:
             neighbour = np.nanmean(stack, axis=0)
         out[missing] = neighbour[missing]
     return out
+
+
+def grow(mask: np.ndarray, cells: int) -> np.ndarray:
+    """Dilate a boolean mask by `cells` (8-neighbourhood)."""
+    for _ in range(cells):
+        g = np.pad(mask, 1)
+        mask = g[1:-1, 1:-1] | g[:-2, 1:-1] | g[2:, 1:-1] | g[1:-1, :-2] | g[1:-1, 2:] | g[:-2, :-2] | g[:-2, 2:] | g[2:, :-2] | g[2:, 2:]
+    return mask
 
 
 def label(mask: np.ndarray) -> tuple[np.ndarray, int]:
@@ -74,29 +89,68 @@ def label(mask: np.ndarray) -> tuple[np.ndarray, int]:
     return remap[labels], int(remap.max())
 
 
-def polyline(xy: np.ndarray, max_gap: float = 4.0, chunk: float = 40.0) -> list[LineString]:
-    """Order cells along the group's main axis, split at gaps and into ~chunk-m straight-ish pieces."""
+def polyline(xy: np.ndarray, max_gap: float = 4.0, chunk: float = 40.0) -> list[tuple[LineString, int]]:
+    """Order cells along the group's main axis, split at gaps and into ~chunk-m straight-ish pieces.
+
+    Returns (line, number of cells) per piece."""
     centre = xy.mean(axis=0)
     _, _, vt = np.linalg.svd(xy - centre, full_matrices=False)
-    t = (xy - centre) @ vt[0]
+    t, s = (xy - centre) @ vt[0], (xy - centre) @ vt[1]
     order = np.argsort(t)
-    xy, t = xy[order], t[order]
+    t, s = t[order], s[order]
     lines, start = [], 0
     for i in range(1, len(t) + 1):
         if i == len(t) or t[i] - t[i - 1] > max_gap or t[i] - t[start] > chunk:
-            piece = xy[start:i]
-            if len(piece) >= 4:
+            if i - start >= 4:
                 bins = np.maximum(1, int((t[i - 1] - t[start]) / 2.0))
                 edges = np.linspace(t[start], t[i - 1] + 1e-6, bins + 1)
                 idx = np.digitize(t[start:i], edges) - 1
-                pts = [piece[idx == b].mean(axis=0) for b in range(bins) if (idx == b).any()]
-                if len(pts) >= 2:
-                    lines.append(LineString(pts))
+                tb = np.array([t[start:i][idx == b].mean() for b in range(bins) if (idx == b).any()])
+                sb = np.array([np.median(s[start:i][idx == b]) for b in range(bins) if (idx == b).any()])
+                # Drop 2 m bins that jump off the line (posts, gantries, a tree edge joined to the wall).
+                if len(sb) >= 3:
+                    smooth = np.array([np.median(sb[max(0, k - 2):k + 3]) for k in range(len(sb))])
+                    keep = np.abs(sb - smooth) <= 1.5
+                    tb, sb = tb[keep], sb[keep]
+                if len(tb) >= 2:
+                    lines.append((LineString(centre + np.outer(tb, vt[0]) + np.outer(sb, vt[1])), i - start))
             start = i
     return lines
 
 
-def detect_block(x, y, z, cls, ret, freeways, footprints, args) -> list[dict]:
+def heading(line: LineString) -> float:
+    (ax, ay), (bx, by) = line.coords[0][:2], line.coords[-1][:2]
+    return math.atan2(by - ay, bx - ax)
+
+
+class References:
+    """Freeway and ramp centrelines for the orientation test."""
+
+    def __init__(self, lines):
+        self.lines = [part for line in lines for part in getattr(line, "geoms", [line]) if part.length > 1]
+        self.tree = STRtree(self.lines)
+
+    def near(self, area) -> MultiLineString:
+        return MultiLineString([[c[:2] for c in self.lines[int(j)].coords] for j in self.tree.query(area)])
+
+    def direction_at(self, point, radius: float = 120.0) -> float | None:
+        near = self.tree.query(point.buffer(radius))
+        if len(near) == 0:
+            return None
+        ref = min((self.lines[int(j)] for j in near), key=lambda g: g.distance(point))
+        d = ref.project(point)
+        return heading(LineString([ref.interpolate(max(0.0, d - 10.0)), ref.interpolate(min(ref.length, d + 10.0))]))
+
+
+def aligned(line: LineString, references: References, max_angle: float) -> bool:
+    ref = references.direction_at(line.interpolate(0.5, normalized=True))
+    if ref is None:
+        return False
+    angle = abs(math.degrees(heading(line) - ref)) % 180
+    return min(angle, 180 - angle) <= max_angle
+
+
+def detect_block(x, y, z, cls, ret, freeways, footprints, references, args) -> list[dict]:
     x0, y0 = np.floor(x.min()), np.floor(y.min())
     cols, rows = int(np.ceil((x.max() - x0) / CELL)) + 1, int(np.ceil((y.max() - y0) / CELL)) + 1
     ix, iy = ((x - x0) / CELL).astype(int), ((y - y0) / CELL).astype(int)
@@ -106,7 +160,7 @@ def detect_block(x, y, z, cls, ret, freeways, footprints, args) -> list[dict]:
     multi = np.zeros((rows, cols))
     g = cls == 2
     np.fmin.at(ground, (iy[g], ix[g]), z[g])
-    ng = (cls != 2) & (cls != 7) & (cls != 18)  # skip ground and noise
+    ng = (cls != 2) & (cls != 7) & (cls != 18) & (cls != 17)  # skip ground, noise and bridge decks
     np.fmax.at(top, (iy[ng], ix[ng]), z[ng])
     np.add.at(hits, (iy[ng], ix[ng]), 1)
     np.add.at(multi, (iy[ng], ix[ng]), (ret[ng] > 1).astype(float))
@@ -126,13 +180,30 @@ def detect_block(x, y, z, cls, ret, freeways, footprints, args) -> list[dict]:
     summed = np.cumsum(np.cumsum(padded, axis=0), axis=1)
     summed = np.pad(summed, ((1, 0), (1, 0)))
     density = (summed[window:, window:] - summed[:-window, window:] - summed[window:, :-window] + summed[:-window, :-window]) / window ** 2
-    candidate &= density <= 0.45
+    candidate &= density <= args.density
+    # Bridge decks and their parapets are not walls (deck edges pass the thin test).
+    deck = np.zeros((rows, cols), bool)
+    deck[iy[cls == 17], ix[cls == 17]] = True
+    candidate &= ~grow(deck, 2)
+    # A wall's road side is open (shoulder, slope); deck, roof and canopy edges are raised on the road side
+    # too. Check 1-2 m toward the nearest freeway or ramp centreline.
+    rr, cc = np.nonzero(candidate)
+    roads = references.near(box(x0, y0, x0 + cols * CELL, y0 + rows * CELL).buffer(args.corridor + 50))
+    if len(rr) and not roads.is_empty:
+        px, py = x0 + (cc + 0.5) * CELL, y0 + (rr + 0.5) * CELL
+        target = shapely.get_coordinates(shapely.shortest_line(shapely.points(px, py), roads))[1::2]
+        vx, vy = target[:, 0] - px, target[:, 1] - py
+        norm = np.maximum(np.hypot(vx, vy), 1e-6)
+        open_side = np.zeros(len(rr), int)
+        for step in (1.0, 1.5, 2.0):
+            sx = np.clip(((px + vx / norm * step - x0) / CELL).astype(int), 0, cols - 1)
+            sy = np.clip(((py + vy / norm * step - y0) / CELL).astype(int), 0, rows - 1)
+            h = height[sy, sx]
+            open_side += np.isnan(h) | (h < 1.0)
+        closed = open_side < 2
+        candidate[rr[closed], cc[closed]] = False
     # Bridge dashes (stretches beside trees fail the thin test) by grouping on a mask grown 2 cells.
-    grown = candidate.copy()
-    for _ in range(2):
-        g = np.pad(grown, 1)
-        grown = g[1:-1, 1:-1] | g[:-2, 1:-1] | g[2:, 1:-1] | g[1:-1, :-2] | g[1:-1, 2:] | g[:-2, :-2] | g[:-2, 2:] | g[2:, :-2] | g[2:, 2:]
-    labels, count = label(grown)
+    labels, count = label(grow(candidate, 2))
     labels = np.where(candidate, labels, 0)
     walls = []
     for n in range(1, count + 1):
@@ -140,15 +211,22 @@ def detect_block(x, y, z, cls, ret, freeways, footprints, args) -> list[dict]:
         if len(rr) < args.min_length / CELL:
             continue
         xy = np.column_stack([x0 + (cc + 0.5) * CELL, y0 + (rr + 0.5) * CELL])
-        pieces = [line for line in polyline(xy) if line.length >= 5]
-        total = sum(line.length for line in pieces)
-        # Long and thin: a wall is one or two cells wide along its whole length.
-        if total < args.min_length or len(rr) * CELL * CELL / total > 1.6:
+        # Thin (one or two cells wide) and parallel to the nearest freeway or ramp.
+        pieces = [line for line, cells in polyline(xy)
+                  if line.length >= 5 and cells * CELL * CELL / line.length <= 1.6 and aligned(line, references, args.max_angle)]
+        if sum(line.length for line in pieces) < args.min_length:
             continue
         wall_height = f"{float(np.median(height[rr, cc])):.1f}"
         for line in pieces:
             walls.append({"line": line, "height": wall_height})
     return walls
+
+
+def add_detection_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--corridor", type=float, default=60.0)
+    parser.add_argument("--min-length", type=float, default=25.0)
+    parser.add_argument("--density", type=float, default=0.6, help="thin-line test: max raised share of the 2.5 m window (was 0.45)")
+    parser.add_argument("--max-angle", type=float, default=25.0, help="max angle in degrees between a wall piece and the nearest freeway/ramp")
 
 
 def main() -> int:
@@ -157,11 +235,12 @@ def main() -> int:
     parser.add_argument("--sources", type=Path, required=True, help="tile sources.geojson (EPSG:26911)")
     parser.add_argument("--buildings", type=Path, required=True, help="tile buildings.geojson (EPSG:26911)")
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--corridor", type=float, default=60.0)
-    parser.add_argument("--min-length", type=float, default=25.0)
+    add_detection_args(parser)
     args = parser.parse_args()
     d = np.load(args.points)
-    freeways = unary_union([shape(f["geometry"]) for f in json.loads(args.sources.read_text())["features"] if f["properties"].get("MTFCC") == "S1100"])
+    source_features = json.loads(args.sources.read_text())["features"]
+    freeways = unary_union([shape(f["geometry"]) for f in source_features if f["properties"].get("MTFCC") == "S1100"])
+    references = References([shape(f["geometry"]) for f in source_features if f["properties"].get("MTFCC") in ("S1100", "S1630")])
     footprints = [shape(f["geometry"]).buffer(1.0) for f in json.loads(args.buildings.read_text())["features"] if not f["properties"].get("BARRIER")]
     if freeways.is_empty:
         args.out.write_text(json.dumps({"type": "FeatureCollection", "features": []}))
@@ -180,7 +259,7 @@ def main() -> int:
             sel = (d["x"] >= x0b) & (d["x"] < x1b) & (d["y"] >= y0b) & (d["y"] < y1b)
             if sel.sum() < 1000:
                 continue
-            for wall in detect_block(d["x"][sel], d["y"][sel], d["z"][sel], d["cls"][sel], d["ret"][sel], freeways, footprints, args):
+            for wall in detect_block(d["x"][sel], d["y"][sel], d["z"][sel], d["cls"][sel], d["ret"][sel], freeways, footprints, references, args):
                 clipped = wall["line"].intersection(core)
                 for part in getattr(clipped, "geoms", [clipped]):
                     if part.geom_type == "LineString" and part.length >= 5:
