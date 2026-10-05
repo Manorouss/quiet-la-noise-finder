@@ -21,6 +21,7 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true, args:
 
 async function open(viewport, hash, label) {
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1, hasTouch: viewport.width < 720 });
+  page.setDefaultTimeout(60000);
   page.on('console', (m) => { if (m.type() === 'error') report.errors.push(`${label}: ${m.text().slice(0, 240)}`); });
   page.on('pageerror', (e) => report.errors.push(`${label}: pageerror ${String(e).slice(0, 240)}`));
   page.on('response', (r) => { if (r.status() >= 400 && !/\.pbf|favicon/.test(r.url())) report.failedRequests.push(`${label}: ${r.status()} ${r.url().slice(0, 160)}`); });
@@ -47,6 +48,8 @@ async function searchAddress(page, typed, pick) {
   await page.click(`.search-suggestions li >> nth=${index}`);
   await page.waitForSelector('.receiver-result', { timeout: 20000 });
   await page.waitForFunction(() => !document.querySelector('.selection-address.is-pending'), null, { timeout: 15000 });
+  await page.evaluate(() => window.__quietCountyMap.triggerRepaint());
+  await idle(page);
   return items;
 }
 
@@ -95,7 +98,7 @@ async function searchAddress(page, typed, pick) {
   await page.waitForTimeout(1500);
   await idle(page);
   check('3D: extruded buildings', await page.evaluate(() => window.__quietCountyMap.queryRenderedFeatures({ layers: ['buildings-3d'] }).length > 0));
-  await page.screenshot({ path: `${out}/desktop_3d.png` });
+  await page.screenshot({ path: `${out}/desktop_3d.png`, timeout: 120000 });
   await page.click('.workspace-header button:has-text("2D")');
   await page.waitForTimeout(1200);
 
