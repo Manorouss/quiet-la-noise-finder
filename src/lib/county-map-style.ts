@@ -34,7 +34,13 @@ const bandStep = (input: unknown) => expr(['step', input, BAND_COLORS[0], ...BAN
 const AIRPORT_CLASS = expr(['to-number', ['get', 'CLASS'], 0]);
 
 function fieldColor(noise: NoiseStyle) {
-  if (noise === 'bands') return expr(['step', ['elevation'], CLEAR, NODATA_DB, BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]]), NOT_MODELED_ABOVE, CLEAR]);
+  // Bands: 5 dB steps written as an interpolate ramp with stops 0.01 dB apart (MapLibre 6.9's color-relief
+  // drew nothing for a 'step' expression). With linear sampling the band edges are smooth curves.
+  if (noise === 'bands') {
+    return expr(['interpolate', ['linear'], ['elevation'], 0, CLEAR, NODATA_DB - 0.01, CLEAR, NODATA_DB, BAND_COLORS[0],
+      ...BAND_EDGES.flatMap((edge, i) => [edge - 0.01, BAND_COLORS[i], edge, BAND_COLORS[i + 1]]),
+      NOT_MODELED_ABOVE - 0.01, BAND_COLORS[BAND_COLORS.length - 1], NOT_MODELED_ABOVE, CLEAR]);
+  }
   if (noise === 'glow') {
     // Soft heat: quiet places stay clear, louder ones glow brighter and warmer (24 m blurred surface).
     return expr(['interpolate', ['linear'], ['elevation'], 0, CLEAR, 50, 'rgba(242,236,125,0)', 55, 'rgba(248,214,104,0.35)', 60, 'rgba(248,170,80,0.6)', 65, 'rgba(242,120,55,0.78)', 70, 'rgba(227,70,48,0.88)', 75, 'rgba(193,30,60,0.94)', 80, 'rgba(120,20,95,0.97)', 86, 'rgba(60,14,90,1)', NOT_MODELED_ABOVE - 0.1, 'rgba(60,14,90,1)', NOT_MODELED_ABOVE, CLEAR]);

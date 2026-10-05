@@ -36,6 +36,19 @@ const idle = (page, ms = 15000) => page.evaluate((timeout) => new Promise((resol
   map.once('idle', () => setTimeout(resolve, 300));
   setTimeout(resolve, timeout);
 }), ms);
+// Share of warm noise colours (yellow to purple) in a map area screenshot: proves a raster style drew.
+async function warmShare(page) {
+  const png = await page.screenshot({ clip: { x: 340, y: 70, width: 600, height: 600 } });
+  return page.evaluate(async (b64) => {
+    const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode();
+    const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
+    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let warm = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] < 200 && d[i + 2] < 150) warm += 1;
+    return warm / (d.length / 4);
+  }, png.toString('base64'));
+}
 const text = (page, selector) => page.evaluate((s) => document.querySelector(s)?.textContent?.trim() ?? null, selector);
 
 async function searchAddress(page, typed, pick) {
@@ -90,9 +103,13 @@ async function searchAddress(page, typed, pick) {
     check(`period ${label}: field_${key}`, url.endsWith(`field_${key}.pmtiles`), url.split('/').pop());
   }
   check('24 h legend says CNEL', /CNEL/.test(await text(page, '.county-legend span') ?? ''), await text(page, '.county-legend span'));
+  await page.click('.quick-controls button:has-text("Day")');
   for (const style of ['Bands', 'Glow', 'Dots', 'Field']) {
     await page.click(`.guide-section button:has-text("${style}")`);
     await idle(page);
+    await page.waitForTimeout(1500);
+    const share = await warmShare(page);
+    check(`style ${style} draws the noise`, share > 0.03, share.toFixed(3));
   }
   check('styles switch without errors', report.errors.filter((e) => e.startsWith('desktop')).length === 0);
 
