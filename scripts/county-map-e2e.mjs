@@ -96,13 +96,15 @@ async function searchAddress(page, typed, pick) {
   }
   check('styles switch without errors', report.errors.filter((e) => e.startsWith('desktop')).length === 0);
 
-  await page.click('.workspace-header button:has-text("3D")');
-  await page.waitForTimeout(1500);
+  // Software WebGL renders 3D slowly: switch at a lighter zoom and poll for the extruded buildings.
+  await page.evaluate(() => window.__quietCountyMap.jumpTo({ zoom: 16 }));
   await idle(page);
-  check('3D: extruded buildings', await page.evaluate(() => window.__quietCountyMap.queryRenderedFeatures({ layers: ['buildings-3d'] }).length > 0));
+  await page.click('.workspace-header button:has-text("3D")');
+  const has3d = await page.waitForFunction(() => window.__quietCountyMap?.loaded() && window.__quietCountyMap.queryRenderedFeatures({ layers: ['buildings-3d'] }).length > 0, null, { timeout: 45000, polling: 1000 }).then(() => true).catch(() => false);
+  check('3D: extruded buildings', has3d);
   await page.screenshot({ path: `${out}/desktop_3d.png`, timeout: 120000 });
-  await page.click('.workspace-header button:has-text("2D")');
-  await page.waitForTimeout(1200);
+  await page.click('.workspace-header button:has-text("2D")', { timeout: 120000 });
+  await page.waitForFunction(() => window.__quietCountyMap?.loaded() && window.__quietCountyMap.getPitch() === 0, null, { timeout: 45000, polling: 1000 }).catch(() => null);
 
   await page.evaluate(() => window.__quietCountyMap.jumpTo({ center: [-118.4899, 34.2098], zoom: 13.5 }));
   await idle(page);
