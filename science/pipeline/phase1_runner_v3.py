@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-IMPLEMENTATION = Path(__file__).resolve().parents[2]
+IMPLEMENTATION = Path(__file__).resolve().parents[4]   # this copy lives in <app>/science/pipeline, the original in implementation/work/campaign
 CAMPAIGN = IMPLEMENTATION / "work" / "campaign" / "corrected_freeway_shard"
 ENGINE = Path("/Volumes/NoiseModelling/NoiseModelling.app/Contents/MacOS/NoiseModelling")
 PUBLIC_MAP = IMPLEMENTATION / "outputs" / "quiet-la-regional-exposure.html"
