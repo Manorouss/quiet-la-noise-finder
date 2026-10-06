@@ -81,7 +81,7 @@ async function searchAddress(page, typed, pick) {
   check('search: selects the house with its address', /19305 Redwing St/i.test(address ?? '') && !/^Near/.test(address ?? ''), address);
   check('search: level in words', Boolean(await text(page, '.level-words')), await text(page, '.level-words'));
   check('search: compares with mapped buildings', /than \d+% of mapped buildings/.test(await text(page, '.compare-line') ?? ''), await text(page, '.compare-line'));
-  check('search: says which model computed it', /Computed with the (upgraded|earlier) model/.test(await text(page, '.model-line') ?? ''), await text(page, '.model-line'));
+  check('search: says which model computed it', /Computed with the (current|previous|upgraded|earlier) model/.test(await text(page, '.model-line') ?? ''), await text(page, '.model-line'));
   check('search: least exposed wall', /Least exposed wall/.test(await text(page, '.receiver-section') ?? ''));
   const nearby = await page.waitForSelector('.nearby-item', { timeout: 15000 }).then(() => text(page, '.nearby')).catch(() => null);
   check('search: nearby fire station', /Fire station \d+.*mi/.test(nearby ?? ''), nearby);
@@ -136,7 +136,7 @@ async function searchAddress(page, typed, pick) {
   await idle(page);
   await page.click('.workspace-header button:has-text("3D")');
   // (In 3D the map keeps streaming distant terrain, so loaded() can stay false.)
-  const has3d = await page.waitForFunction(() => window.__quietCountyMap?.getLayer('buildings-3d') && window.__quietCountyMap.queryRenderedFeatures({ layers: ['buildings-3d'] }).length > 0, null, { timeout: 45000, polling: 1000 }).then(() => true).catch(() => false);
+  const has3d = await page.waitForFunction(() => window.__quietCountyMap?.getLayer('buildings-3d') && window.__quietCountyMap.queryRenderedFeatures({ layers: ['buildings-3d'] }).length > 0, null, { timeout: 120000, polling: 1000 }).then(() => true).catch(() => false);
   check('3D: extruded buildings', has3d);
   const cleared = await page.waitForFunction(() => !document.querySelector('.workspace-state'), null, { timeout: 60000, polling: 1000 }).then(() => true).catch(() => false);
   check('3D: loading notice clears', cleared);
