@@ -12,8 +12,9 @@ USER_NAME=${GCP_SSH_USER:-quietla}
 CFG=$HOME/.ssh/quietla_cloud_config
 PROJECT=$(gcloud config get-value project 2> /dev/null)
 [ -n "$PROJECT" ] || { echo "no gcloud project set (gcloud config set project <id>)"; exit 1; }
-gcloud compute instances create "$NAME" --zone "$ZONE" --machine-type "$TYPE" \
-  --provisioning-model SPOT --instance-termination-action DELETE \
+MODEL_FLAGS=(--provisioning-model SPOT --instance-termination-action DELETE)
+[ "${GCP_MODEL:-spot}" = "ondemand" ] && MODEL_FLAGS=()   # GCP_MODEL=ondemand: regular (non-reclaimable) machine
+gcloud compute instances create "$NAME" --zone "$ZONE" --machine-type "$TYPE" ${MODEL_FLAGS[@]+"${MODEL_FLAGS[@]}"} \
   --image-family "$FAMILY" --image-project ubuntu-os-cloud --boot-disk-size 20GB \
   --metadata "ssh-keys=$USER_NAME:$(cat "$HOME/.ssh/quietla_cloud.pub")" \
   --labels quietla=county --quiet

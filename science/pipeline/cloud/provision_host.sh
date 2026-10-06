@@ -23,7 +23,7 @@ OVERLAY=$WORK/campaign/tarzana_full_mixed_road_v1/sentinel_forensics/r02_c04_sou
 SCRIPTS=$WORK/engine_scripts_v3/scripts
 [ -d "$LIB" ] || { echo "engine image not mounted ($LIB)"; exit 1; }
 
-"${SSH[@]}" 'sudo apt-get update -qq > /dev/null && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openjdk-21-jre-headless rsync > /dev/null && sudo mkdir -p /opt/quietla && sudo chown "$USER" /opt/quietla && mkdir -p /opt/quietla/attempts && java -version 2>&1 | head -1 && nproc && free -g | head -2'
+"${SSH[@]}" 'sudo apt-get update -qq > /dev/null && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openjdk-21-jre-headless rsync > /dev/null && sudo mkdir -p /opt/quietla && sudo chown "$USER" /opt/quietla && mkdir -p /opt/quietla/attempts /opt/quietla/nm-lib /opt/quietla/helper /opt/quietla/overlays/hf_v1 /opt/quietla/engine_scripts_v3/scripts && java -version 2>&1 | head -1 && nproc && free -g | head -2'
 "${RSYNC[@]}" "$LIB/" "$NAME:/opt/quietla/nm-lib/"
 "${RSYNC[@]}" "$HELPER" "$NAME:/opt/quietla/helper/"
 "${RSYNC[@]}" "$OVERLAY/" "$NAME:/opt/quietla/overlays/hf_v1/"
