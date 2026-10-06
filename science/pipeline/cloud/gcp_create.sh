@@ -25,7 +25,7 @@ import re, sys
 path, name, ip, user = sys.argv[1:5]
 text = open(path).read()
 text = re.sub(rf"\nHost {re.escape(name)}\n(?:[ \t]+.*\n)*", "\n", "\n" + text).lstrip("\n")
-text += f"\nHost {name}\n    HostName {ip}\n    User {user}\n    IdentityFile ~/.ssh/quietla_cloud\n    IdentitiesOnly yes\n    StrictHostKeyChecking accept-new\n    ServerAliveInterval 30\n"
+text += f"\nHost {name}\n    HostName {ip}\n    User {user}\n    IdentityFile ~/.ssh/quietla_cloud\n    IdentitiesOnly yes\n    StrictHostKeyChecking accept-new\n    ServerAliveInterval 30\n    ServerAliveCountMax 12\n    TCPKeepAlive yes\n"
 open(path, "w").write(text)
 PY
 echo "$NAME $ZONE $TYPE $IP"
