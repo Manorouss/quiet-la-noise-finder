@@ -28,6 +28,13 @@ if ! alive "queue_worker_persist.sh $Q " && ! alive "run_attempt.py"; then
     mv "$entry" "$Q/todo/$tile" && echo "requeued $tile"
   done
   rm -f "$C"/held-* "$C"/frozen-*
+  # engines left behind on rented hosts (their worker died with the Mac) keep burning CPU: stop them
+  if [ -f "$C/cloud_hosts.txt" ]; then
+    while read -r name rest; do
+      case "$name" in ""|\#*) continue;; esac
+      ssh -F "$HOME/.ssh/quietla_cloud_config" -o ConnectTimeout=10 -o BatchMode=yes "$name" 'pkill -f LoopbackNoiseModellingServer; rm -rf /opt/quietla/attempts/*' < /dev/null > /dev/null 2>&1 && echo "stopped stray engine on $name"
+    done < "$C/cloud_hosts.txt"
+  fi
   for port in 9134 9135; do
     "${SSH[@]}" "powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id \$_.OwningProcess -Force }\"" 2>/dev/null
   done
