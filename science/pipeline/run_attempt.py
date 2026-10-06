@@ -207,6 +207,11 @@ def run(args: argparse.Namespace) -> int:
     cloud = args.host not in ("mac", "pc")
     pc_attempt = f"{PC_ROOT}/attempts/{attempt.name}"
     cloud_attempt = f"{CLOUD_ROOT}/attempts/{attempt.name}"
+    # An engine left over from a run whose Mac side died (lid closed, network gone) still holds the port: clear it first.
+    if args.host == "pc":
+        ssh(f'powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort {args.port} -State Listen -ErrorAction SilentlyContinue | ForEach-Object {{ Stop-Process -Id $_.OwningProcess -Force }}"', check=False)
+    elif cloud:
+        cssh(args.host, f"pkill -f -- '--port {args.port} --working-dir' || true", check=False)
     if args.host == "pc":
         ssh(f'powershell -NoProfile -Command "New-Item -ItemType Directory -Force {win(pc_attempt)}\\input,{win(pc_attempt)}\\export | Out-Null"')
         subprocess.run(["scp", "-F", str(SSH_CONFIG), "-q", *[str(p) for p in sorted((attempt / "input").iterdir())],
