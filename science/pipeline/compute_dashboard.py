@@ -61,6 +61,18 @@ def ps_lines() -> list[str]:
     return subprocess.run(["ps", "-axo", "pid=,stat=,command="], capture_output=True, text=True).stdout.splitlines()
 
 
+def cloud_hosts() -> dict[str, dict]:
+    """Rented Linux hosts from pipeline_control/cloud_hosts.txt: name -> threads, local port, description (type, zone)."""
+    out = {}
+    path = CONTROL / "cloud_hosts.txt"
+    if path.exists():
+        for line in path.read_text().splitlines():
+            parts = line.split()
+            if len(parts) >= 3 and not parts[0].startswith("#"):
+                out[parts[0]] = {"threads": int(parts[1]), "port": int(parts[2]), "label": " ".join(parts[3:]) or "rented machine"}
+    return out
+
+
 def workers() -> list[dict]:
     found = []
     for line in ps_lines():
@@ -95,6 +107,8 @@ def freeze(host: str, port: int) -> bool:
         for pid, _ in pids:
             subprocess.run(["kill", "-STOP", str(pid)], check=False)
         return bool(pids)
+    if host != "pc":
+        return True   # a rented host is not frozen (it is billed either way): its worker just stops after the current tile
     lines = pc_engine("suspend", port)
     return any(line.startswith("suspend") for line in lines)
 
@@ -103,6 +117,8 @@ def thaw(host: str, port: int) -> bool:
     if host == "mac":
         for pid, _ in mac_engine_pids(port):
             subprocess.run(["kill", "-CONT", str(pid)], check=False)
+        return True
+    if host != "pc":
         return True
     pc_engine("resume", port)
     return True
@@ -192,9 +208,10 @@ class Progress:
         finished = sum(done.values())
         now = time.time()
         rates = {}
-        for label, hosts in (("all", ("mac", "pc")), ("mac", ("mac",)), ("pc", ("pc",))):
+        groups = [("all", None), ("mac", ("mac",)), ("pc", ("pc",))] + [(h, (h,)) for h in cloud_hosts()]
+        for label, hosts in groups:
             for window in (3 * 3600, 24 * 3600):
-                recent = [r for r in self.runs.values() if r["host"] in hosts and r["ended"] > now - window]
+                recent = [r for r in self.runs.values() if (hosts is None or r["host"] in hosts) and r["ended"] > now - window]
                 if len(recent) >= 3 or window == 24 * 3600:
                     span = min(window, now - min((r["ended"] - r["seconds"] for r in recent), default=now)) or 1
                     rates[label] = sum(r["receivers"] for r in recent) / span if recent else 0.0
@@ -266,7 +283,8 @@ def status() -> dict:
     all_workers = workers()
     engines = engine_rows(all_workers)
     hosts = {}
-    for host in ("mac", "pc"):
+    cloud = cloud_hosts()
+    for host in ("mac", "pc", *cloud):
         mine = [e for e in engines if e["host"] == host]
         paused = (CONTROL / f"pause-{host}").exists()
         busy = [e for e in mine if e["tile"]]
@@ -278,7 +296,7 @@ def status() -> dict:
             state = "resuming"
         else:
             state = "running" if busy else "waiting"
-        hosts[host] = {"state": state, "paused": paused, "engines": mine}
+        hosts[host] = {"state": state, "paused": paused, "engines": mine, "cloud": host in cloud, "label": cloud.get(host, {}).get("label")}
     queue = {d: len(list((QUEUE / d).glob("*"))) for d in ("priority", "todo", "running", "failed")}
     daemon = any("county_daemon.py" in line for line in ps_lines())
     return {"time": datetime.now().strftime("%H:%M:%S"), "summary": summary, "hosts": hosts, "queue": queue,
@@ -324,7 +342,7 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         body = json.loads(self.rfile.read(length) if length else b"{}")
         host = body.get("host")
-        if host not in ("mac", "pc", "all"):
+        if host not in ("mac", "pc", "all", *cloud_hosts()):
             self.send(400, b"host must be mac, pc or all", "text/plain")
             return
         set_pause(host, self.path == "/api/pause")
