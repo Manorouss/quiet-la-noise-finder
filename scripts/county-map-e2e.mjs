@@ -31,7 +31,7 @@ async function open(viewport, hash, label) {
   page.on('pageerror', (e) => report.errors.push(`${label}: pageerror ${String(e).slice(0, 240)}`));
   page.on('response', (r) => { if (r.status() >= 400 && !/\.pbf|favicon/.test(r.url())) report.failedRequests.push(`${label}: ${r.status()} ${r.url().slice(0, 160)}`); });
   await page.goto(`${base}/map/${hash}`, { waitUntil: 'load' });
-  await page.waitForFunction(() => window.__quietCountyMap?.loaded(), null, { timeout: 180000 });   // software WebGL on a busy Mac
+  await page.waitForFunction(() => window.__quietCountyMap?.loaded(), null, { timeout: 300000 });   // software WebGL on a busy Mac
   await idle(page);
   return page;
 }
@@ -89,7 +89,7 @@ async function searchAddress(page, typed, pick) {
   await page.waitForSelector('.saved-row', { timeout: 10000 }).catch(() => null);
   check('save to compare lists the house', /19305 Redwing/i.test(await text(page, '.saved-places') ?? ''), await text(page, '.saved-row'));
   await page.reload({ waitUntil: 'load' });
-  await page.waitForFunction(() => window.__quietCountyMap?.loaded(), null, { timeout: 180000 });   // software WebGL on a busy Mac
+  await page.waitForFunction(() => window.__quietCountyMap?.loaded(), null, { timeout: 300000 });   // software WebGL on a busy Mac
   check('saved places survive a reload', /19305 Redwing/i.test(await text(page, '.saved-places') ?? ''));
   await page.click('.saved-go');
   await page.waitForFunction(() => /19305 Redwing/i.test(document.querySelector('.selection-address')?.textContent ?? ''), null, { timeout: 30000 }).catch(() => null);
