@@ -1,8 +1,8 @@
 #!/bin/bash
 # Start whichever parts of the county compute are not running; safe to run any time.
-# Parts (model v2, see county_models.py): the corridor job (lidar walls and bridge decks,
+# Parts (model v3, see county_models.py): the corridor job (lidar walls and bridge decks,
 # corridor_products.py, until its plan is done), the tile builder (county_daemon.py), the three
-# engine workers (Mac :9130 x8, PC :9131 x16, PC :9132 x8), the progress page
+# engine workers (Mac :9133 x8, PC :9134 x16, PC :9135 x8), the progress page
 # (compute_dashboard.py, port 8765), the rail queue (science/rail/rail_queue.py, Mac port 9140), the 2-hourly public map publisher
 # (publish_county_layers.sh → R2) and the watchdog (compute_watchdog.sh, restarts stopped parts).
 # After a Mac restart nothing is running: tiles that were mid-run go back to the
@@ -14,7 +14,7 @@ set -u
 cd "$(dirname "$0")/../../../../.."
 ROOT=$PWD
 P=$ROOT/implementation/apps/quiet-la-web/science/pipeline
-Q=$ROOT/implementation/work/pipeline_queue/county_v2
+Q=$ROOT/implementation/work/pipeline_queue/county_v3
 CORRIDOR=$ROOT/implementation/work/source_cache/corridor_v2
 C=$ROOT/implementation/work/pipeline_control
 SSH=(ssh -F "$HOME/.ssh/quietla_pc_config" -o ConnectTimeout=10 quietla-pc)
@@ -28,7 +28,7 @@ if ! alive "queue_worker_persist.sh $Q " && ! alive "run_attempt.py"; then
     mv "$entry" "$Q/todo/$tile" && echo "requeued $tile"
   done
   rm -f "$C"/held-* "$C"/frozen-*
-  for port in 9131 9132; do
+  for port in 9134 9135; do
     "${SSH[@]}" "powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id \$_.OwningProcess -Force }\"" 2>/dev/null
   done
 fi
@@ -36,7 +36,7 @@ if ! alive "corridor_products.py" && [ "$(python3 -c "import json,pathlib,sys; p
   nohup nice -n 10 "$P/geo-python-net" -W ignore "$P/../lidar/corridor_products.py" --out "$CORRIDOR" --jobs 2 > "$CORRIDOR/run.out" 2>&1 &
   echo "started corridor job (lidar walls and bridge decks)"
 fi
-alive "county_daemon.py --model county-v2" || { nohup python3 "$P/county_daemon.py" --model county-v2 --queue "$Q" > /dev/null 2>&1 & echo "started tile builder"; }
+alive "county_daemon.py --model county-v3" || { nohup python3 "$P/county_daemon.py" --model county-v3 --queue "$Q" > /dev/null 2>&1 & echo "started tile builder"; }
 ENGINE=/Volumes/NoiseModelling/NoiseModelling.app/Contents/MacOS/NoiseModelling
 DMG=$ROOT/implementation/work/NoiseModelling-6.0.0.dmg
 if [ ! -x "$ENGINE" ]; then
@@ -47,10 +47,10 @@ if [ ! -x "$ENGINE" ]; then
   fi
 fi
 if [ -x "$ENGINE" ]; then
-  for spec in "mac 9130 8" "pc 9131 16" "pc 9132 8"; do
+  for spec in "mac 9133 8" "pc 9134 16" "pc 9135 8"; do
     set -- $spec
     alive "queue_worker_persist.sh $Q $1 $2 " || {
-      LABEL_PREFIX=v2 RUN_ARGS="--no-vertical --terrain-downscale 1" nohup /bin/bash "$P/queue_worker_persist.sh" "$Q" "$1" "$2" "$3" > /dev/null 2>&1 &
+      LABEL_PREFIX=v3 RUN_ARGS="--no-vertical --terrain-downscale 1 --max-error-db 0.1 --atmo" nohup /bin/bash "$P/queue_worker_persist.sh" "$Q" "$1" "$2" "$3" > /dev/null 2>&1 &
       echo "started $1 worker :$2 ($3 threads)"; }
   done
   mkdir -p "$ROOT/implementation/work/rail"

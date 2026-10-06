@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 
 from county_models import ATTEMPTS, CURRENT, WORK, by_name, package_glob
+from release_county_tiles import completed_runs
 
 HERE = Path(__file__).resolve().parent
 DENSITY = WORK / "county_building_density_1km.json"
@@ -86,7 +87,9 @@ def main() -> int:
             time.sleep(30)
             continue
         done = packaged(model)
+        computed = {(int(t.split("-e")[1].split("-n")[0]), int(t.split("-n")[1])) for t in completed_runs()}
         upcoming = [c for c in cells if c not in done and c not in failed]
+        upcoming.sort(key=lambda c: c in computed)   # never-computed cells first (nearest-first within each group), then the older-model redo
         if not upcoming:
             print(f"{stamp()} all target cells packaged", file=log, flush=True)
             break

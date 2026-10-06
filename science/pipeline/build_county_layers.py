@@ -71,8 +71,11 @@ def rail_levels(tile_id: str, path: Path) -> dict:
     if not result.exists() or not (RAIL_RESULTS.parent / "RELEASE").exists():  # (rail_queue.py: first pass done)
         return {}
     data = json.loads(result.read_text())
-    attempt = json.loads((path / "build-manifest.json").read_text()).get("attempt_id")
-    if data.get("road_attempt") != attempt or not data.get("levels"):
+    build = json.loads((path / "build-manifest.json").read_text())
+    if not data.get("levels"):
+        return {}
+    # A newer road run of the same cell with the same receivers (same count: the layout is deterministic) keeps the rail result.
+    if data.get("road_attempt") != build.get("attempt_id") and len(data["levels"]) != int(build.get("receiver_count", -1)):
         return {}
     RAIL_TILES.append(tile_id)
     return data["levels"]

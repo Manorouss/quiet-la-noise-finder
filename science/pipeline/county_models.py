@@ -22,6 +22,13 @@ MODELS = [
                                   "--corridor-dir", str(WORK / "source_cache/corridor_v2")],
      "run_args": "--no-vertical --terrain-downscale 1",
      "summary": "2023 lidar terrain at 10 m, lidar-detected sound walls, roads on bridges at deck height"},
+    {"name": "county-v3", "layout": "g20a50f10t10wbc", "run_label": "v3", "queue": WORK / "pipeline_queue/county_v3",
+     "build_args": LAYOUT_ARGS + ["--dem-dir", str(WORK / "source_cache/usgs_lidar_dem10"), "--dem-cell", "10",
+                                  "--corridor-dir", str(WORK / "source_cache/corridor_v2"),
+                                  "--classes", "--osm-dir", str(WORK / "source_cache/osm_streets")],
+     "run_args": "--no-vertical --terrain-downscale 1 --max-error-db 0.1 --atmo",
+     "summary": "v2 plus: weather share per period (day 0.2, evening 0.85, night 0.8), levels per road class (freeway, arterial, local) "
+                "and a night weather range, local streets classed by OpenStreetMap (cul-de-sacs, collectors), source pruning 0.1 dB"},
 ]
 CURRENT = MODELS[-1]
 

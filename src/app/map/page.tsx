@@ -133,9 +133,12 @@ function SaveButton({ selection, saved, onSave, onShare }: { selection: Selectio
 
 function ModelNote({ model }: { model: string | null }) {
   if (!model) return null;
-  return <p className="receiver-meta model-line">{model === 'county-v2'
-    ? 'Computed with the upgraded model: 2023 lidar terrain, sound walls, roads on bridges.'
-    : 'Computed with the earlier model (no sound walls, coarser terrain); this area is being recomputed.'}</p>;
+  const text = model === 'county-v3'
+    ? 'Computed with the current model: 2023 lidar terrain, sound walls, roads on bridges, weather share by time of day, local streets classed from OpenStreetMap.'
+    : model === 'county-v2'
+      ? 'Computed with the previous model (one weather setting all day, every local street alike); this area is being recomputed.'
+      : 'Computed with the earlier model (no sound walls, coarser terrain); this area is being recomputed.';
+  return <p className="receiver-meta model-line">{text}</p>;
 }
 
 function Inspector({ selection, period, aircraft, onClose, covered, percentiles, modelAt, mappedKm2, saved, onSave, onShare, places, onShowPlace }: { selection: Selection | null; period: Period; aircraft: boolean; onClose: () => void; covered: (lng: number, lat: number) => boolean | null; percentiles?: Layers['building_percentiles']; modelAt: (lng: number, lat: number) => string | null; mappedKm2?: number; saved: Saved[]; onSave: (selection: Selection) => void; onShare: () => void; places: Places | null; onShowPlace: (place: Place, from: [number, number]) => void }) {

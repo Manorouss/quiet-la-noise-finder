@@ -88,6 +88,21 @@ CLASS_DEFAULTS = {
 HPMS_SPEEDS = {"1": (105, 88), "2": (105, 88), "3": (64, 56), "4": (56, 50), "5": (56, 50), "6": (48, 48), "7": (40, 40)}
 FREEWAY_F_SYSTEMS = {"1", "2"}
 EVENING, NIGHT = 0.6, 0.2
+# Model v3 (--classes --osm-dir): TIGER's S1400 lumps collectors, residential streets, cul-de-sacs and service drives
+# together; the OSM highway tag of the way an edge follows tells them apart. OSM tag -> (two-way AADT, LV km/h) for
+# edges without an HPMS record; still class defaults (TRAFFIC_BASIS says so), never counts.
+OSM_DEFAULTS = {
+    "S1400": {"primary": (20000, 56), "secondary": (12000, 56), "tertiary": (4000, 48), "unclassified": (1200, 40),
+              "residential": (500, 40), "living_street": (200, 25), "service": (150, 25), "road": (800, 40)},
+    "S1200": {"primary": (20000, 56), "secondary": (12000, 56), "tertiary": (6000, 48)},
+}
+OSM_DEAD_END = (150, 25)           # residential street with a free end (cul-de-sac)
+DEAD_END_TAGS = {None, "residential", "unclassified", "living_street", "road"}
+ARTERIAL_TAGS = {"trunk", "primary", "secondary", "tertiary"}
+OSM_MATCH_M, OSM_ANGLE = 15.0, 25.0
+# Favourable-propagation share per CNEL period (LA ASOS 2021-24 stability classes; research note 2026-10-05): the
+# engine's single default is 0.5. N0 / N1 are the night traffic under homogeneous / favourable conditions only.
+PERIOD_P = {"D": 0.2, "E": 0.85, "N": 0.8, "N0": 0.0, "N1": 1.0}
 
 
 def sha(path: Path) -> str:
@@ -231,6 +246,69 @@ def assign_traffic(edges, hpms):
                     break
 
 
+def load_osm_streets(halo: Polygon, osm_dir: Path) -> list[dict]:
+    """OSM highway ways (osm_streets_cache.py cells) touching the halo, one per way id, as UTM lines."""
+    xmin, ymin, xmax, ymax = halo.bounds
+    seen, out = set(), []
+    for cx in range(int(xmin) // 1000, int(xmax) // 1000 + 1):
+        for cy in range(int(ymin) // 1000, int(ymax) // 1000 + 1):
+            cell = osm_dir / f"e{cx}-n{cy}.json"
+            if not cell.exists():
+                continue
+            for w in json.loads(cell.read_text()):
+                if w["id"] in seen or len(w["coords"]) < 2:
+                    continue
+                seen.add(w["id"])
+                g = LineString(w["coords"])
+                if g.intersects(halo):
+                    out.append({**w, "geom": g})
+    return out
+
+
+def classify_streets(edges: list, osm: list, halo: Polygon) -> dict:
+    """Model v3: tag S1400/S1200 edges with the OSM highway class of the way they follow (within OSM_MATCH_M, tangent
+    within OSM_ANGLE, at least half the edge) and flag residential edges with a free end (cul-de-sacs; the halo
+    boundary is not a free end). Returns the tag counts for the manifest."""
+    tree = STRtree([w["geom"] for w in osm]) if osm else None
+    for e in edges:
+        e["osm"], e["dead_end"] = None, False
+        if tree is None or e["mtfcc"] not in OSM_DEFAULTS:
+            continue
+        best = None
+        for j in tree.query(e["geom"].buffer(OSM_MATCH_M)):
+            w = osm[int(j)]
+            inside = e["geom"].intersection(w["geom"].buffer(OSM_MATCH_M)).length / e["geom"].length
+            if inside < 0.5 or tangent_angle(e["geom"], w["geom"]) > OSM_ANGLE:
+                continue
+            if best is None or inside > best[0]:
+                best = (inside, w)
+        if best:
+            e["osm"] = str(best[1].get("highway", "")).replace("_link", "")
+    ends: dict[tuple, int] = {}
+    for e in edges:
+        for c in (e["geom"].coords[0], e["geom"].coords[-1]):
+            ends[(round(c[0], 1), round(c[1], 1))] = ends.get((round(c[0], 1), round(c[1], 1)), 0) + 1
+    boundary = halo.exterior
+    counts: dict[str, int] = {}
+    for e in edges:
+        if e["mtfcc"] == "S1400" and e["hpms"] is None and e["osm"] in DEAD_END_TAGS:
+            e["dead_end"] = any(ends[(round(c[0], 1), round(c[1], 1))] == 1 and boundary.distance(Point(c)) > 1.0
+                                for c in (e["geom"].coords[0], e["geom"].coords[-1]))
+        if e["mtfcc"] in OSM_DEFAULTS:
+            key = f"{e['mtfcc']}:{'dead_end' if e['dead_end'] else (e['osm'] or 'unmatched')}"
+            counts[key] = counts.get(key, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def source_class(e: dict) -> str:
+    """Road class of a source for the per-class periods: F freeway (and ramps), A arterial or collector, L the rest."""
+    if e["mtfcc"] in ("S1100", "S1630"):
+        return "F"
+    if e["mtfcc"] == "S1200" or e.get("osm") in ARTERIAL_TAGS:
+        return "A"
+    return "L"
+
+
 def traffic_for(e):
     aadt0, mv_share, hgv_share, lv_spd, trk_spd, junc = CLASS_DEFAULTS[e["mtfcc"]]
     r = e["hpms"]
@@ -244,6 +322,12 @@ def traffic_for(e):
         basis = f"hpms_2024:{r[':id']}"
     else:
         aadt, basis = aadt0, f"class_default:{e['mtfcc']}"
+        if e.get("dead_end"):
+            (aadt, lv_spd), basis = OSM_DEAD_END, f"class_default:{e['mtfcc']}/dead_end"
+            trk_spd = min(trk_spd, lv_spd)
+        elif e.get("osm") in OSM_DEFAULTS.get(e["mtfcc"], {}):
+            (aadt, lv_spd), basis = OSM_DEFAULTS[e["mtfcc"]][e["osm"]], f"class_default:{e['mtfcc']}/{e['osm']}"
+            trk_spd = min(trk_spd, lv_spd)
     aadt *= e["split"]
     day = aadt / 16.0
     return {"aadt_assigned": aadt, "basis": basis, "day": day, "mv": mv_share, "hgv": hgv_share,
@@ -580,7 +664,13 @@ def main() -> int:
     parser.add_argument("--walls", type=Path, default=None, help="sound walls GeoJSON (WGS84); adds w to the layout")
     parser.add_argument("--corridor-dir", type=Path, default=None,
                         help="model-v2 corridor products (lidar walls + bridge decks); adds wb to the layout")
+    parser.add_argument("--classes", action="store_true",
+                        help="model v3: one period per road class (DF/DA/DL ...), the night weather range (N0/N1) and "
+                             "input/atmospheric.geojson with the per-period favourable share; adds c to the layout")
+    parser.add_argument("--osm-dir", type=Path, default=None, help="osm_streets_cache.py cells: classify local streets by OSM highway tag")
     args = parser.parse_args()
+    if args.osm_dir and not args.classes:
+        raise SystemExit("--osm-dir needs --classes (model v3)")
     if args.lonlat:
         x, y = TO_UTM_WGS.transform(*args.lonlat)
         x0, y0 = math.floor(x / args.size) * args.size, math.floor(y / args.size) * args.size
@@ -595,6 +685,8 @@ def main() -> int:
         layout += "w"
     if args.corridor_dir:
         layout += "wb"
+    if args.classes:
+        layout += "c"
     attempt_id = f"phase1-county-{args.name}-{layout}-v1"
     out = CAMPAIGN / "attempts" / attempt_id
     if (out / "attempt_manifest.json").exists():
@@ -606,6 +698,7 @@ def main() -> int:
     edges = load_edges(halo)
     hpms = load_hpms(halo)
     assign_traffic(edges, hpms)
+    osm_counts = classify_streets(edges, load_osm_streets(halo, args.osm_dir), halo) if args.osm_dir else None
     timings["roads_s"] = round(time.monotonic() - started, 1)
 
     raw = fetch_buildings(halo, out / "cache")
@@ -633,13 +726,17 @@ def main() -> int:
         if e.get("coords3d"):
             meta["BRIDGE_MAX_HEIGHT_M"] = e["bridge_max_height_m"]
         sources.append({"type": "Feature", "geometry": {"type": "LineString", "coordinates": coords}, "properties": {"PK": pk, "IDSOURCE": pk, **meta}})
-        for p_ix, (period, factor) in enumerate((("D", 1.0), ("E", EVENING), ("N", NIGHT))):
+        for period, factor in (("D", 1.0), ("E", EVENING), ("N", NIGHT)):
             total = t["day"] * factor
-            periods.append({"type": "Feature", "geometry": {"type": "LineString", "coordinates": coords}, "properties": {
-                "PK": 3 * (pk - 1) + p_ix + 1, "IDSOURCE": pk, "PERIOD": period,
-                "LV": total * (1 - t["mv"] - t["hgv"]), "MV": total * t["mv"], "HGV": total * t["hgv"], "WAV": 0.0, "WBV": 0.0,
-                "LV_SPD": t["lv_spd"], "MV_SPD": t["trk_spd"], "HGV_SPD": t["trk_spd"], "WAV_SPD": 0.0, "WBV_SPD": 0.0,
-                "PVMT": "NL08", "TS_STUD": 0.0, "PM_STUD": 0.0, "JUNC_DIST": t["junc"], "JUNC_TYPE": 0, "WAY": 1, **meta}})
+            tags = [period + source_class(e)] if args.classes else [period]
+            if args.classes and period == "N":
+                tags += ["N0", "N1"]
+            for tag in tags:
+                periods.append({"type": "Feature", "geometry": {"type": "LineString", "coordinates": coords}, "properties": {
+                    "PK": len(periods) + 1, "IDSOURCE": pk, "PERIOD": tag,
+                    "LV": total * (1 - t["mv"] - t["hgv"]), "MV": total * t["mv"], "HGV": total * t["hgv"], "WAV": 0.0, "WBV": 0.0,
+                    "LV_SPD": t["lv_spd"], "MV_SPD": t["trk_spd"], "HGV_SPD": t["trk_spd"], "WAV_SPD": 0.0, "WBV_SPD": 0.0,
+                    "PVMT": "NL08", "TS_STUD": 0.0, "PM_STUD": 0.0, "JUNC_DIST": t["junc"], "JUNC_TYPE": 0, "WAY": 1, **meta}})
     buildings = [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [list(map(list, p.exterior.coords))]},
                   "properties": {"PK": i + 1, "HEIGHT": round(props[i]["height_m"], 3), "SOURCE_BLD_ID": props[i]["bld_id"],
                                  "HEIGHT_IMPUTED": props[i]["imputed"]}} for i, p in enumerate(polys)]
@@ -658,6 +755,16 @@ def main() -> int:
         "receivers.geojson": write_json(out / "input/receivers.geojson", {"type": "FeatureCollection", "crs": crs, "features": receivers}),
         "sources.geojson": write_json(out / "input/sources.geojson", {"type": "FeatureCollection", "crs": crs, "features": sources}),
     }
+    period_design = None
+    if args.classes:
+        tags = sorted({f["properties"]["PERIOD"] for f in periods})
+        atmo = [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [x0, y0]},
+                 "properties": {"PK": i, "PERIOD": tag, "WINDROSE": [PERIOD_P.get(tag, PERIOD_P[tag[0]])] * 16, "TEMPERATURE": 15.0,
+                                "PRESSURE": 101325.0, "HUMIDITY": 70.0, "GDISC": True, "PRIME2520": False}} for i, tag in enumerate(tags, 1)]
+        inputs["atmospheric.geojson"] = write_json(out / "input/atmospheric.geojson", {"type": "FeatureCollection", "crs": crs, "features": atmo})
+        period_design = {"periods": tags, "classes": "F: S1100, S1630; A: S1200 or OSM trunk/primary/secondary/tertiary; L: other",
+                         "favourable_share": {t: PERIOD_P.get(t, PERIOD_P[t[0]]) for t in tags},
+                         "note": "the map's D/E/N are the energy sums of the class periods; N0/N1 are the night weather range"}
     terrain_path = out / "input/terrain.asc"
     inputs["terrain.asc"] = {"path": "input/terrain.asc", "sha256": sha(terrain_path), "bytes": terrain_path.stat().st_size}
     prefix = ("CTY_" + args.name.upper().replace("-", "_") + "_" + layout.upper())[:56]
@@ -674,9 +781,13 @@ def main() -> int:
                             "dense_aadt": args.dense_aadt, "families": families},
         "buildings": {"count": len(buildings), "height_imputed": sum(p["imputed"] for p in props), "source": BUILDINGS_URL, "height_units": "metres from LARIAC feet"},
         "traffic": {"basis_counts": dict(sorted(basis_counts.items())), "hpms_records_in_halo": len(hpms), "class_defaults": CLASS_DEFAULTS,
+                    "osm_classes": osm_counts, "osm_defaults": OSM_DEFAULTS if osm_counts is not None else None,
+                    "osm_cache": json.loads((args.osm_dir / "meta.json").read_text()) if args.osm_dir and (args.osm_dir / "meta.json").exists() else None,
                     "diurnal": "day hourly = AADT/16; evening = 0.6 x day; night = 0.2 x day (pilot convention)",
                     "split": "two-way AADT x 0.5 on divided carriageways"},
+        "period_design": period_design,
         "physics_contract": {"engine": "NoiseModelling 6.0.0", "pavement": "NL08", "ground_G": 0.5, "terrain_cell_m": args.dem_cell, "terrain_source": terrain_source, "sound_walls": len(walls),
+                             "favourable_share": {k: PERIOD_P[k] for k in "DEN"} if args.classes else 0.5,
                              "sound_wall_source": "lidar_detected (corridor_products.py)" if args.corridor_dir else (args.walls.name if args.walls else None),
                              "bridges": bridge_stats, "corridor_blocks": corridor_blocks,
                              "vertical_convention": "receiver and source Z relative to imported terrain"},

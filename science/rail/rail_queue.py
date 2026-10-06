@@ -57,8 +57,13 @@ def todo(config: Path) -> list[tuple[str, Path]]:
         result = RAIL / "results" / f"{tile}.json"
         if result.exists():
             done = json.loads(result.read_text())
-            if done.get("road_attempt") == run.name and done.get("config_version", 1) == cfg.get("version", 1):
-                continue
+            if done.get("config_version", 1) == cfg.get("version", 1):
+                if done.get("road_attempt") == run.name:
+                    continue
+                # a newer road run of the cell (e.g. model v3) with the same receivers keeps the rail result
+                receivers = json.loads((run / "attempt_manifest.json").read_text())["counts"]["receivers"]
+                if done.get("levels") is not None and (len(done["levels"]) == receivers or (not done["levels"] and done.get("note"))):
+                    continue
         out.append((tile, run))
     return out
 

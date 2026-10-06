@@ -34,6 +34,11 @@ APP = Path(__file__).resolve().parents[2]
 RELEASE = APP / "src/data/pilot-release-v1"
 CONTRACT = APP / "src/data/pilot-release-contract.json"
 PERIODS = ("D", "E", "N")
+CLASSES = "FAL"          # model v3 periods: <period><class> (freeway, arterial, local) plus the night weather range N0 / N1
+
+
+def esum(values) -> float:
+    return 10 * math.log10(sum(10 ** (v / 10) for v in values))
 POINT_RE = re.compile(r"POINT Z \(([-+0-9.eE]+) ([-+0-9.eE]+) ([-+0-9.eE]+)\)")
 MODEL = "tarzana-combined-road-study-r02-v1"
 
@@ -107,7 +112,7 @@ def main() -> int:
     parser.add_argument("--out-root", type=Path, required=True)
     parser.add_argument("--margin-db", type=float, default=6.0)
     parser.add_argument("--on-road-m", type=float, default=3.0)
-    parser.add_argument("--study", choices=("tarzana-pilot", "county-v1", "county-v2"), default="tarzana-pilot")
+    parser.add_argument("--study", choices=("tarzana-pilot", "county-v1", "county-v2", "county-v3"), default="tarzana-pilot")
     args = parser.parse_args()
     tile_id, attempt = args.tile, args.attempt.resolve()
     out = args.out_root.resolve() / tile_id
@@ -140,14 +145,27 @@ def main() -> int:
             if period in grouped.setdefault(rid, {}):
                 raise ValueError(f"duplicate receiver-period {rid}/{period}")
             grouped[rid][period] = {"laeq": laeq, "leq": leq}
-    if set(grouped) != set(receiver_by_id) or any(set(p) != set(PERIODS) for p in grouped.values()):
+    found = sorted({p for v in grouped.values() for p in v})
+    if set(grouped) != set(receiver_by_id) or any(set(p) != set(found) for p in grouped.values()):
         raise ValueError("receiver/period completeness failed")
+    classed = any(len(p) == 2 and p[0] in PERIODS and p[1] in CLASSES for p in found)
+    if classed:
+        # Model v3: the map's D/E/N are the energy sums of the class periods (a class absent from the tile has no rows).
+        for by_period in grouped.values():
+            for period in PERIODS:
+                members = [by_period[k] for k in (period + c for c in CLASSES) if k in by_period]
+                if not members:
+                    raise ValueError(f"no class period for {period}")
+                by_period[period] = {"laeq": esum(m["laeq"] for m in members), "leq": esum(m["leq"] for m in members)}
+    elif set(found) != set(PERIODS):
+        raise ValueError("receiver/period completeness failed")
+    class_periods = tuple(p for p in found if p not in PERIODS)
 
     ids = np.array(sorted(receiver_by_id))
     xy = np.array([receiver_by_id[i]["geometry"]["coordinates"][:2] for i in ids], dtype=float)
     masked: set[int] = set()
     for period in PERIODS:
-        segments, powers = pc.load_sources(attempt / "input/periods.geojson", period)
+        segments, powers = pc.load_sources(attempt / "input/periods.geojson", (period, *(period + c for c in CLASSES)) if classed else period)
         ceiling = pc.ceiling_levels(xy, segments, powers)
         masked |= {int(i) for i, c in zip(ids, ceiling) if grouped[int(i)][period]["laeq"] - c > args.margin_db}
     on_road = {int(i) for i, d in zip(ids, road_distance(xy, segments)) if d <= args.on_road_m} - masked
@@ -164,7 +182,10 @@ def main() -> int:
         h = float(props["HEIGHT_ABOVE_GROUND_M"])
         heights[str(h)] += 1
         lng, lat = utm11_to_wgs84(*map(float, receiver_by_id[rid]["geometry"]["coordinates"][:2]))
-        values = {p: None for p in PERIODS} if rid in masked else grouped[rid]
+        values = {p: None for p in PERIODS} if rid in masked else {p: grouped[rid][p] for p in PERIODS}
+        if class_periods and rid not in masked:
+            # per-class contributions and the weather range, for calibration and the point panel (df, da, dl, ..., n0, n1)
+            values.update({p.lower(): round(grouped[rid][p]["laeq"], 2) for p in class_periods})
         feature_props = {
             "id": rid, "receiver_key": f"{tile_id}:{props['RECEIVER_KEY']}", "source_receiver_key": props["RECEIVER_KEY"],
             "source_tile": tile_id, "masked": rid in masked, "receiver_family": props.get("RECEIVER_FAMILY"),

@@ -53,8 +53,10 @@ def emissions(rows: list[tuple[str, dict]], temperature: float) -> dict[str, np.
     return out
 
 
-def load_sources(path: Path, period: str):
-    features = [f for f in json.loads(path.read_text())["features"] if f["properties"].get("PERIOD") == period]
+def load_sources(path: Path, period):
+    """Segments and powers of the sources of one period, or of several periods given as a tuple (model v3 class periods)."""
+    wanted = (period,) if isinstance(period, str) else tuple(period)
+    features = [f for f in json.loads(path.read_text())["features"] if f["properties"].get("PERIOD") in wanted]
     rows = [(str(f["properties"]["IDSOURCE"]), f["properties"]) for f in features]
     warm, cold = emissions(rows, 20.0), emissions(rows, 15.0)
     segments, powers = [], []

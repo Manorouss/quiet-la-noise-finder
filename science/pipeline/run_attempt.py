@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import json
 import os
 import shutil
@@ -36,6 +37,10 @@ WORK = PROJECT / "implementation/work"
 CAMPAIGN = WORK / "campaign"
 CONTROL = WORK / "pipeline_control"
 RUNNER = CAMPAIGN / "run_phase1_regional_attempt.py"
+RUNNER_V3 = Path(__file__).resolve().parent / "phase1_runner_v3.py"   # --atmo (model v3): class periods and the atmospheric table
+# The engine loads its WPS scripts from ./scripts of its working directory when that folder exists (else from its jar):
+# model v3 runs start it there, where the stock scripts sit next to Quietla/Atmospheric_Settings.groovy.
+ENGINE_SCRIPTS = WORK / "engine_scripts_v3"
 HELPER = CAMPAIGN / "noisemodelling_loopback_launcher/noisemodelling-loopback-launcher.jar"
 HF_OVERLAY = CAMPAIGN / "tarzana_full_mixed_road_v1/sentinel_forensics/r02_c04_source_diagnostic_v1/engine_overlay_hf_v1/runtime_overlay/classes"
 MAC_LIB = Path("/Volumes/NoiseModelling/NoiseModelling.app/Contents/app/lib")
@@ -45,6 +50,7 @@ MAIN = "org.quietla.noisemodelling.LoopbackNoiseModellingServer"
 SSH_CONFIG = Path.home() / ".ssh/quietla_pc_config"
 PC = "quietla-pc"
 PC_ROOT = "D:/quietla"
+PC_ENGINE_SCRIPTS = f"{PC_ROOT}/engine_scripts_v3"   # copy of ENGINE_SCRIPTS on the PC (scp -r)
 PC_JAVA = f"{PC_ROOT}/jdk21/jdk-21.0.7+6/bin/java.exe"
 PC_LIB = f"{PC_ROOT}/nm-lib"
 PC_HELPER = f"{PC_ROOT}/helper/noisemodelling-loopback-launcher.jar"
@@ -150,12 +156,17 @@ def main() -> int:
     parser.add_argument("--no-vertical", action="store_true",
                         help="disable diffraction around vertical edges (lateral paths); CNOSSOS-EU / NoiseModelling: off for road sources")
     parser.add_argument("--max-error-db", default="0.0", help="NoiseModelling confMaxError source pruning")
+    parser.add_argument("--atmo", action="store_true",
+                        help="import input/atmospheric.geojson (per-period favourable share, temperature, humidity) and use it in the propagation")
     parser.add_argument("--refl-order", type=int, default=None, help="confReflOrder override (reflections off by default)")
     parser.add_argument("--refl-dist", type=float, default=None, help="confMaxReflDist override in metres")
     parser.add_argument("--terrain-downscale", type=int, default=None, help="Import_Asc_File downscale override (runner default 2)")
     parser.add_argument("--keep-runtime", action="store_true",
                         help="keep the engine database (by default it is deleted after a successful run; exports and manifests stay)")
     args = parser.parse_args()
+    if args.atmo:
+        global RUNNER
+        RUNNER = RUNNER_V3
 
     # A PC that is down (e.g. a Windows Update restart) must not burn through the queue: wait before
     # staging, and after a failure wait until it is back so the worker's single retry can succeed.
@@ -178,7 +189,7 @@ def run(args: argparse.Namespace) -> int:
                         f"{PC}:{pc_attempt}/input/"], check=True)
 
     sys.path.insert(0, str(RUNNER.parent))
-    import run_phase1_regional_attempt as runner  # noqa: E402
+    runner = importlib.import_module(RUNNER.stem)
 
     def engine_command(port: int, runtime: Path) -> list[str]:
         runtime.mkdir(parents=True, exist_ok=True)
@@ -188,6 +199,8 @@ def run(args: argparse.Namespace) -> int:
                     "--unsecure", "--browser-skip"]
         classpath = ";".join([win(PC_OVERLAY), win(PC_HELPER), win(PC_LIB) + "\\*"])
         remote = f'"{win(PC_JAVA)}" -cp "{classpath}" {MAIN} --port {port} --working-dir "{win(pc_attempt)}\\runtime" --unsecure --browser-skip'
+        if args.atmo:
+            remote = f"cd /d {win(PC_ENGINE_SCRIPTS)} && " + remote
         return ["ssh", "-F", str(SSH_CONFIG), "-o", "ExitOnForwardFailure=yes", "-L", f"{port}:127.0.0.1:{port}", PC, remote]
 
     original_propagation = runner.propagation
@@ -195,6 +208,8 @@ def run(args: argparse.Namespace) -> int:
     def propagation(prefix: str) -> dict[str, object]:
         values = dict(original_propagation(prefix))
         values.update(confMaxError=str(args.max_error_db), confThreadNumber=str(args.threads))
+        if args.atmo:
+            values["tablePeriodAtmosphericSettings"] = f"{prefix}_ATMO"
         if args.no_horizontal:
             values["confDiffHorizontal"] = "false"
         if args.no_vertical:
@@ -215,6 +230,13 @@ def run(args: argparse.Namespace) -> int:
             # is up (science/pipeline/pc/unthrottle.ps1, copied to D:/quietla/tools).
             ssh(f'powershell -NoProfile -ExecutionPolicy Bypass -File {win(PC_ROOT)}\\tools\\unthrottle.ps1', check=False)
             unthrottled.append(True)
+        if label == "propagation" and args.atmo:
+            # Per-period atmospheric settings (model v3), written right before the propagation from the attempt's own
+            # input/atmospheric.geojson by scripts/Quietla/Atmospheric_Settings.groovy (ENGINE_SCRIPTS).
+            rows = json.loads((attempt / "input/atmospheric.geojson").read_text())["features"]
+            settings = ";".join(f'{r["properties"]["PERIOD"]}:{r["properties"]["WINDROSE"][0]}:{r["properties"]["TEMPERATURE"]}:{r["properties"]["HUMIDITY"]}:{r["properties"]["PRESSURE"]}' for r in rows)
+            original_execute(endpoint, provenance, events, "atmospheric", "Quietla:Atmospheric_Settings",
+                             {"tableName": str(parameters["tableSources"]).replace("_SOURCES", "_ATMO"), "settings": settings})
         if args.terrain_downscale is not None and "downscale" in parameters:
             parameters = {**parameters, "downscale": str(args.terrain_downscale)}
         if args.host == "mac":
@@ -231,6 +253,8 @@ def run(args: argparse.Namespace) -> int:
         return job
 
     runner.engine_command, runner.propagation, runner.execute_wps = engine_command, propagation, execute_wps
+    if args.atmo and args.host == "mac":
+        os.chdir(ENGINE_SCRIPTS)   # the engine inherits this working directory and loads ./scripts from it
     CONTROL.mkdir(parents=True, exist_ok=True)
     runner.time = PausableClock(args.host, args.port)
     try:
@@ -245,7 +269,7 @@ def run(args: argparse.Namespace) -> int:
             ssh(f'powershell -NoProfile -Command "Remove-Item -Recurse -Force {win(pc_attempt)} -ErrorAction SilentlyContinue"', check=False)
     (attempt / "run_host.json").write_text(json.dumps({
         "host": args.host, "threads": args.threads, "horizontal_diffraction": not args.no_horizontal, "vertical_diffraction": not args.no_vertical,
-        "max_error_db": args.max_error_db, "overlay": "hf_v1", "pc_attempt": pc_attempt if args.host == "pc" else None,
+        "max_error_db": args.max_error_db, "atmo": args.atmo, "overlay": "hf_v1", "pc_attempt": pc_attempt if args.host == "pc" else None,
         "refl_order": args.refl_order if args.refl_order is not None else 0, "refl_dist_m": args.refl_dist, "terrain_downscale": args.terrain_downscale or 2,
     }, indent=1) + "\n")
     print(attempt)
