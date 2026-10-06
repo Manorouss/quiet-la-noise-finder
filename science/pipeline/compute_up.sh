@@ -53,6 +53,16 @@ if [ -x "$ENGINE" ]; then
       LABEL_PREFIX=v3 RUN_ARGS="--no-vertical --terrain-downscale 1 --max-error-db 0.1 --atmo" nohup /bin/bash "$P/queue_worker_persist.sh" "$Q" "$1" "$2" "$3" > /dev/null 2>&1 &
       echo "started $1 worker :$2 ($3 threads)"; }
   done
+  # Rented Linux hosts: one worker per line of pipeline_control/cloud_hosts.txt ("<name> <threads> <local port>",
+  # the name being a Host entry of ~/.ssh/quietla_cloud_config; see science/pipeline/cloud/).
+  if [ -f "$C/cloud_hosts.txt" ]; then
+    while read -r name threads port rest; do
+      case "$name" in ""|\#*) continue;; esac
+      alive "queue_worker_persist.sh $Q $name $port " || {
+        LABEL_PREFIX=v3 RUN_ARGS="--no-vertical --terrain-downscale 1 --max-error-db 0.1 --atmo" nohup /bin/bash "$P/queue_worker_persist.sh" "$Q" "$name" "$port" "$threads" > /dev/null 2>&1 &
+        echo "started $name worker :$port ($threads threads)"; }
+    done < "$C/cloud_hosts.txt"
+  fi
   mkdir -p "$ROOT/implementation/work/rail"
   alive "rail_queue.py" || { nohup "$P/geo-python" "$P/../rail/rail_queue.py" >> "$ROOT/implementation/work/rail/queue.out" 2>&1 & echo "started rail queue"; }
 else

@@ -50,6 +50,11 @@ MAIN = "org.quietla.noisemodelling.LoopbackNoiseModellingServer"
 SSH_CONFIG = Path.home() / ".ssh/quietla_pc_config"
 PC = "quietla-pc"
 PC_ROOT = "D:/quietla"
+# Rented Linux hosts (--host <name>, any name but mac/pc): an entry "Host <name>" in ~/.ssh/quietla_cloud_config,
+# provisioned by science/pipeline/cloud/provision_host.sh into CLOUD_ROOT (java 21, engine jars, helper, overlay, v3 scripts).
+CLOUD_SSH_CONFIG = Path.home() / ".ssh/quietla_cloud_config"
+CLOUD_ROOT = "/opt/quietla"
+HOST_GONE = 75   # exit status when the rented host stopped answering (the worker re-queues the tile instead of failing it)
 PC_ENGINE_SCRIPTS = f"{PC_ROOT}/engine_scripts_v3"   # copy of ENGINE_SCRIPTS on the PC (scp -r)
 PC_JAVA = f"{PC_ROOT}/jdk21/jdk-21.0.7+6/bin/java.exe"
 PC_LIB = f"{PC_ROOT}/nm-lib"
@@ -67,6 +72,15 @@ def ssh(command: str, check: bool = True) -> subprocess.CompletedProcess:
 
 def win(path: str) -> str:
     return path.replace("/", "\\")
+
+
+def cssh(host: str, command: str, check: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(["ssh", "-F", str(CLOUD_SSH_CONFIG), "-o", "BatchMode=yes", host, command], capture_output=True, text=True, check=check, stdin=subprocess.DEVNULL)
+
+
+def host_up(host: str) -> bool:
+    return subprocess.run(["ssh", "-F", str(CLOUD_SSH_CONFIG), "-o", "ConnectTimeout=10", "-o", "BatchMode=yes", host, "true"],
+                          capture_output=True, stdin=subprocess.DEVNULL).returncode == 0
 
 
 def wait_for_pc(reason: str, limit_s: int = 12 * 3600) -> bool:
@@ -149,7 +163,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--source-attempt", type=Path, required=True)
     parser.add_argument("--label", required=True)
-    parser.add_argument("--host", choices=("mac", "pc"), default="mac")
+    parser.add_argument("--host", default="mac", help="mac, pc, or the name of a rented Linux host (~/.ssh/quietla_cloud_config)")
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--no-horizontal", action="store_true", help="disable diffraction over horizontal edges (roofs, terrain)")
@@ -172,21 +186,35 @@ def main() -> int:
     # staging, and after a failure wait until it is back so the worker's single retry can succeed.
     if args.host == "pc" and not wait_for_pc("before staging"):
         raise SystemExit("PC unreachable for 12 h")
+    cloud = args.host not in ("mac", "pc")
+    if cloud and not host_up(args.host):
+        print(f"{args.host} does not answer", file=sys.stderr)
+        raise SystemExit(HOST_GONE)
     try:
         return run(args)
     except BaseException:
         if args.host == "pc":
             wait_for_pc("after a failed run")
+        if cloud and not host_up(args.host):
+            # a Spot machine was reclaimed (or the network dropped): not a failure of the tile
+            print(f"{args.host} stopped answering during the run", file=sys.stderr)
+            raise SystemExit(HOST_GONE)
         raise
 
 
 def run(args: argparse.Namespace) -> int:
     attempt = stage(args.source_attempt.resolve(), args.label)
+    cloud = args.host not in ("mac", "pc")
     pc_attempt = f"{PC_ROOT}/attempts/{attempt.name}"
+    cloud_attempt = f"{CLOUD_ROOT}/attempts/{attempt.name}"
     if args.host == "pc":
         ssh(f'powershell -NoProfile -Command "New-Item -ItemType Directory -Force {win(pc_attempt)}\\input,{win(pc_attempt)}\\export | Out-Null"')
         subprocess.run(["scp", "-F", str(SSH_CONFIG), "-q", *[str(p) for p in sorted((attempt / "input").iterdir())],
                         f"{PC}:{pc_attempt}/input/"], check=True)
+    elif cloud:
+        cssh(args.host, f"mkdir -p {cloud_attempt}/input {cloud_attempt}/export {cloud_attempt}/runtime")
+        subprocess.run(["scp", "-F", str(CLOUD_SSH_CONFIG), "-q", *[str(p) for p in sorted((attempt / "input").iterdir())],
+                        f"{args.host}:{cloud_attempt}/input/"], check=True, stdin=subprocess.DEVNULL)
 
     sys.path.insert(0, str(RUNNER.parent))
     runner = importlib.import_module(RUNNER.stem)
@@ -197,6 +225,12 @@ def run(args: argparse.Namespace) -> int:
             classpath = f"{HF_OVERLAY}:{HELPER}:{MAC_LIB}/*"
             return [str(MAC_JAVA), "-cp", classpath, MAIN, "--port", str(port), "--working-dir", str(runtime.resolve()),
                     "--unsecure", "--browser-skip"]
+        if cloud:
+            classpath = f"{CLOUD_ROOT}/overlays/hf_v1:{CLOUD_ROOT}/helper/noisemodelling-loopback-launcher.jar:{CLOUD_ROOT}/nm-lib/*"
+            remote = (f"cd {CLOUD_ROOT}/engine_scripts_v3 && exec java -cp '{classpath}' {MAIN} --port {port} "
+                      f"--working-dir {cloud_attempt}/runtime --unsecure --browser-skip")
+            return ["ssh", "-F", str(CLOUD_SSH_CONFIG), "-o", "ExitOnForwardFailure=yes", "-o", "BatchMode=yes",
+                    "-L", f"{port}:127.0.0.1:{port}", args.host, remote]
         classpath = ";".join([win(PC_OVERLAY), win(PC_HELPER), win(PC_LIB) + "\\*"])
         remote = f'"{win(PC_JAVA)}" -cp "{classpath}" {MAIN} --port {port} --working-dir "{win(pc_attempt)}\\runtime" --unsecure --browser-skip'
         if args.atmo:
@@ -244,12 +278,14 @@ def run(args: argparse.Namespace) -> int:
         remote = dict(parameters)
         for key in ("pathFile", "exportPath"):
             if key in remote:
-                local = Path(str(remote[key]))
-                remote[key] = win(f"{pc_attempt}/{local.relative_to(attempt.resolve()).as_posix()}")
+                rel = Path(str(remote[key])).relative_to(attempt.resolve()).as_posix()
+                remote[key] = f"{cloud_attempt}/{rel}" if cloud else win(f"{pc_attempt}/{rel}")
         job = original_execute(endpoint, provenance, events, label, process, remote)
         if "exportPath" in parameters:
-            subprocess.run(["scp", "-F", str(SSH_CONFIG), "-q", f"{PC}:{pc_attempt}/{Path(str(parameters['exportPath'])).relative_to(attempt.resolve()).as_posix()}",
-                            str(parameters["exportPath"])], check=True)
+            rel = Path(str(parameters["exportPath"])).relative_to(attempt.resolve()).as_posix()
+            source = f"{args.host}:{cloud_attempt}/{rel}" if cloud else f"{PC}:{pc_attempt}/{rel}"
+            subprocess.run(["scp", "-F", str(CLOUD_SSH_CONFIG if cloud else SSH_CONFIG), "-q", source, str(parameters["exportPath"])],
+                           check=True, stdin=subprocess.DEVNULL)
         return job
 
     runner.engine_command, runner.propagation, runner.execute_wps = engine_command, propagation, execute_wps
@@ -262,14 +298,19 @@ def run(args: argparse.Namespace) -> int:
     finally:
         if args.host == "pc":
             ssh(f'powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort {args.port} -State Listen -ErrorAction SilentlyContinue | ForEach-Object {{ Stop-Process -Id $_.OwningProcess -Force }}"', check=False)
+        elif cloud:
+            cssh(args.host, f"pkill -f -- '--port {args.port} --working-dir' || true", check=False)
     if not args.keep_runtime:
-        # The H2 database and the PC's input copy are only needed while the engine runs.
+        # The H2 database and the remote input copy are only needed while the engine runs.
         shutil.rmtree(attempt / "runtime", ignore_errors=True)
         if args.host == "pc":
             ssh(f'powershell -NoProfile -Command "Remove-Item -Recurse -Force {win(pc_attempt)} -ErrorAction SilentlyContinue"', check=False)
+        elif cloud:
+            cssh(args.host, f"rm -rf {cloud_attempt}", check=False)
     (attempt / "run_host.json").write_text(json.dumps({
         "host": args.host, "threads": args.threads, "horizontal_diffraction": not args.no_horizontal, "vertical_diffraction": not args.no_vertical,
         "max_error_db": args.max_error_db, "atmo": args.atmo, "overlay": "hf_v1", "pc_attempt": pc_attempt if args.host == "pc" else None,
+        "cloud_attempt": cloud_attempt if cloud else None,
         "refl_order": args.refl_order if args.refl_order is not None else 0, "refl_dist_m": args.refl_dist, "terrain_downscale": args.terrain_downscale or 2,
     }, indent=1) + "\n")
     print(attempt)
