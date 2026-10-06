@@ -68,7 +68,7 @@ publish_once() {
   upload layers.json 60 && echo "$(date -u +%FT%TZ) published $tiles tiles (changed: $(echo $changed | tr '\n' ' '))" >> "$LOG"
   # Accuracy check against the public monitors and measurements after every publish (science/qa/validate_monitors.py),
   # so the bias by period is always current: implementation/work/pipeline_control/validation.json (+ .log).
-  pgrep -f "validate_monitors.py" > /dev/null || nohup python3 "$HERE/../qa/validate_monitors.py" --json "$CONTROL/validation.json" > "$CONTROL/validation.log" 2>&1 &
+  pgrep -f "validate_monitors.py" > /dev/null || nohup "$HERE/geo-python" "$HERE/../qa/validate_monitors.py" --json "$CONTROL/validation.json" > "$CONTROL/validation.log" 2>&1 &
 }
 
 if [ "${1:-}" = "--once" ]; then publish_once; exit $?; fi
