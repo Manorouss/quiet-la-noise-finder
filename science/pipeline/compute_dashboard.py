@@ -216,6 +216,10 @@ class Progress:
                     span = min(window, now - min((r["ended"] - r["seconds"] for r in recent), default=now)) or 1
                     rates[label] = sum(r["receivers"] for r in recent) / span if recent else 0.0
                     break
+        host_info = {}
+        for label, hosts in groups[1:]:
+            ends = [r["ended"] for r in self.runs.values() if r["host"] == label]
+            host_info[label] = {"n3h": sum(e > now - 3 * 3600 for e in ends), "last": max(ends, default=0)}
         running_cells = set()
         for entry in QUEUE.glob("running/*"):
             match = re.match(r"la-e(\d+)-n(\d+)\.", entry.name)
@@ -230,7 +234,7 @@ class Progress:
             "total_receivers": round(total), "done_receivers": finished, "fraction": finished / total if total else 0,
             "cells_total": len(cells), "cells_done": len(done), "cells_older_only": len(older - set(done)),
             "model": CURRENT["name"], "model_summary": CURRENT["summary"],
-            "rate": rates, "eta_days": (total - finished) / rates["all"] / 86400 if rates.get("all") else None,
+            "rate": rates, "host_info": host_info, "eta_days": (total - finished) / rates["all"] / 86400 if rates.get("all") else None,
             "map": {"x0": min(xs), "x1": max(xs), "y0": min(ys), "y1": max(ys), "cells": grid},
             "recent": [{"tile": r["tile"], "host": r["host"], "receivers": r["receivers"], "minutes": round(r["seconds"] / 60, 1),
                         "ended": datetime.fromtimestamp(r["ended"]).strftime("%H:%M")} for r in recent],
@@ -297,6 +301,23 @@ def status() -> dict:
         else:
             state = "running" if busy else "waiting"
         hosts[host] = {"state": state, "paused": paused, "engines": mine, "cloud": host in cloud, "label": cloud.get(host, {}).get("label")}
+    # Days left come from the machines working now, not from the tiles that happened to finish lately: a paused or
+    # vanished machine does not count, and one that has no finished tile yet counts at the usual speed per thread.
+    info = summary.pop("host_info")
+    now = time.time()
+    threads = {h: sum(e["threads"] for e in v["engines"]) for h, v in hosts.items()}
+    per_thread = sorted(summary["rate"][h] / threads[h] for h in hosts if threads[h] and info[h]["n3h"] >= 3 and summary["rate"].get(h))
+    usual = per_thread[len(per_thread) // 2] if per_thread else 0.0
+    expected, working = 0.0, 0
+    for h, v in hosts.items():
+        live = v["state"] in ("running", "resuming") or (v["state"] == "waiting" and now - info[h]["last"] < 1800)
+        v["warming_up"] = bool(live and info[h]["n3h"] < 2)
+        v["expected_rate"] = usual * threads[h] if v["warming_up"] else summary["rate"].get(h, 0.0)
+        if live:
+            working += 1
+            expected += v["expected_rate"]
+    summary["rate_now"], summary["machines_working"] = expected, working
+    summary["eta_days"] = (summary["total_receivers"] - summary["done_receivers"]) / expected / 86400 if expected else None
     queue = {d: len(list((QUEUE / d).glob("*"))) for d in ("priority", "todo", "running", "failed")}
     daemon = any("county_daemon.py" in line for line in ps_lines())
     return {"time": datetime.now().strftime("%H:%M:%S"), "summary": summary, "hosts": hosts, "queue": queue,

@@ -108,7 +108,7 @@ function machine(host, info, rate) {
     return `<div class="engine"><div class="engine-head"><span>Engine ${e.threads} threads · ${what}</span><b>${pct == null ? (e.minutes != null ? e.minutes + ' min' : '') : pct.toFixed(0) + '%'}</b></div>`
       + (e.tile ? `<div class="bar small"><i style="width:${pct == null ? 2 : pct}%"></i></div><div class="muted">${e.minutes} min on this tile</div>` : '') + '</div>';
   }).join('') || '<div class="engine muted">No worker running on this machine.</div>';
-  return `<div class="machine-head"><div><h2>${name}</h2><span class="muted">${chip} · ${rate ? Math.round(rate) + ' points/s lately' : 'no recent tiles'}</span></div>`
+  return `<div class="machine-head"><div><h2>${name}</h2><span class="muted">${chip} · ${info.paused ? 'paused' : info.warming_up ? 'warming up, about ' + Math.round(info.expected_rate) + ' points/s expected' : rate ? Math.round(rate) + ' points/s lately' : 'no recent tiles'}</span></div>`
     + `<div style="text-align:right"><span class="pill ${info.state}">${STATE_TEXT[info.state] || info.state}</span><br><br>`
     + `<button class="${action}" onclick="send('${action}','${host}')">${info.paused ? 'Resume' : 'Pause'} ${name.split(' ').pop()}${info.cloud && !info.paused ? ' after this tile' : ''}</button></div></div>${engines}`;
 }
@@ -139,8 +139,9 @@ async function refresh() {
   const onMap = s.cells_done + (s.cells_older_only || 0);
   document.getElementById('onmap').textContent = `On the map now: ${onMap.toLocaleString()} of ${s.cells_total.toLocaleString()} km² (${(onMap / s.cells_total * 100).toFixed(1)}%). `
     + (s.cells_older_only ? `${s.cells_older_only.toLocaleString()} km² still show the older model until the upgrade redoes them.` : '');
-  const eta = s.eta_days == null ? 'no recent speed yet' : s.eta_days < 1.5 ? Math.round(s.eta_days * 24) + ' hours left at the current speed' : s.eta_days.toFixed(1) + ' days left at the current speed';
-  document.getElementById('facts').innerHTML = `<span>Model <b>${s.model || ''}</b>: ${s.model_summary || ''}</span><span><b>${fmt(s.done_receivers)}</b> of ~${fmt(s.total_receivers)} points</span><span><b>${s.cells_done.toLocaleString()}</b> of ${s.cells_total.toLocaleString()} km²</span><span><b>${Math.round(s.rate.all || 0)}</b> points/s</span><span><b>${eta}</b></span><span>queue: ${data.queue.priority ? data.queue.priority + ' priority, ' : ''}${data.queue.todo} prepared${data.queue.failed ? ', ' + data.queue.failed + ' failed' : ''}${data.daemon ? '' : ' · tile builder stopped'}</span>`;
+  const done = s.eta_days == null ? null : new Date(Date.now() + s.eta_days * 864e5);
+  const eta = done == null ? 'no recent speed yet' : (s.eta_days < 1.5 ? Math.round(s.eta_days * 24) + ' hours' : s.eta_days.toFixed(1) + ' days') + ' left · done around ' + done.toLocaleDateString(undefined, {weekday: 'short', day: 'numeric', month: 'short'}) + (s.eta_days < 1.5 ? ' ' + done.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit'}) : '');
+  document.getElementById('facts').innerHTML = `<span>Model <b>${s.model || ''}</b>: ${s.model_summary || ''}</span><span><b>${fmt(s.done_receivers)}</b> of ~${fmt(s.total_receivers)} points</span><span><b>${s.cells_done.toLocaleString()}</b> of ${s.cells_total.toLocaleString()} km²</span><span><b>${Math.round(s.rate_now || 0)}</b> points/s from ${s.machines_working} machines working now</span><span><b>${eta}</b></span><span>queue: ${data.queue.priority ? data.queue.priority + ' priority, ' : ''}${data.queue.todo} prepared${data.queue.failed ? ', ' + data.queue.failed + ' failed' : ''}${data.daemon ? '' : ' · tile builder stopped'}</span>`;
   const section = document.querySelector('.machines');
   for (const host of Object.keys(data.hosts)) {
     let card = document.getElementById('card-' + host);
