@@ -24,7 +24,8 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 CONTROL=$(cd "$HERE/../../../.." && pwd)/work/pipeline_control
 NICE=0; [ "$HOST" = mac ] && NICE=10
 CLOUD=0; [ "$HOST" != mac ] && [ "$HOST" != pc ] && CLOUD=1
-host_up() { ssh -F "$HOME/.ssh/quietla_cloud_config" -o ConnectTimeout=10 -o BatchMode=yes "$HOST" true < /dev/null > /dev/null 2>&1; }
+# up = answers over SSH AND has been provisioned (a replacement VM answers SSH minutes before provision_host.sh finishes)
+host_up() { ssh -F "$HOME/.ssh/quietla_cloud_config" -o ConnectTimeout=10 -o BatchMode=yes "$HOST" 'test -d /opt/quietla/engine_scripts_v3/scripts && test -w /opt/quietla' < /dev/null > /dev/null 2>&1; }
 mkdir -p "$QUEUE"/{todo,priority,running,done,failed,logs,retries} "$CONTROL"
 if [ -n "$WAIT" ]; then
   until grep -q "BENCH DONE" "$WAIT" 2>/dev/null; do sleep 30; done
