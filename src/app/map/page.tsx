@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import CountyMap, { type Camera, type MapStatus, type Selection, type Values } from '@/components/CountyMap';
-import { BAND_COLORS, BAND_EDGES, roadCnel, type BaseTheme, type ContextId, type NoiseStyle, type Period } from '@/lib/county-map-style';
+import { BAND_COLORS, BAND_EDGES, roadCnel, smoothColors, type BaseTheme, type ContextId, type NoiseStyle, type Period } from '@/lib/county-map-style';
 import { addressAt, findAddress, suggestAddresses, type Address, type Suggestion } from '@/lib/address';
 import { InfoHint, LayerPanel, Nearby, usePlaces, type Place, type Places } from '@/components/MapLayers';
 
@@ -431,7 +431,9 @@ export default function CountyMapPage() {
     </aside>
     <div className="workspace-legend county-legend" aria-label="Map legend">
       <div><span>{period === 'Q' ? `${context['airport-contours'] ? 'Roads + aircraft' : 'Roads only'} · 24 h · dB CNEL` : `Road noise · ${PERIOD_NAME[period]} · dB LAeq`}</span></div>
-      <div className="county-legend-bar" aria-hidden="true">{BAND_COLORS.map((c) => <i key={c} style={{ background: c }} />)}</div>
+      {smoothColors(noise)
+        ? <div className="county-legend-bar" aria-hidden="true" style={{ background: `linear-gradient(to right, ${BAND_COLORS.map((c, i) => `${c} ${((2 * i + 1) / (2 * BAND_COLORS.length) * 100).toFixed(2)}%`).join(', ')})` }} />
+        : <div className="county-legend-bar" aria-hidden="true">{BAND_COLORS.map((c) => <i key={c} style={{ background: c }} />)}</div>}
       <div className="county-legend-ticks" aria-hidden="true">{BAND_EDGES.map((e) => <span key={e}>{e}</span>)}</div>
       <div className="county-legend-words" aria-hidden="true"><span>quieter</span><span>louder</span></div>
       <p>WHO guideline for road traffic: 53 dB Lden, 45 dB at night. Blank areas are not modeled yet, not quiet.</p>

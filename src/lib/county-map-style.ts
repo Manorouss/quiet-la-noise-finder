@@ -13,6 +13,11 @@ export type StyleOptions = { layersUrl: string; period: Period; noise: NoiseStyl
 // (53 dB Lden, 45 dB Lnight) falls in the yellow band.
 export const BAND_EDGES = [45, 50, 55, 60, 65, 70, 75, 80];
 export const BAND_COLORS = ['#86c58f', '#c3e19a', '#f2ec7d', '#f8c35b', '#f28f3b', '#e35a32', '#c1272d', '#8e1b4d', '#4a1a6b'];
+// The smooth (Field) ramp: each band color sits at its band centre (42.5 dB for the first band, then every 5 dB).
+// The field surface and, in Field and Glow, the 3D building colors use these same stops, so houses match the ground.
+export const FIELD_STOPS: [number, string][] = BAND_COLORS.map((color, i) => [42.5 + 5 * i, color]);
+/** Field and Glow color continuously; Bands (and Dots, which keeps its steps) color in 5 dB steps. */
+export const smoothColors = (noise: NoiseStyle) => noise === 'field' || noise === 'glow';
 export const BASEMAP_FILE = 'basemap/la_county_20261004.pmtiles';
 export const CONTEXT_FILES: Record<ContextId, string> = {
   'airport-contours': 'context/la_county_airport_noise_contours.geojson',
@@ -54,6 +59,7 @@ const HOUSE_BLANK: Record<BaseTheme, string> = { light: '#f4f2ee', grayscale: '#
 
 const expr = (value: unknown) => value as ExpressionSpecification;
 const bandStep = (input: unknown) => expr(['step', input, BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]])]);
+const fieldRamp = (input: unknown) => expr(['interpolate', ['linear'], input, ...FIELD_STOPS.flat()]);
 const AIRPORT_CLASS = expr(['to-number', ['get', 'CLASS'], 0]);
 const HELI_NAME = ['downcase', ['coalesce', ['get', 'name'], '']];
 const IS_HOSPITAL_PAD = expr(['any', ['in', 'hospital', HELI_NAME], ['in', 'medic', HELI_NAME]]);
@@ -72,9 +78,9 @@ function fieldColor(noise: NoiseStyle) {
     // Soft heat: quiet places stay clear, louder ones glow brighter and warmer (24 m blurred surface).
     return expr(['interpolate', ['linear'], ['elevation'], 0, CLEAR, 50, 'rgba(242,236,125,0)', 55, 'rgba(248,214,104,0.35)', 60, 'rgba(248,170,80,0.6)', 65, 'rgba(242,120,55,0.78)', 70, 'rgba(227,70,48,0.88)', 75, 'rgba(193,30,60,0.94)', 80, 'rgba(120,20,95,0.97)', 86, 'rgba(60,14,90,1)', NOT_MODELED_ABOVE - 0.1, 'rgba(60,14,90,1)', NOT_MODELED_ABOVE, CLEAR]);
   }
-  // Smooth field: each band color sits at its band centre.
-  return expr(['interpolate', ['linear'], ['elevation'], 0, CLEAR, NODATA_DB, CLEAR, NODATA_DB + 0.1, BAND_COLORS[0], 42.5, BAND_COLORS[0],
-    ...BAND_COLORS.slice(1).flatMap((color, i) => [47.5 + 5 * i, color]), NOT_MODELED_ABOVE - 0.1, BAND_COLORS[BAND_COLORS.length - 1], NOT_MODELED_ABOVE, CLEAR]);
+  // Smooth field: each band color sits at its band centre (FIELD_STOPS).
+  return expr(['interpolate', ['linear'], ['elevation'], 0, CLEAR, NODATA_DB, CLEAR, NODATA_DB + 0.1, BAND_COLORS[0],
+    ...FIELD_STOPS.flat(), NOT_MODELED_ABOVE - 0.1, BAND_COLORS[BAND_COLORS.length - 1], NOT_MODELED_ABOVE, CLEAR]);
 }
 
 export function receiverColor(period: Period, roadsOnly = false) {
@@ -117,6 +123,8 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
   const ink = dark ? ROAD_INK.dark : ROAD_INK.light;
   const roadWidth = (scale: number) => expr(['step', ['get', 'a'], ...ROAD_CLASSES.flatMap(([min, , width], i) => (i === 0 ? [width * scale] : [min, width * scale]))]);
   const visible = (on: boolean) => ({ visibility: on ? 'visible' as const : 'none' as const });
+  // 3D building colors follow the display style: continuous in Field and Glow (the field ramp), 5 dB steps in Bands and Dots.
+  const buildingLevel = smoothColors(o.noise) ? fieldRamp : bandStep;
   const sources: StyleSpecification['sources'] = {
     ...base.sources,
     'terrain-dem': { type: 'raster-dem', tiles: [TERRAIN_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15, attribution: 'Terrain: Mapzen / AWS Open Data' },
@@ -151,7 +159,7 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
         'text-font': ['Noto Sans Medium'], 'text-size': 10, 'text-keep-upright': true, 'text-padding': 8 },
       paint: { 'text-color': ink, 'text-opacity': 0.8, 'text-halo-color': dark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.85)', 'text-halo-width': 1.2 } },
     { id: 'buildings-3d', type: 'fill-extrusion', source: 'buildings', 'source-layer': 'buildings', minzoom: 13, layout: visible(o.mode3d && !o.photo3d),
-      paint: { 'fill-extrusion-color': roadsOnly ? ['case', hasDen, bandStep(roadCnelExpr()), dark ? '#5a606b' : '#c9c4b8'] : ['case', ['has', key], bandStep(['get', key]), dark ? '#5a606b' : '#c9c4b8'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.94, 'fill-extrusion-vertical-gradient': true } },
+      paint: { 'fill-extrusion-color': roadsOnly ? ['case', hasDen, buildingLevel(roadCnelExpr()), dark ? '#5a606b' : '#c9c4b8'] : ['case', ['has', key], buildingLevel(['get', key]), dark ? '#5a606b' : '#c9c4b8'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.94, 'fill-extrusion-vertical-gradient': true } },
     { id: 'receivers-dots', type: 'circle', source: 'receivers', 'source-layer': 'receivers', minzoom: 12, layout: visible(o.noise === 'dots'),
       paint: { 'circle-color': receiverColor(o.period, roadsOnly), 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 1.2, 15, ['case', ['==', ['get', 'f'], 1], 2.8, 2.2], 18, ['case', ['==', ['get', 'f'], 1], 6, 4.5]], 'circle-opacity': 0.9,
         'circle-stroke-color': dark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)', 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 14, 0, 16, 0.6], 'circle-pitch-alignment': 'map' } },
