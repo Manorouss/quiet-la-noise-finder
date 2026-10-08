@@ -128,6 +128,12 @@ async function searchAddress(page, typed, pick) {
     await page.waitForTimeout(1500);
     const share = await warmShare(page);
     check(`style ${style} draws the noise`, share > (style === "Dots" ? 0.01 : 0.03), share.toFixed(3));  // dots are sparse at street level
+    // Water (and the inland feather) go over the surface, not over the footprints; in Dots the water goes over the points and there is no feather.
+    const order = await page.evaluate(() => window.__quietCountyMap.getStyle().layers.map((l) => l.id));
+    const over = (a, b) => order.indexOf(a) > order.indexOf(b) && order.indexOf(b) >= 0;
+    check(`style ${style}: water over the noise`, style === 'Dots'
+      ? over('noise-water', 'receivers-dots') && over('noise-water-pier', 'noise-water') && !order.includes('coverage-feather')
+      : over('coverage-feather', 'noise-field') && over('noise-water', 'coverage-feather') && over('noise-water-pier', 'noise-water') && over('building-footprints', 'noise-water-pier'));
   }
   check('styles switch without errors', report.errors.filter((e) => e.startsWith('desktop')).length === 0);
 

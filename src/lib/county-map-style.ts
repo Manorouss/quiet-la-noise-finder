@@ -89,6 +89,33 @@ export function receiverColor(period: Period, roadsOnly = false) {
   return expr(['case', ['any', ['has', 'm'], ['!', ['has', key]]], GRAY, bandStep(['get', key])]);
 }
 
+/**
+ * Where the noise surface meets water or runs out. The surface is drawn above the basemap streets, so it can spill over the ocean,
+ * bays and harbours (no noise is modeled over water; the model's grid still has points there) and it stops hard where the modeled
+ * area ends. Two fixes, both in the basemap's own colours (nothing is added over the aerial photo, which has no flat colours):
+ *  - feather: a wide blurred line in the land colour (the flavor's earth) along the coverage outline, so the surface fades out
+ *    inland instead of stopping. A blurred line fades on both sides, so it also lightens the unmodeled side a little. Only with
+ *    a surface (Field, Bands, Glow);
+ *  - water: the basemap's water polygons again, over the surface (or, in Dots, over the dots), then its piers again on top (a
+ *    pier is a place, not water). The feather sits below the water so it never smears across the sea where the outline crosses it.
+ * Pools and fountains are water polygons too, but they sit in back yards: they stay under the surface like any other detail.
+ */
+// Width in screen px by zoom (about 32 m/px at z11 down to 0.12 m/px at z19): a few hundred metres at mid zooms, tens of metres close up.
+// A line fades out over half its width on each side, so one this wide hides the edge itself and fades out about 20 to 250 m away from it.
+const FEATHER_PX: [number, number][] = [[9, 4], [11, 16], [13, 36], [15, 56], [17, 80], [19, 110]];
+const feather = (scale: number) => expr(['interpolate', ['exponential', 1.5], ['zoom'], ...FEATHER_PX.flatMap(([zoom, px]) => [zoom, px * scale])]);
+const WATER_BODIES = expr(['all', ['==', ['geometry-type'], 'Polygon'], ['!', ['in', ['get', 'kind'], ['literal', ['swimming_pool', 'fountain']]]]]);
+function edgeLayers(theme: BaseTheme, layers: LayerSpecification[], surface: boolean): { feather: LayerSpecification[]; water: LayerSpecification[] } {
+  if (theme === 'satellite') return { feather: [], water: [] };
+  const again = (id: string, as: string, filter?: ExpressionSpecification) => layers.filter((layer) => layer.id === id)
+    .map((layer) => ({ ...layer, id: as, ...(filter ? { filter } : {}) }) as LayerSpecification);
+  return {
+    feather: surface ? [{ id: 'coverage-feather', type: 'line', source: 'coverage', layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': namedFlavor(theme).earth, 'line-width': feather(1), 'line-blur': feather(0.5) } }] : [],
+    water: [...again('water', 'noise-water', WATER_BODIES), ...again('landuse_pier', 'noise-water-pier'), ...again('roads_pier', 'noise-water-pier-road')],
+  };
+}
+
 function basemap(theme: BaseTheme, url: string): { sources: StyleSpecification['sources']; layers: LayerSpecification[] } {
   const attribution = '<a href="https://protomaps.com" target="_blank" rel="noreferrer">Protomaps</a> © <a href="https://openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>';
   const sources: StyleSpecification['sources'] = { protomaps: { type: 'vector', url: `pmtiles://${url}${BASEMAP_FILE}`, attribution } };
@@ -116,6 +143,7 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
   const middle = base.layers.slice(below.length, firstLabel).filter((layer) => !(o.mode3d && layer.id === 'buildings'));
   const labels = base.layers.slice(firstLabel);
   const showField = o.noise !== 'dots';
+  const edge = edgeLayers(o.theme, base.layers, showField);
   const blankHouses = showField && o.theme !== 'satellite';   // over aerial photos the roofs stay visible (faint footprints)
   const key = PERIOD_KEY[o.period];
   const roadsOnly = roadsOnly24h(o);
@@ -202,12 +230,15 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
     { id: 'selected-point', type: 'circle', source: 'receivers', 'source-layer': 'receivers', filter: ['==', ['to-string', ['get', 'k']], ''], paint: { 'circle-radius': 9, 'circle-color': CLEAR, 'circle-stroke-color': dark ? '#ffffff' : '#171b22', 'circle-stroke-width': 2.4 } },
     { id: 'selected-building', type: 'line', source: 'buildings', 'source-layer': 'buildings', filter: ['==', ['to-string', ['get', 'k']], ''], paint: { 'line-color': dark ? '#ffffff' : '#171b22', 'line-width': 3 } },
   ];
+  // Field, Bands and Glow: the water goes right above the surface. Dots: the points are in the overlay, so it goes right above them.
+  const dotsAt = overlay.findIndex((layer) => layer.id === 'receivers-dots');
   return {
     version: 8,
     glyphs: 'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf',
     sprite: `https://protomaps.github.io/basemaps-assets/sprites/v4/${dark ? 'dark' : o.theme === 'grayscale' ? 'grayscale' : 'light'}`,
     sources,
-    layers: [...below, ...noiseLayers.slice(0, 1), ...middle, field, ...noiseLayers.slice(1), ...overlay, ...labels],
+    layers: [...below, ...noiseLayers.slice(0, 1), ...middle, field, ...edge.feather, ...(showField ? edge.water : []), ...noiseLayers.slice(1),
+      ...overlay.slice(0, dotsAt + 1), ...(showField ? [] : edge.water), ...overlay.slice(dotsAt + 1), ...labels],
     terrain: terrainFor(o),
     light: { anchor: 'viewport', color: '#ffffff', intensity: 0.35, position: [1.5, 200, 35] },
   };
