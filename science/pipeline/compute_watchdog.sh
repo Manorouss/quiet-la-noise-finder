@@ -3,6 +3,8 @@
 # which starts any stopped part and never removes a pause flag, and log problems to
 # implementation/work/pipeline_control/watchdog.log: restarts, new failed tiles, tiles running for
 # more than 2 h, corridor or publish failures, the PC not answering, pause flags appearing or going.
+# Every loop it also starts cloud/auto_replace.sh in the background, which replaces reclaimed Google Cloud Spot machines
+# (REPLACED / ALERT lines in the same log; STOP-autoreplace in pipeline_control switches that off).
 # Stops when implementation/work/pipeline_control/STOP-watchdog exists.
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -53,6 +55,9 @@ while [ ! -f "$C/STOP-watchdog" ]; do
   pauses=$(ls "$C"/pause-* 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' ')
   [ "$pauses" != "$last_pauses" ] && note "pause flags now: [${pauses}] (left as the owner set them)"
   last_pauses=$pauses
+  # Replace Spot machines Google has reclaimed (cloud/auto_replace.sh: one-for-one, inside each account's cap, its own lock
+  # so passes never overlap; a replacement takes minutes, so it runs in the background and writes its events to the log).
+  /bin/bash "$HERE/cloud/auto_replace.sh" < /dev/null >> "$LOG" 2>&1 &
   sleep "$INTERVAL"
 done
 note "watchdog stopped (STOP-watchdog)"

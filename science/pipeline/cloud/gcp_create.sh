@@ -6,6 +6,8 @@
 # reclaim so nothing keeps costing. Ubuntu 24.04, 20 GB disk, no external services. The VM's public IP goes
 # into ~/.ssh/quietla_cloud_config as "Host <name>" (user from the SSH key's metadata entry, default quietla).
 # Then: provision_host.sh <name>, and add "<name> <threads> <local port>" to pipeline_control/cloud_hosts.txt.
+# For a second Google account run it as CLOUDSDK_ACTIVE_CONFIG_NAME=<configuration> gcp_create.sh ... (the project is
+# the one of that configuration). auto_replace.sh calls it this way to replace reclaimed Spot machines.
 set -eu
 NAME=$1; ZONE=$2; TYPE=${3:-c3d-standard-16}; FAMILY=${4:-ubuntu-2404-lts-amd64}
 USER_NAME=${GCP_SSH_USER:-quietla}
@@ -29,6 +31,11 @@ text += f"\nHost {name}\n    HostName {ip}\n    User {user}\n    IdentityFile ~/
 open(path, "w").write(text)
 PY
 echo "$NAME $ZONE $TYPE $IP"
+# Google hands out addresses again: forget any host key an earlier machine left for this IP, or ssh (BatchMode,
+# StrictHostKeyChecking accept-new) refuses the new machine for ever.
+for KNOWN in $(ssh -G -F "$CFG" "$NAME" 2> /dev/null < /dev/null | awk '$1 == "userknownhostsfile" { for (i = 2; i <= NF; i++) print $i }'); do
+  if [ -f "$KNOWN" ]; then ssh-keygen -R "$IP" -f "$KNOWN" > /dev/null 2>&1 || true; fi
+done
 for i in $(seq 1 30); do
   ssh -F "$CFG" -o ConnectTimeout=10 -o BatchMode=yes "$NAME" true 2> /dev/null && { echo "$NAME answers over SSH"; exit 0; }
   sleep 10
