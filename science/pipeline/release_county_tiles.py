@@ -6,7 +6,7 @@ run_host.json) and keeps, per 1 km cell, the run of the newest model (newest run
 model), so model-v1 tiles stay on the map until their v2 run exists. Runs
 build_tile_assets.py --study <model> for cells whose assets are missing or came from another
 run (replaced assets move to <assets>/_replaced/). Tile ids are cty-e<X>-n<Y> from the cell. Then build_county_layers.py turns all assets
-into PMTiles. Safe to rerun: finished tiles are skipped.
+into PMTiles (field grids are cached per tile; see build_county_layers.py). Safe to rerun: finished tiles are skipped.
 
 Usage:
   release_county_tiles.py [--assets <dir>] [--layers <dir>] [--jobs 3] [--no-layers]
@@ -74,8 +74,9 @@ def main() -> int:
         names = [t for t, r in results.items() if r == state]
         print(f"{state}: {len(names)}" + (f" {' '.join(names)}" if state != "skip" and names else ""))
     if not args.no_layers:
-        subprocess.run([str(HERE / "geo-python"), str(HERE / "build_county_layers.py"), "--tiles-root", str(args.assets),
-                        "--out", str(args.layers)], check=True)
+        # geo-python-sci (Python 3.13 with scipy): the map-field surface needs scipy, which geo-python does not have.
+        subprocess.run([str(HERE / "geo-python-sci"), str(HERE / "build_county_layers.py"), "--tiles-root", str(args.assets),
+                        "--out", str(args.layers), "--jobs", str(max(1, args.jobs))], check=True)
     return 1 if "FAILED" in results.values() else 0
 
 

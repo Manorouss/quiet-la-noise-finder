@@ -48,6 +48,9 @@ const CLEAR = 'rgba(0,0,0,0)';
 const TERRAIN_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const SATELLITE_TILES = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
 const GRAY = '#9ea3a8';
+// A house is not a modeled place: with the noise surface shown, its footprint is painted over the colours (opaque from z16) in a
+// plain tone, so houses read as blank. The surface continues a little way under each footprint so the pixels blend cleanly at the walls.
+const HOUSE_BLANK: Record<BaseTheme, string> = { light: '#f4f2ee', grayscale: '#f0f0f0', dark: '#262a30', satellite: '#d9dde3' };
 
 const expr = (value: unknown) => value as ExpressionSpecification;
 const bandStep = (input: unknown) => expr(['step', input, BAND_COLORS[0], ...BAND_EDGES.flatMap((edge, i) => [edge, BAND_COLORS[i + 1]])]);
@@ -107,6 +110,7 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
   const middle = base.layers.slice(below.length, firstLabel).filter((layer) => !(o.mode3d && layer.id === 'buildings'));
   const labels = base.layers.slice(firstLabel);
   const showField = o.noise !== 'dots';
+  const blankHouses = showField && o.theme !== 'satellite';   // over aerial photos the roofs stay visible (faint footprints)
   const key = PERIOD_KEY[o.period];
   const roadsOnly = roadsOnly24h(o);
   const fieldBand = roadsOnly && o.roadField ? 'r' : key;
@@ -127,7 +131,8 @@ export function buildStyle(o: StyleOptions): StyleSpecification {
   sources['context-airport-estimated'] = { type: 'geojson', data: `${o.layersUrl}${AIRPORT_ESTIMATED_FILE}` };
   const noiseLayers: LayerSpecification[] = [
     { id: 'hillshade', type: 'hillshade', source: 'hillshade-dem', paint: { 'hillshade-exaggeration': dark ? 0.25 : 0.18, 'hillshade-shadow-color': dark ? '#000000' : '#5b5f66', 'hillshade-highlight-color': '#ffffff' } },
-    { id: 'building-footprints', type: 'fill', source: 'buildings', 'source-layer': 'buildings', minzoom: 14, layout: visible(!o.mode3d), paint: { 'fill-color': dark ? '#d9dde3' : '#ffffff', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.12, 17, 0.32], 'fill-outline-color': dark ? 'rgba(255,255,255,0.35)' : 'rgba(60,64,72,0.35)' } },
+    { id: 'building-footprints', type: 'fill', source: 'buildings', 'source-layer': 'buildings', minzoom: 14, layout: visible(!o.mode3d), paint: { 'fill-color': blankHouses ? HOUSE_BLANK[o.theme] : dark ? '#d9dde3' : '#ffffff',
+        'fill-opacity': blankHouses ? ['interpolate', ['linear'], ['zoom'], 14, 0.12, 15, 0.55, 16, 1] : ['interpolate', ['linear'], ['zoom'], 14, 0.12, 17, 0.32], 'fill-outline-color': dark ? 'rgba(255,255,255,0.35)' : 'rgba(60,64,72,0.35)' } },
   ];
   // Above the basemap streets (so road corridors read as loud), below labels. Linear sampling keeps the
   // surface smooth past its last zoom level (z15, ~5 m pixels) instead of showing blocks.

@@ -1,0 +1,8 @@
+#!/bin/bash
+# Python 3.13 with the project's GIS libraries plus scipy (shapely, pyproj, numpy, Pillow, scipy). The map-field surface in
+# build_county_layers.py (triangulated receivers, house footprints) needs scipy, which geo-python (Python 3.12) does not have.
+PROJECT=$(cd "$(dirname "$0")/../../../../.." && pwd)
+export PYTHONPATH="$PROJECT/implementation/work/.geo_deps:$PROJECT/implementation/work/.lidar_deps${PYTHONPATH:+:$PYTHONPATH}"
+PY=/Library/Frameworks/Python.framework/Versions/3.13/bin/python3
+[ -x "$PY" ] || PY=$(command -v python3)
+exec "$PY" "$@"
