@@ -25,7 +25,12 @@ on-road labels). Later roots win when a tile appears twice. Outputs, in --out:
                           neighbours are joined into a mesh of triangles (a Delaunay triangulation) and the level
                           is interpolated linearly across each triangle, so the surface passes through every
                           modeled value instead of averaging them. Triangles with a side over 40 m are dropped:
-                          a long triangle would invent values where nothing was modeled.
+                          a long triangle would invent values where nothing was modeled. Receivers sitting on the
+                          centerline of a road carrying under 5,000 vehicles a day (two-way, the rule that gives a road
+                          its 10 m lattice) are left out of the mesh: only
+                          a few lattice points happen to land on such a street, and each would show as a hot
+                          spot; the street is interpolated from the ground and facades beside it (busy roads have a
+                          10 m lattice, so their centerline points form a continuous loud core and stay).
                        2. Building footprints are cut out. The remaining ground is smoothed lightly (a Gaussian of
                           4 m) using only ground cells, so the street side of a house never bleeds into its yard and
                           a wall never pulls its own value into the street.
@@ -118,7 +123,8 @@ MARGIN = 100.0          # neighbour receivers used around each tile (m)
 SIGMA, SIGMA_FILL, SIGMA_GLOW = 9.0, 30.0, 24.0   # the old surface: 9 m blur, 30 m wide fill (also the fallback) and the 24 m glow
 # The field surface (see the module notes). Bump FIELD_METHOD whenever the surface changes in any way: every tile's cached grid
 # is then rebuilt once on the next run.
-FIELD_METHOD = "tin-4m-v1"
+FIELD_METHOD = "tin-4m-v2"
+MESH_MIN_AADT = 5000.0  # vehicles/day: receivers on the centerline of a quieter road are left out of the mesh (see mesh_mask)
 SURFACE_SIGMA = 4.0     # m, Gaussian over ground cells only (the mesh is sampled and smoothed on a 1 m grid; every 5 m cell centre is a 1 m cell centre)
 EDGE_MAX = 40.0         # m, triangles with a longer side are dropped
 FILL_CELLS = 3          # building cells up to this many 5 m cells (15 m) from ground take the value of the nearest ground cell
@@ -215,8 +221,8 @@ def receiver_features(tiles: dict[str, Path], points: dict[str, np.ndarray], air
                 out["o"] = 1
             yield {"type": "Feature", "geometry": {"type": "Point", "coordinates": [round(lon, 7), round(lat, 7)]}, "properties": out}
             if not p.get("masked") and all(v is not None for v in values):
-                rows.append((lon, lat, *values))
-        array = np.array(rows, dtype=np.float64) if rows else np.zeros((0, 2 + len(BANDS)))
+                rows.append((lon, lat, *values, 1.0 if p.get("on_road") else 0.0))   # last column: on a road centerline
+        array = np.array(rows, dtype=np.float64) if rows else np.zeros((0, 3 + len(BANDS)))
         if len(array):
             x, y = TO_UTM.transform(array[:, 0], array[:, 1])
             array[:, 0], array[:, 1] = x, y
@@ -386,12 +392,37 @@ def tile_footprints(origin: tuple[int, int], paths: list[Path]):
     return union
 
 
-def tile_field(origin: tuple[int, int], pts: np.ndarray, footprints=None, stats: dict | None = None) -> tuple[np.ndarray, np.ndarray]:
+def mesh_mask(origin: tuple[int, int], pts: np.ndarray, sources_path: Path) -> np.ndarray:
+    """Which receivers shape the field mesh: all except the on-road ones on roads carrying under MESH_MIN_AADT vehicles a day.
+
+    Road noise is loudest on the road itself, but a 20 m lattice puts a receiver within 3 m of a minor street's centerline only now and
+    then, so such points came out as isolated hot spots along the street. The nearest modeled road (within 8 m, this tile's sources) decides;
+    an on-road receiver whose road cannot be found stays in.
+    """
+    import shapely
+    keep = np.ones(len(pts), dtype=bool)
+    x0, y0 = origin
+    window = (pts[:, 0] >= x0 - MARGIN) & (pts[:, 0] <= x0 + 1000 + MARGIN) & (pts[:, 1] >= y0 - MARGIN) & (pts[:, 1] <= y0 + 1000 + MARGIN)
+    index = np.flatnonzero((pts[:, -1] > 0.5) & window)
+    if not len(index) or not sources_path.exists():
+        return keep
+    features = json.loads(sources_path.read_text())["features"]
+    geometries = [shapely.force_2d(shape(f["geometry"])) for f in features]
+    # two-way AADT, the quantity that decides where the tile builder lays the 10 m lattice (a divided carriageway carries half of it)
+    aadt = np.array([float(f["properties"].get("AADT_ASSIGNED") or 0) / (float(f["properties"].get("CARRIAGEWAY_SPLIT") or 1.0) or 1.0) for f in features])
+    found = shapely.STRtree(geometries).query_nearest(shapely.points(pts[index, 0], pts[index, 1]), max_distance=8.0, all_matches=False)
+    minor = aadt[found[1]] < MESH_MIN_AADT
+    keep[index[found[0][minor]]] = False
+    return keep
+
+
+def tile_field(origin: tuple[int, int], pts: np.ndarray, footprints=None, stats: dict | None = None, mesh_keep: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
     """(field, glow): values (bands, 200, 200) on the 5 m grid of the 1 km tile core, NaN where unknown.
 
     The field is the house-aware surface described in the module notes (triangulated receivers, footprints cut out, light
     smoothing over ground only, wide-fill fallback, cells inside footprints continued from the nearest ground). `footprints`
-    is the prepared union of the building polygons in UTM metres (tile_footprints), or None for open country. The glow is the
+    is the prepared union of the building polygons in UTM metres (tile_footprints), or None for open country. `mesh_keep` (rows of
+    `pts`, see mesh_mask) limits which receivers shape the mesh and the wide fallback; the glow always uses all. The glow is the
     old 24 m surface, unchanged. `stats` collects counts and seconds.
     """
     import shapely
@@ -402,12 +433,15 @@ def tile_field(origin: tuple[int, int], pts: np.ndarray, footprints=None, stats:
     x0, y0 = origin
     t = clock()
     wide, glow = legacy_surface(origin, pts, FILL_CELLS)         # (nb, 206, 206) and the core glow
+    if mesh_keep is not None and not mesh_keep.all():
+        wide = legacy_surface(origin, pts[mesh_keep], FILL_CELLS)[0]   # the wide fill leaves out the same receivers as the mesh
     st["t_legacy"] = clock() - t
 
     # 1. mesh of all unmasked receivers around the tile, long triangles dropped
     t = clock()
     sel = (pts[:, 0] >= x0 - MARGIN) & (pts[:, 0] <= x0 + 1000 + MARGIN) & (pts[:, 1] >= y0 - MARGIN) & (pts[:, 1] <= y0 + 1000 + MARGIN)
-    p = pts[sel]
+    p = pts[sel & mesh_keep] if mesh_keep is not None else pts[sel]
+    st["mesh_receivers_left_out"] = int((sel & ~mesh_keep).sum()) if mesh_keep is not None else 0
     tri = None
     if len(p) >= 4:
         _, first = np.unique(np.round(p[:, :2], 2), axis=0, return_index=True)   # identical coordinates carry identical values
@@ -583,15 +617,16 @@ def compute_cell(cell: tuple[int, int]):
         return cell, cached, glow, stats, True
     t = time.perf_counter()
     footprints = tile_footprints(job["origins"][tile_id], [job["tiles"][t] for t in nearby])
+    keep = mesh_mask(job["origins"][tile_id], pts, ATTEMPTS / job["attempts"][tile_id] / "input/sources.geojson")
     stats["t_footprints_prep"] = time.perf_counter() - t
-    field, glow = tile_field(job["origins"][tile_id], pts, footprints, stats)
+    field, glow = tile_field(job["origins"][tile_id], pts, footprints, stats, keep)
     write_cached(job["cache_dir"], tile_id, key, field)
     return cell, field, glow, stats, False
 
 
-def compute_fields(by_cell: dict, tiles: dict, origins: dict, points: dict, cache_dir: Path | None, jobs: int):
+def compute_fields(by_cell: dict, tiles: dict, origins: dict, attempts: dict, points: dict, cache_dir: Path | None, jobs: int):
     """Field and glow grids for every cell: from the cache when the cell's surroundings are unchanged, else computed (in `jobs` processes)."""
-    _JOB.update(by_cell=by_cell, tiles=tiles, origins=origins, points=points, cache_dir=cache_dir, stamp=sources_stamp(),
+    _JOB.update(by_cell=by_cell, tiles=tiles, origins=origins, attempts=attempts, points=points, cache_dir=cache_dir, stamp=sources_stamp(),
                 signatures={t: tile_signature(t, tiles[t]) for t in by_cell.values()})
     order = sorted(by_cell, key=lambda c: (c[1], c[0]))   # neighbours of consecutive cells overlap: footprint files stay in memory
     results = {}
@@ -777,7 +812,7 @@ def main() -> int:
         tippecanoe(tmp / "roads.ndjson", out / "roads.pmtiles", "roads", ["-Z10", "-z16", "--no-tile-size-limit"])
         by_cell = {(origins[t][0] // 1000, origins[t][1] // 1000): t for t in tiles}
         field_started = time.time()
-        fields, glows, field_summary = compute_fields(by_cell, tiles, origins, points, None if args.no_cache else args.cache_dir.resolve(), max(1, args.jobs))
+        fields, glows, field_summary = compute_fields(by_cell, tiles, origins, {t: m["attempt_id"] for t, m in manifests.items()}, points, None if args.no_cache else args.cache_dir.resolve(), max(1, args.jobs))
         field_summary["seconds"] = round(time.time() - field_started, 1)
         print(json.dumps({"field_surface": field_summary}), flush=True)
         n_field = build_field(fields, {band: tmp / f"field_{band}.mbtiles" for band in BANDS})
@@ -826,7 +861,7 @@ def main() -> int:
                            "method": FIELD_METHOD, "cell_m": CELL, "sigma_m": SURFACE_SIGMA, "edge_max_m": EDGE_MAX, "building_fill_m": FILL_CELLS * CELL, "fill_sigma_m": SIGMA_FILL,
                            "glow_sigma_m": SIGMA_GLOW, "zooms": [FIELD_MIN_ZOOM, FIELD_MAX_ZOOM]},
         "field_surface": {"method": FIELD_METHOD, **field_summary,
-                          "what": "triangulated receivers (open ground and facades), triangles with a side over 40 m dropped, building footprints cut out, Gaussian 4 m over ground cells only, "
+                          "what": "triangulated receivers (open ground and facades; on-road receivers of roads under 5,000/day left out), triangles with a side over 40 m dropped, building footprints cut out, Gaussian 4 m over ground cells only, "
                                   "30 m wide fill where the mesh does not reach, building cells continued 15 m from the nearest ground (wide fill deeper in); glow unchanged"},
         "files": {name: {"sha256": sha(out / name), "bytes": (out / name).stat().st_size}
                   for name in ("receivers.pmtiles", "buildings.pmtiles", "roads.pmtiles", *(f"{k}_{b}.pmtiles" for k in ("field", "glow") for b in BANDS), "coverage.geojson", *extra)},
