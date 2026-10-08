@@ -223,7 +223,7 @@ async function searchAddress(page, typed, pick) {
   await page.waitForFunction(() => !document.querySelector('.selection-address.is-pending'), null, { timeout: 15000 }).catch(() => null);
   const shared = await text(page, '.selection-address') ?? '';
   check('shared link reopens the selected place with its own address', /Calvin/i.test(shared) && !/^Near/.test(shared), shared);
-  await page.fill('#place-search', '100 N Garfield Ave, Pasadena');
+  await page.fill('#place-search', '225 W Bonita Ave, Claremont');  // outside the outline by about 40 km to the east
   await page.press('#place-search', 'Enter');
   await page.waitForFunction(() => /not modeled|outside the area/i.test(document.querySelector('.receiver-section')?.textContent ?? ''), null, { timeout: 20000 }).catch(() => null);
   const outside = await text(page, '.receiver-section');

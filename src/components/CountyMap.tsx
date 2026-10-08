@@ -77,6 +77,16 @@ function contextTitle(layer: ContextId, p: Record<string, unknown>): { title: st
   ].join(' ') };
 }
 
+/** True over drawn sea or lake water: the model still has points there, but the water layer hides them, so they must not answer a click
+ *  or hover. Piers and docks (drawn above the water) stay selectable. No water layers (Satellite) means never. */
+function overWater(map: MapLibreMap, point: { x: number; y: number }): boolean {
+  const found = (ids: string[], pad: number) => {
+    const layers = ids.filter((id) => map.getLayer(id));
+    return layers.length > 0 && map.queryRenderedFeatures([[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]], { layers }).length > 0;
+  };
+  return found(['noise-water'], 0) && !found(['noise-water-pier', 'noise-water-pier-road'], 4);
+}
+
 /** Select the building at or nearest to a point (within ~25 m), e.g. a searched address or a shared link. */
 function selectNear(map: MapLibreMap, lng: number, lat: number, onSelect: (selection: Selection | null) => void, address?: string) {
   const layers = ['buildings-3d', 'building-footprints'].filter((id) => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
@@ -165,7 +175,7 @@ export default function CountyMap(props: Props) {
           const p = map!.project([lng, lat]);
           return { f, d: Math.hypot(p.x - event.point.x, p.y - event.point.y) };
         }).sort((a, b) => a.d - b.d)[0]?.f;
-        const receiver = nearest(hits.filter((f) => f.layer.id.startsWith('receivers')));
+        const receiver = overWater(map, event.point) ? undefined : nearest(hits.filter((f) => f.layer.id.startsWith('receivers')));
         const building = hits.find((f) => f.layer.id === 'buildings-3d' || f.layer.id === 'building-footprints');
         const road = hits.find((f) => f.layer.id === 'roads-modeled');
         const context = hits.find((f) => f.layer.id.startsWith('context-'));
@@ -190,7 +200,7 @@ export default function CountyMap(props: Props) {
         } else propsRef.current.onSelect({ kind: 'empty', at: clicked });
       });
       for (const id of ['receivers-dots', 'buildings-3d', 'building-footprints', 'roads-modeled', 'context-heliports', 'context-county-fire', 'context-city-fire']) {
-        map.on('mouseenter', id, () => { if (map) map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseenter', id, (event) => { if (map && !(id.startsWith('receivers') && overWater(map, event.point))) map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', id, () => { if (map) map.getCanvas().style.cursor = ''; });
       }
     })();
