@@ -43,7 +43,9 @@ if ! alive "corridor_products.py" && [ "$(python3 -c "import json,pathlib,sys; p
   nohup nice -n 10 "$P/geo-python-net" -W ignore "$P/../lidar/corridor_products.py" --out "$CORRIDOR" --jobs 2 > "$CORRIDOR/run.out" 2>&1 &
   echo "started corridor job (lidar walls and bridge decks)"
 fi
-alive "county_daemon.py --model county-v3" || { nohup python3 "$P/county_daemon.py" --model county-v3 --queue "$Q" > /dev/null 2>&1 & echo "started tile builder"; }
+# While $C/daemon_only_cells.csv exists (cell_e,cell_n) the tile builder builds ONLY those cells; delete it to build all again.
+ONLY=(); [ -f "$C/daemon_only_cells.csv" ] && ONLY=(--only-cells "$C/daemon_only_cells.csv")
+alive "county_daemon.py --model county-v3" || { nohup python3 "$P/county_daemon.py" --model county-v3 --queue "$Q" ${ONLY[@]+"${ONLY[@]}"} > /dev/null 2>&1 & echo "started tile builder"; }
 ENGINE=/Volumes/NoiseModelling/NoiseModelling.app/Contents/MacOS/NoiseModelling
 DMG=$ROOT/implementation/work/NoiseModelling-6.0.0.dmg
 if [ ! -x "$ENGINE" ]; then

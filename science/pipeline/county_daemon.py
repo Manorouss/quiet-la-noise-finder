@@ -9,12 +9,19 @@ when every corridor block touching its 1.5 km halo is finished; the daemon takes
 ready cell among the next 40, so coverage grows compactly while corridor_products.py catches
 up. Create <queue>/STOP to end it.
 
+--only-cells <csv> (columns cell_e,cell_n, km as in the cell names) limits the daemon to the listed
+cells: it builds none other, in the usual order, and idles when the list is done. The file is
+re-read every cycle, so the list can grow without a restart; leave the option out to build all
+target cells again. compute_up.sh passes pipeline_control/daemon_only_cells.csv when it exists.
+
 Usage:
   county_daemon.py [--model county-v2] [--queue implementation/work/pipeline_queue/county_v2]
+                   [--only-cells pipeline_control/daemon_only_cells.csv]
 """
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import math
 import subprocess
@@ -63,6 +70,11 @@ def corridor_ready(cell: tuple[int, int], corridor: Path, plan: dict) -> bool:
     return True
 
 
+def read_only_cells(path: Path) -> set[tuple[int, int]]:
+    with path.open(newline="") as f:
+        return {(int(row["cell_e"]), int(row["cell_n"])) for row in csv.DictReader(f)}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--model", default=CURRENT["name"])
@@ -71,6 +83,7 @@ def main() -> int:
     parser.add_argument("--stock", type=int, default=24)
     parser.add_argument("--jobs", type=int, default=5, help="tile packages built concurrently (the county building service is the slow part)")
     parser.add_argument("--start", type=float, nargs=2, default=(356500.0, 3782500.0), help="UTM x y to grow outward from")
+    parser.add_argument("--only-cells", type=Path, default=None, help="CSV (cell_e,cell_n): build only these cells; re-read every cycle")
     args = parser.parse_args()
     model = by_name(args.model)
     queue = (args.queue or model["queue"]).resolve()
@@ -83,7 +96,10 @@ def main() -> int:
     failed: set[tuple[int, int]] = set()
     building: dict[tuple[int, int], subprocess.Popen] = {}   # cells whose package build is in progress
     waiting = False
-    print(f"{stamp()} daemon start: model {model['name']} ({model['layout']}), {len(cells)} target cells, {args.jobs} builds at a time", file=log, flush=True)
+    only = read_only_cells(args.only_cells) if args.only_cells else None   # unreadable at start: stop here, build nothing
+    exhausted = unreadable = False
+    print(f"{stamp()} daemon start: model {model['name']} ({model['layout']}), {len(cells)} target cells, {args.jobs} builds at a time"
+          + (f", ONLY {len(only)} cells from {args.only_cells}" if only is not None else ""), file=log, flush=True)
 
     def reap() -> None:
         for cell, proc in list(building.items()):
@@ -105,16 +121,35 @@ def main() -> int:
         if len(list((queue / "todo").iterdir())) + len(building) >= args.stock or len(building) >= args.jobs:
             time.sleep(15)
             continue
+        if args.only_cells:   # an unreadable or half-written file keeps the previous list
+            try:
+                listed = read_only_cells(args.only_cells)
+            except (OSError, KeyError, ValueError) as err:
+                if not unreadable:
+                    print(f"{stamp()} only-cells list unreadable ({err!r}): keeping the previous {len(only)} cells", file=log, flush=True)
+                unreadable = True
+            else:
+                unreadable = False
+                if listed != only:
+                    print(f"{stamp()} only-cells list changed: {len(only)} -> {len(listed)} cells", file=log, flush=True)
+                only = listed
         done = packaged(model)
         computed = {(int(t.split("-e")[1].split("-n")[0]), int(t.split("-n")[1])) for t in completed_runs()}
-        upcoming = [c for c in cells if c not in done and c not in failed and c not in building]
+        upcoming = [c for c in cells if c not in done and c not in failed and c not in building and (only is None or c in only)]
         upcoming.sort(key=lambda c: c in computed)   # never-computed cells first (nearest-first within each group), then the older-model redo
         if not upcoming:
             if building:
                 time.sleep(15)
                 continue
+            if only is not None:   # idle (STOP still ends it); a longer list or a restart without the option resumes
+                if not exhausted:
+                    print(f"{stamp()} only-cells list exhausted: waiting", file=log, flush=True)
+                exhausted = True
+                time.sleep(60)
+                continue
             print(f"{stamp()} all target cells packaged", file=log, flush=True)
             break
+        exhausted = False
         nxt = upcoming[0]
         if corridor is not None:
             plan = json.loads((corridor / "plan.json").read_text())
